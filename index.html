@@ -16282,6 +16282,7 @@ const LS_PROGRESS = "turks_progress_v1";      // { [tr]: {level, due, reps} } �
 const LS_CUSTOM    = "turks_custom_v1";        // { [tr]: {nl:[...], en:[...]} }
 const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentenceRatio }
 const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", laatste 20
+const LS_NEWWORDS  = "turks_newwords_v1";      // { [tr]: {nl:[...], en:[...]} } — via zinnen ontdekte woorden, niet in de vaste lijst
 
 function loadJSON(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
@@ -16293,6 +16294,7 @@ let progress = loadJSON(LS_PROGRESS, {});
 let custom   = loadJSON(LS_CUSTOM, {});
 let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentenceRatio:1});
 let history  = loadJSON(LS_HISTORY, []);
+let newWords = loadJSON(LS_NEWWORDS, {});
 
 /* ===================== SPACED REPETITION (alleen woorden) ===================== */
 const MIN_MIN = 15;                 // niveau 0 -> 15 minuten
@@ -16309,9 +16311,15 @@ function getProgress(tr){
   return progress[tr];
 }
 
+function baseWordList(){
+  // vaste (opgeschoonde) lijst + woorden die tijdens zinsoefeningen zijn ontdekt en toegevoegd
+  const extra = Object.entries(newWords).map(([tr, v])=>({tr, nl: v.nl, en: v.en}));
+  return [...WORDS_DATA, ...extra];
+}
+
 function allWords(){
-  // woorden komen uit de vaste (opgeschoonde) lijst, eventueel aangevuld met custom-vertalingen
-  return WORDS_DATA.map(item=>{
+  // basislijst, eventueel aangevuld met custom-vertalingen (extra geaccepteerde antwoorden)
+  return baseWordList().map(item=>{
     const c = custom[item.tr];
     return {
       tr: item.tr,
@@ -16322,16 +16330,22 @@ function allWords(){
   });
 }
 
+/* Voegt een nieuw woord toe aan de lijst (ontdekt via een zin), tenzij het al bestaat. */
+function ensureWordExists(tr, nl, en){
+  if(WORDS_DATA.some(w=>w.tr===tr) || newWords[tr]) return false;
+  newWords[tr] = {nl: nl && nl.length ? nl : [], en: en && en.length ? en : []};
+  saveJSON(LS_NEWWORDS, newWords);
+  return true;
+}
+
 function pickNextItem(){
   const words = allWords();
   const now = Date.now();
 
   const dueWords = [];
-  let earliestWord = null;
   for(const it of words){
     const p = getProgress(it.tr);
     if(p.due <= now) dueWords.push(it);
-    if(!earliestWord || p.due < getProgress(earliestWord.tr).due) earliestWord = it;
   }
 
   // Bepaal of we een zin willen (streef-verhouding ~1 op 5), alleen mogelijk met API-sleutel
@@ -16339,20 +16353,23 @@ function pickNextItem(){
   const recentSentences = history.slice(-5).filter(t=>t==="sentence").length;
   const wantSentence = (recentSentences / 5) < targetRatio && !!settings.apiKey;
 
-  function lowestLevel(list){
-    return list.reduce((best, it)=>{
-      const p = getProgress(it.tr);
-      const bp = best ? getProgress(best.tr) : null;
-      if(!best) return it;
-      if(p.level < bp.level) return it;
-      if(p.level === bp.level && p.due < bp.due) return it;
-      return best;
-    }, null);
+  // Kies willekeurig ÉÉN item uit de groep met de laagste score (in plaats van altijd
+  // hetzelfde item bij een gelijke stand — anders krijg je steeds dezelfde paar woorden).
+  function pickRandomAmongLowest(list){
+    if(!list.length) return null;
+    const minLevel = Math.min(...list.map(it=>getProgress(it.tr).level));
+    const candidates = list.filter(it=>getProgress(it.tr).level === minLevel);
+    return candidates[Math.floor(Math.random()*candidates.length)];
   }
 
   if(wantSentence) return {needsGeneration:true};
 
-  return dueWords.length ? lowestLevel(dueWords) : earliestWord;
+  if(dueWords.length) return pickRandomAmongLowest(dueWords);
+
+  // niets is nu due: kies willekeurig uit de woorden die het eerst weer aan de beurt zijn
+  const sorted = [...words].sort((a,b)=> getProgress(a.tr).due - getProgress(b.tr).due);
+  const soonest = sorted.slice(0, Math.min(5, sorted.length));
+  return soonest[Math.floor(Math.random()*soonest.length)];
 }
 
 /* ===================== ZIN LATEN GENEREREN DOOR AI (niet in spaced repetition) ===================== */
@@ -16360,7 +16377,7 @@ function pickWordsForSentence(){
   // kies meestal 1, soms 2 woorden die de gebruiker aan het leren is (lage/gemiddelde score).
   // Twee willekeurige, inhoudelijk ongerelateerde woorden verplicht in 1 zin proppen leidt
   // tot geforceerde/onlogische zinnen — dus standaard maar 1, en 2 alleen af en toe.
-  const words = WORDS_DATA.map(it=>it.tr);
+  const words = baseWordList().map(it=>it.tr);
   const scored = words.map(tr=>({tr, level: getProgress(tr).level}))
     .sort((a,b)=> a.level - b.level);
   const pool = scored.slice(0, Math.min(40, scored.length));
@@ -16377,16 +16394,18 @@ async function generateSentence(){
   const targetWords = pickWordsForSentence();
   const sys = `Je maakt korte, natuurlijke Turkse oefenzinnen voor een taalleerapp (A2/B1-niveau).
 De zin moet vooral grammaticaal correct en natuurlijk klinken voor een moedertaalspreker — dat weegt zwaarder dan het geforceerd verwerken van elk woord.
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"tr": "Turkse zin"}`;
+Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met een correcte Nederlandse en Engelse vertaling van die basisvorm.
+Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
+{"tr": "Turkse zin", "words": [{"tr": "basisvorm1", "nl": ["vertaling"], "en": ["translation"]}, {"tr": "basisvorm2", "nl": ["vertaling"], "en": ["translation"]}]}`;
   const wordsPart = targetWords.length > 1
     ? `de woorden "${targetWords.join('" en "')}" (allebei, maar alleen als dat natuurlijk samen in één zin past — anders gebruik je ze in twee losse, korte, logisch samenhangende zinnen)`
     : `het woord "${targetWords[0]}"`;
-  const user = `Maak een korte, natuurlijke Turkse zin (max. ~10 woorden) met ${wordsPart} (vervoegd/verbogen mag). Geef GEEN vertaling, alleen de Turkse zin.`;
+  const user = `Maak een korte, natuurlijke Turkse zin (max. ~10 woorden) met ${wordsPart} (vervoegd/verbogen mag).`;
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
     body: JSON.stringify({
-      model: "deepseek-chat", max_tokens: 150, temperature: 0.3,
+      model: "deepseek-chat", max_tokens: 500, temperature: 0.3,
       messages: [{role:"system", content:sys}, {role:"user", content:user}]
     })
   });
@@ -16399,23 +16418,45 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"tr": "Turkse zin"}`;
   raw = raw.replace(/```json|```/g,"").trim();
   const parsed = JSON.parse(raw);
   if(!parsed.tr) throw new Error("AI gaf geen zin terug.");
-  return {tr: parsed.tr, type:"sentence", targetWords};
+
+  const wordList = Array.isArray(parsed.words) ? parsed.words : [];
+  const trKeys = [];
+  for(const w of wordList){
+    if(!w.tr) continue;
+    ensureWordExists(w.tr, w.nl, w.en); // voegt alleen toe als het nog niet bestaat
+    trKeys.push(w.tr);
+  }
+  // zorg dat de doelwoorden altijd meetellen, ook als de AI ze om wat voor reden niet in "words" zette
+  for(const t of targetWords){
+    if(!trKeys.includes(t)) trKeys.push(t);
+  }
+
+  return {tr: parsed.tr, type:"sentence", words: [...new Set(trKeys)]};
 }
 
 /* Laat de AI de vertaling van de hele zin beoordelen, EN per doelwoord aangeven of dat woord goed vertaald is. */
-async function gradeSentenceTranslation(item, answer){
-  const sys = `Je bent een taaldocent Turks. Je krijgt een Turkse zin, de doelwoorden waar het om gaat, en de vertaling (Nederlands of Engels) die de student gaf.
-Beoordeel of de vertaling van de HELE zin correct is, en beoordeel voor ELK doelwoord apart of de student dat specifieke woord correct heeft vertaald/verwerkt in zijn antwoord.
+async function gradeSentenceTranslation(item, answer, isRecheck){
+  const known = allWords();
+  const wordContext = item.words.map(tr=>{
+    const w = known.find(k=>k.tr===tr);
+    return `- ${tr}` + (w ? ` (${[...w.nl, ...w.en].join(", ")})` : "");
+  }).join("\n");
+  const sys = `Je bent een taaldocent Turks. Je krijgt een Turkse zin, alle betekenisvolle woorden uit die zin (in basisvorm, met eventueel hun bekende vertaling), en de vertaling (Nederlands of Engels) die de student van de HELE zin gaf.
+Beoordeel of de vertaling van de HELE zin correct is, en beoordeel voor ELK woord uit de lijst apart of de student dat specifieke woord (in welke vorm dan ook) correct heeft verwerkt in zijn antwoord.
+Geef ook altijd een correcte referentievertaling van de hele zin, in dezelfde taal als het antwoord van de student (Nederlands of Engels).
+${isRecheck ? "De student is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord (of delen ervan) toch correct kunnen zijn." : ""}
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen", "words": [{"tr": "doelwoord1", "correct": true of false}, {"tr": "doelwoord2", "correct": true of false}]}`;
+{"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen", "referentie": "correcte vertaling van de hele zin", "words": [{"tr": "woord1", "correct": true of false}, {"tr": "woord2", "correct": true of false}]}
+Zorg dat "words" een entry bevat voor ELK woord uit onderstaande lijst, in dezelfde volgorde.`;
   const user = `Turkse zin: "${item.tr}"
-Doelwoorden (basisvorm): ${item.targetWords.join(", ")}
+Woorden in de zin (basisvorm):
+${wordContext}
 Vertaling van student: "${answer}"`;
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
     body: JSON.stringify({
-      model: "deepseek-chat", max_tokens: 350, temperature: 0,
+      model: "deepseek-chat", max_tokens: 600, temperature: 0,
       messages: [{role:"system", content:sys}, {role:"user", content:user}]
     })
   });
@@ -16427,13 +16468,18 @@ Vertaling van student: "${answer}"`;
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   const parsed = JSON.parse(raw);
-  if(!parsed.words) parsed.words = item.targetWords.map(tr=>({tr, correct: !!parsed.correct}));
+  if(!parsed.words) parsed.words = item.words.map(tr=>({tr, correct: !!parsed.correct}));
   return parsed;
 }
 
 function recordResult(tr, correct){
   const p = getProgress(tr);
-  p.level = correct ? Math.min(10, p.level + 1) : Math.max(0, p.level - 1);
+  const firstTime = p.reps === 0;
+  if(correct){
+    p.level = firstTime ? 6 : Math.min(10, p.level + 1);
+  } else {
+    p.level = Math.max(0, p.level - 1);
+  }
   p.reps += 1;
   p.due = Date.now() + intervalMinutes(p.level) * 60 * 1000;
   saveJSON(LS_PROGRESS, progress);
@@ -16460,12 +16506,13 @@ function checkStaticMatch(item, answer){
 }
 
 /* ===================== DEEPSEEK API ===================== */
-async function askDeepSeekJudge(item, answer){
+async function askDeepSeekJudge(item, answer, isRecheck){
   const sys = `Je bent een strenge maar faire docent Turks voor Nederlandstalige/Engelstalige studenten.
-Je krijgt een Turks woord of zin, de reeds bekende geaccepteerde vertalingen (Nederlands/Engels), en het antwoord van de student.
+Je krijgt een Turks woord, de reeds bekende geaccepteerde vertalingen (Nederlands/Engels), en het antwoord van de student.
 Beoordeel of het antwoord van de student een acceptabele vertaling is — accepteer synoniemen, kleine spelfouts en verschillende correcte formuleringen, in het Nederlands ÓF het Engels.
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen"}`;
-  const user = `Turks: "${item.tr}" (${item.type === "sentence" ? "zin" : "woord"})
+${isRecheck ? "De student is het NIET eens met een eerder 'onjuist'-oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord toch (gedeeltelijk) correct kan zijn, bijvoorbeeld als minder gangbaar synoniem, regionale variant of alternatieve betekenis." : ""}
+Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen", "taal": "nl of en, de taal van het antwoord van de student"}`;
+  const user = `Turks woord: "${item.tr}"
 Bekende vertalingen NL: ${item.nl.join(", ") || "(geen)"}
 Bekende vertalingen EN: ${item.en.join(", ") || "(geen)"}
 Antwoord van student: "${answer}"`;
@@ -16502,7 +16549,7 @@ Antwoord van student: "${answer}"`;
 
 async function askDeepSeekFree(item, question, chatHistoryMsgs){
   const context = item.type === "sentence"
-    ? `Turkse oefenzin: "${item.tr}" (doelwoorden: ${item.targetWords.join(", ")}).`
+    ? `Turkse oefenzin: "${item.tr}" (doelwoorden: ${item.words.join(", ")}).`
     : `Turks woord: "${item.tr}" (bekende vertalingen NL: ${item.nl.join(", ")||"-"}; EN: ${item.en.join(", ")||"-"}).`;
   const sys = `Je bent een behulpzame docent Turks. De student oefent het volgende:
 ${context}
@@ -16560,6 +16607,7 @@ async function renderPractice(){
   chatMsgs = [];
   el("feedback-box").innerHTML = "";
   el("post-actions").classList.add("hidden");
+  el("btn-dispute").disabled = false;
   el("btn-next").classList.add("hidden");
   el("answer-input").value = "";
   el("answer-input").disabled = true;
@@ -16607,7 +16655,7 @@ async function renderPractice(){
 
   if(isSentence){
     el("level-fill").style.width = "0%";
-    el("level-label").textContent = "beoordeelt woorden: " + currentItem.targetWords.join(", ");
+    el("level-label").textContent = "beoordeelt woorden: " + currentItem.words.join(", ");
   } else {
     const p = getProgress(currentItem.tr);
     el("level-fill").style.width = (p.level*10) + "%";
@@ -16656,7 +16704,11 @@ async function handleCheck(){
   showFeedback("pending", "🤖 AI beoordeelt je antwoord…");
   try{
     const verdict = await askDeepSeekJudge(currentItem, answer);
-    finalizeAnswer(!!verdict.correct, (verdict.correct ? "Correct! ✅ (beoordeeld door AI)" : "Helaas, dat lijkt niet juist. ❌") + "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>");
+    const known = [...currentItem.nl, ...currentItem.en].join(", ");
+    finalizeAnswer(!!verdict.correct,
+      (verdict.correct ? "Correct! ✅ (beoordeeld door AI)" : "Helaas, dat lijkt niet juist. ❌") +
+      "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
+      (known ? "<br><br><b>Correcte vertaling(en):</b> " + known : ""));
     if(verdict.correct){
       el("post-actions").querySelector("#btn-add-answer")?.remove();
       const addBtn = document.createElement("button");
@@ -16686,13 +16738,13 @@ async function handleCheckSentence(answer){
     recordHistory("sentence");
 
     // per doelwoord de score bijwerken
-    for(const w of currentItem.targetWords){
+    for(const w of currentItem.words){
       const v = verdict.words.find(x=>x.tr === w);
       recordResult(w, v ? !!v.correct : !!verdict.correct);
     }
     saveJSON(LS_PROGRESS, progress);
 
-    const wordLines = currentItem.targetWords.map(w=>{
+    const wordLines = currentItem.words.map(w=>{
       const v = verdict.words.find(x=>x.tr === w);
       const ok = v ? !!v.correct : !!verdict.correct;
       return `${ok ? "✅" : "❌"} ${w}`;
@@ -16701,6 +16753,7 @@ async function handleCheckSentence(answer){
     showFeedback(verdict.correct ? "correct" : "wrong",
       (verdict.correct ? "Correct! ✅" : "Niet helemaal juist. ❌") +
       "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
+      (verdict.referentie ? "<br><br><b>Correcte vertaling:</b> " + verdict.referentie : "") +
       "<br><br><b>Woordscores:</b><br>" + wordLines);
 
     el("post-actions").classList.remove("hidden");
@@ -16727,42 +16780,96 @@ function finalizeAnswer(correct, message){
   el("level-label").textContent = fmtLevel(p);
 }
 
-function promptAddTranslation(item, answer){
-  const lang = confirm("Is dit antwoord Nederlands? Klik OK voor Nederlands, Annuleren voor Engels.") ? "nl" : "en";
+function promptAddTranslation(item, answer, knownLang){
+  const lang = knownLang || (confirm("Is dit antwoord Nederlands? Klik OK voor Nederlands, Annuleren voor Engels.") ? "nl" : "en");
   if(!custom[item.tr]) custom[item.tr] = {nl:[], en:[]};
   if(!custom[item.tr][lang].includes(answer)) custom[item.tr][lang].push(answer);
   saveJSON(LS_CUSTOM, custom);
-  alert('"' + answer + '" is toegevoegd als geaccepteerde ' + (lang==="nl"?"Nederlandse":"Engelse") + ' vertaling van "' + item.tr + '".');
+  return lang;
 }
 
-function disputeAnswer(){
+async function disputeAnswer(){
   if(!currentItem) return;
   const answer = el("answer-input").value.trim();
+  el("btn-dispute").disabled = true;
 
   if(currentItem.type === "sentence"){
-    if(!confirm('Weet je zeker dat je antwoord op deze zin (grotendeels) correct was?\n\nBij bevestiging worden alle doelwoorden (' + currentItem.targetWords.join(", ") + ') als correct gescoord, ongeacht het AI-oordeel.')) return;
-    for(const w of currentItem.targetWords){
-      recordResult(w, true);
+    if(!settings.apiKey){
+      alert("Voor een herbeoordeling is een DeepSeek API-sleutel nodig (Instellingen).");
+      el("btn-dispute").disabled = false;
+      return;
     }
-    saveJSON(LS_PROGRESS, progress);
-    showFeedback("correct", "Score van alle doelwoorden hersteld naar correct. Bedankt voor de correctie! ✅");
-    el("btn-dispute").classList.add("hidden");
+    showFeedback("pending", "🤖 AI beoordeelt je zin nog eens kritisch…");
+    try{
+      const verdict = await gradeSentenceTranslation(currentItem, answer, true);
+      for(const w of currentItem.words){
+        const v = verdict.words.find(x=>x.tr === w);
+        recordResult(w, v ? !!v.correct : !!verdict.correct);
+      }
+      saveJSON(LS_PROGRESS, progress);
+      const wordLines = currentItem.words.map(w=>{
+        const v = verdict.words.find(x=>x.tr === w);
+        const ok = v ? !!v.correct : !!verdict.correct;
+        return `${ok ? "✅" : "❌"} ${w}`;
+      }).join(" &nbsp; ");
+      showFeedback(verdict.correct ? "correct" : "wrong",
+        "🔁 Herbeoordeeld: " + (verdict.correct ? "toch correct! ✅" : "AI blijft bij (grotendeels) onjuist. ❌") +
+        "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
+        (verdict.referentie ? "<br><br><b>Correcte vertaling:</b> " + verdict.referentie : "") +
+        "<br><br><b>Woordscores:</b><br>" + wordLines);
+      el("btn-dispute").classList.add("hidden");
+    }catch(e){
+      showFeedback("wrong", "⚠️ Herbeoordeling mislukt: " + e.message);
+      el("btn-dispute").disabled = false;
+    }
     return;
   }
 
-  if(!confirm('Weet je zeker dat "' + answer + '" een juiste vertaling is van "' + currentItem.tr + '"?\n\nBij bevestiging wordt dit toegevoegd aan de lijst met geaccepteerde antwoorden en wordt je score voor dit item hersteld (alsof het antwoord goed was).')) return;
+  if(!settings.apiKey){
+    alert("Voor een herbeoordeling is een DeepSeek API-sleutel nodig (Instellingen).");
+    el("btn-dispute").disabled = false;
+    return;
+  }
 
-  promptAddTranslation(currentItem, answer);
-
-  const p = getProgress(currentItem.tr);
-  p.level = Math.min(10, p.level + 2);
-  p.due = Date.now() + intervalMinutes(p.level) * 60 * 1000;
-  saveJSON(LS_PROGRESS, progress);
-
-  showFeedback("correct", "Toegevoegd en score hersteld. Bedankt voor de correctie! ✅");
-  el("btn-dispute").classList.add("hidden");
-  el("level-fill").style.width = (p.level*10) + "%";
-  el("level-label").textContent = fmtLevel(p);
+  showFeedback("pending", "🤖 AI beoordeelt je antwoord nog eens kritisch…");
+  try{
+    const verdict = await askDeepSeekJudge(currentItem, answer, true);
+    if(verdict.correct){
+      const lang = promptAddTranslation(currentItem, answer, verdict.taal === "en" ? "en" : "nl");
+      const p = getProgress(currentItem.tr);
+      p.level = Math.min(10, p.level + 2);
+      p.due = Date.now() + intervalMinutes(p.level) * 60 * 1000;
+      saveJSON(LS_PROGRESS, progress);
+      showFeedback("correct",
+        "🔁 Herbeoordeeld: AI bevestigt dat dit correct is. ✅<br>" +
+        "<span class='muted'>" + (verdict.uitleg||"") + "</span><br><br>" +
+        "Automatisch toegevoegd als " + (lang==="nl"?"Nederlandse":"Engelse") + " vertaling, en score hersteld.");
+      el("btn-dispute").classList.add("hidden");
+      el("level-fill").style.width = (p.level*10) + "%";
+      el("level-label").textContent = fmtLevel(p);
+    } else {
+      showFeedback("wrong",
+        "🔁 Herbeoordeeld: AI blijft bij het oordeel dat dit niet correct is. ❌<br>" +
+        "<span class='muted'>" + (verdict.uitleg||"") + "</span><br><br>" +
+        "<button class='btn-ghost btn-small' id='btn-force-add'>Toch handmatig toevoegen</button>");
+      el("btn-force-add").onclick = ()=>{
+        if(!confirm('Weet je zeker dat "' + answer + '" een juiste vertaling is van "' + currentItem.tr + '", ondanks het AI-oordeel?')) return;
+        const lang = promptAddTranslation(currentItem, answer);
+        const p = getProgress(currentItem.tr);
+        p.level = Math.min(10, p.level + 2);
+        p.due = Date.now() + intervalMinutes(p.level) * 60 * 1000;
+        saveJSON(LS_PROGRESS, progress);
+        showFeedback("correct", "Handmatig toegevoegd als " + (lang==="nl"?"Nederlandse":"Engelse") + " vertaling, score hersteld. ✅");
+        el("btn-dispute").classList.add("hidden");
+        el("level-fill").style.width = (p.level*10) + "%";
+        el("level-label").textContent = fmtLevel(p);
+      };
+      el("btn-dispute").disabled = false;
+    }
+  }catch(e){
+    showFeedback("wrong", "⚠️ Herbeoordeling mislukt: " + e.message);
+    el("btn-dispute").disabled = false;
+  }
 }
 
 /* ===================== CHAT MODAL (Vraag aan AI) ===================== */
@@ -16880,7 +16987,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     if(!currentItem) return;
     if(currentItem.type === "sentence"){
       recordHistory("sentence");
-      for(const w of currentItem.targetWords) recordResult(w, false);
+      for(const w of currentItem.words) recordResult(w, false);
     } else {
       recordHistory("word");
       recordResult(currentItem.tr, false);
