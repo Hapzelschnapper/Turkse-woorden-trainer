@@ -83,7 +83,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 00:05</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 08:30</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -158,7 +158,13 @@
         <span class="muted" id="sentence-percent-label">20%</span>
       </div>
       <input type="range" id="sentence-percent" min="0" max="100" step="5" value="20" style="width:100%;">
-      <div class="muted" style="margin-top:8px;">Zinnen worden niet uit een vaste lijst gehaald — elke zin wordt live door DeepSeek gegenereerd (vereist een API-sleutel), met woorden die je aan het leren bent.</div>
+      <div class="muted" style="margin-top:8px;margin-bottom:14px;">Zinnen worden niet uit een vaste lijst gehaald — elke zin wordt live door DeepSeek gegenereerd (vereist een API-sleutel), met woorden die je aan het leren bent.</div>
+      <div class="row space-between" style="margin-bottom:4px;">
+        <span>Percentage nieuwe woorden (in zinnen)</span>
+        <span class="muted" id="new-word-percent-label">50%</span>
+      </div>
+      <input type="range" id="new-word-percent" min="0" max="100" step="5" value="50" style="width:100%;">
+      <div class="muted" style="margin-top:8px;">Hoe vaak een zin rond een nog nooit getoond woord wordt gebouwd, versus een woord dat je al kent en waarvan de herhaling weer "due" is. Hoger = meer nieuwe stof, lager = meer gerichte herhaling van bestaande achterstand.</div>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Taalniveau (CEFR)</h3>
@@ -178,7 +184,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 00:05</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 08:30</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -30035,7 +30041,7 @@ const WORDS_DATA = [
 /* ===================== OPSLAG ===================== */
 const LS_PROGRESS = "turks_progress_v1";      // { [tr]: {level, due, reps} } — ALLEEN woorden
 const LS_CUSTOM    = "turks_custom_v1";        // { [tr]: {nl:[...], en:[...]} }
-const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cefrLevel }
+const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cefrLevel, newWordPercent }
 const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", laatste 20
 const LS_NEWWORDS  = "turks_newwords_v1";      // { [tr]: {nl:[...], en:[...]} } — via zinnen ontdekte woorden, niet in de vaste lijst
 
@@ -30047,8 +30053,9 @@ function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
 let progress = loadJSON(LS_PROGRESS, {});
 let custom   = loadJSON(LS_CUSTOM, {});
-let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentencePercent:20, cefrLevel:4});
+let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentencePercent:20, cefrLevel:4, newWordPercent:50});
 if(settings.cefrLevel === undefined) settings.cefrLevel = 4;
+if(settings.newWordPercent === undefined) settings.newWordPercent = 50;
 if(settings.sentencePercent === undefined){
   // migratie vanaf de oude "aantal van elke 5"-instelling
   settings.sentencePercent = Math.round(((settings.sentenceRatio || 1) / 5) * 100);
@@ -30216,9 +30223,25 @@ function pickWordsForSentence(){
   // zinnen (bv. een vraagwoord + een concreet antwoord die elkaar tegenspreken),
   // ook als het model expliciet de instructie kreeg dat te vermijden.
   const words = baseWordList().map(it=>it.tr);
+  const now = Date.now();
+  const wantNew = Math.random() * 100 < (settings.newWordPercent ?? 50);
+
+  if(wantNew){
+    const neverShown = words.filter(tr => getProgress(tr).reps === 0);
+    if(neverShown.length) return [neverShown[Math.floor(Math.random()*neverShown.length)]];
+    // geen nieuwe woorden meer over -> val door naar het herhalingspad hieronder
+  }
+
+  // herhalingspad: alleen al eerder getoonde woorden die nu due zijn, laagste niveau eerst
+  const dueShown = words.filter(tr => { const p = getProgress(tr); return p.reps > 0 && p.due <= now; });
+  if(dueShown.length){
+    const minLevel = Math.min(...dueShown.map(tr=>getProgress(tr).level));
+    const pool = dueShown.filter(tr=>getProgress(tr).level === minLevel);
+    return [pool[Math.floor(Math.random()*pool.length)]];
+  }
+
+  // niets is due (of "nieuwe woorden" gewenst maar geen meer over) -> val terug op absoluut laagste niveau
   const minLevel = Math.min(...words.map(tr=>getProgress(tr).level));
-  // willekeurig kiezen uit ALLE woorden op het laagste niveau (niet zomaar de eerste N in lijstvolgorde,
-  // anders komen door een stabiele sort steeds dezelfde woorden bovendrijven bij een gelijke stand)
   const pool = words.filter(tr=>getProgress(tr).level === minLevel);
   return pool.length ? [pool[Math.floor(Math.random()*pool.length)]] : [];
 }
@@ -30933,6 +30956,8 @@ function initSettingsUI(){
   el("api-key-input").value = settings.apiKey || "";
   el("sentence-percent").value = settings.sentencePercent ?? 20;
   el("sentence-percent-label").textContent = (settings.sentencePercent ?? 20) + "%";
+  el("new-word-percent").value = settings.newWordPercent ?? 50;
+  el("new-word-percent-label").textContent = (settings.newWordPercent ?? 50) + "%";
   el("cefr-slider").value = settings.cefrLevel ?? 4;
   el("cefr-label").textContent = cefrLabel(settings.cefrLevel ?? 4);
   el("key-status").textContent = settings.apiKey ? "✅ Sleutel is ingesteld." : "Nog geen sleutel ingesteld.";
@@ -30993,6 +31018,13 @@ document.addEventListener("DOMContentLoaded", ()=>{
   });
   el("sentence-percent").addEventListener("change", ()=>{
     settings.sentencePercent = parseInt(el("sentence-percent").value, 10) || 0;
+    saveJSON(LS_SETTINGS, settings);
+  });
+  el("new-word-percent").addEventListener("input", ()=>{
+    el("new-word-percent-label").textContent = el("new-word-percent").value + "%";
+  });
+  el("new-word-percent").addEventListener("change", ()=>{
+    settings.newWordPercent = parseInt(el("new-word-percent").value, 10) || 0;
     saveJSON(LS_SETTINGS, settings);
   });
   el("cefr-slider").addEventListener("input", ()=>{
