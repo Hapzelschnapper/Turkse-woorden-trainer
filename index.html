@@ -43,6 +43,7 @@
   .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:700;}
   .badge-word{background:#1d3a2e;color:var(--accent2);}
   .badge-sentence{background:#3a2a1d;color:var(--warn);}
+  .badge-question{background:#1d2f3a;color:#5fc4e8;}
   .tr-word{font-size:1.7rem;font-weight:700;margin:10px 0 4px;line-height:1.3;}
   .tr-word.sentence{font-size:1.3rem;}
   .level-bar{height:6px;border-radius:4px;background:#0d1720;overflow:hidden;margin-top:8px;}
@@ -83,7 +84,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 00:35</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 01:15</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -165,6 +166,12 @@
       </div>
       <input type="range" id="new-word-percent" min="0" max="100" step="5" value="50" style="width:100%;">
       <div class="muted" style="margin-top:8px;">Hoe vaak een zin rond een nog nooit getoond woord wordt gebouwd, versus een woord dat je al kent en waarvan de herhaling weer "due" is. Hoger = meer nieuwe stof, lager = meer gerichte herhaling van bestaande achterstand.</div>
+      <div class="row space-between" style="margin-top:14px;margin-bottom:4px;">
+        <span>Aandeel Turkse vraag/antwoord</span>
+        <span class="muted" id="question-percent-label">0%</span>
+      </div>
+      <input type="range" id="question-percent" min="0" max="100" step="5" value="0" style="width:100%;">
+      <div class="muted" style="margin-top:8px;">Je krijgt een Turkse vraag te zien en antwoordt zelf in het Turks (geen vertaling) — traint direct begrijpen zonder mentaal om te schakelen naar het Nederlands/Engels. Speciale tekens (ı/ş/ğ/ü/ö/ç) hoeven niet correct getypt te worden.</div>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Taalniveau (CEFR)</h3>
@@ -184,7 +191,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 00:35</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 01:15</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -29933,7 +29940,7 @@ const WORDS_DATA = [
 /* ===================== OPSLAG ===================== */
 const LS_PROGRESS = "turks_progress_v1";      // { [tr]: {level, due, reps} } — ALLEEN woorden
 const LS_CUSTOM    = "turks_custom_v1";        // { [tr]: {nl:[...], en:[...]} }
-const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cefrLevel, newWordPercent }
+const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cefrLevel, newWordPercent, questionPercent }
 const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", laatste 20
 const LS_NEWWORDS  = "turks_newwords_v1";      // { [tr]: {nl:[...], en:[...]} } — via zinnen ontdekte woorden, niet in de vaste lijst
 
@@ -29945,9 +29952,10 @@ function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
 let progress = loadJSON(LS_PROGRESS, {});
 let custom   = loadJSON(LS_CUSTOM, {});
-let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentencePercent:20, cefrLevel:4, newWordPercent:50});
+let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentencePercent:20, cefrLevel:4, newWordPercent:50, questionPercent:0});
 if(settings.cefrLevel === undefined) settings.cefrLevel = 4;
 if(settings.newWordPercent === undefined) settings.newWordPercent = 50;
+if(settings.questionPercent === undefined) settings.questionPercent = 0;
 if(settings.sentencePercent === undefined){
   // migratie vanaf de oude "aantal van elke 5"-instelling
   settings.sentencePercent = Math.round(((settings.sentenceRatio || 1) / 5) * 100);
@@ -30008,10 +30016,14 @@ function pickNextItem(){
     if(p.due <= now) dueWords.push(it);
   }
 
-  // Bepaal of we een zin willen (streef-verhouding ~1 op 5), alleen mogelijk met API-sleutel
-  const targetRatio = Math.max(0, Math.min(1, (settings.sentencePercent ?? 20) / 100));
-  const recentSentences = history.slice(-5).filter(t=>t==="sentence").length;
-  const wantSentence = (recentSentences / 5) < targetRatio && !!settings.apiKey;
+  // Bepaal of we een zin of TR-vraag willen (streef-verhoudingen), alleen mogelijk met API-sleutel
+  const sentenceRatio = Math.max(0, Math.min(1, (settings.sentencePercent ?? 20) / 100));
+  const questionRatio = Math.max(0, Math.min(1, (settings.questionPercent ?? 0) / 100));
+  const recent = history.slice(-10);
+  const recentSentences = recent.filter(t=>t==="sentence").length;
+  const recentQuestions = recent.filter(t=>t==="question").length;
+  const wantSentence = (recentSentences / 10) < sentenceRatio && !!settings.apiKey;
+  const wantQuestion = (recentQuestions / 10) < questionRatio && !!settings.apiKey;
 
   // Kies willekeurig ÉÉN item uit de groep met de laagste score (in plaats van altijd
   // hetzelfde item bij een gelijke stand — anders krijg je steeds dezelfde paar woorden).
@@ -30022,7 +30034,14 @@ function pickNextItem(){
     return candidates[Math.floor(Math.random()*candidates.length)];
   }
 
-  if(wantSentence) return {needsGeneration:true};
+  if(wantSentence && wantQuestion){
+    // beide willen aan de beurt komen -> verdeel naar verhouding van de twee schuifjes
+    const totalPct = (settings.sentencePercent ?? 20) + (settings.questionPercent ?? 0);
+    const pickSentence = totalPct <= 0 ? true : (Math.random() * totalPct) < (settings.sentencePercent ?? 20);
+    return pickSentence ? {needsGeneration:true, kind:"sentence"} : {needsGeneration:true, kind:"question"};
+  }
+  if(wantSentence) return {needsGeneration:true, kind:"sentence"};
+  if(wantQuestion) return {needsGeneration:true, kind:"question"};
 
   if(dueWords.length) return pickRandomAmongLowest(dueWords);
 
@@ -30220,6 +30239,104 @@ async function generateSentence(){
   return {tr: parsed.tr, type:"sentence", words: [...new Set(trKeys)]};
 }
 
+/* ===================== TR-VRAAG / TR-ANTWOORD (begrip zonder vertaling) ===================== */
+async function generateQuestionCandidate(targetWord){
+  const level = settings.cefrLevel ?? 4;
+  const sys = `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
+Gewenst niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
+Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv. rekenen, geografie, een feit uit de zin zelf), ofwel een PERSOONLIJKE/OPEN vraag waarop elk contextueel passend Turks antwoord goed is (bv. "Bugün ne yaptın?").
+De vraag moet grammaticaal correct en natuurlijk klinken voor een moedertaalspreker.
+Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met een correcte Nederlandse en Engelse vertaling van die basisvorm.
+Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
+{"tr": "Turkse vraag", "feitelijk": true of false, "words": [{"tr": "basisvorm1", "nl": ["vertaling"], "en": ["translation"]}]}`;
+  const user = `Maak een Turkse vraag op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag).`;
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
+    body: JSON.stringify({
+      model: "deepseek-v4-pro", max_tokens: 500, temperature: 0.4,
+      messages: [{role:"system", content:sys}, {role:"user", content:user}],
+      thinking: {"type": "disabled"}
+    })
+  });
+  if(!res.ok){
+    const txt = await res.text().catch(()=> "");
+    throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
+  }
+  const data = await res.json();
+  let raw = data.choices?.[0]?.message?.content || "";
+  raw = raw.replace(/```json|```/g,"").trim();
+  const parsed = JSON.parse(raw);
+  if(!parsed.tr) throw new Error("AI gaf geen vraag terug.");
+  return parsed;
+}
+
+async function generateQuestion(){
+  const targetWords = pickWordsForSentence(); // zelfde selectielogica als bij zinnen (nieuw-woord% / due-herhaling)
+  const targetWord = targetWords[0];
+
+  let parsed = await generateQuestionCandidate(targetWord);
+  try{
+    const natural = await checkSentenceNatural(parsed.tr); // generieke check, werkt ook prima voor vragen
+    if(!natural){
+      parsed = await generateQuestionCandidate(targetWord); // één herkansing
+    }
+  }catch(e){ /* controle mislukt: gewoon doorgaan met de eerste kandidaat */ }
+
+  const wordList = Array.isArray(parsed.words) ? parsed.words : [];
+  const trKeys = [];
+  for(const w of wordList){
+    if(!w.tr) continue;
+    ensureWordExists(w.tr, w.nl, w.en);
+    trKeys.push(w.tr);
+  }
+  if(!trKeys.includes(targetWord)) trKeys.push(targetWord);
+
+  return {tr: parsed.tr, type:"question", words: [...new Set(trKeys)]};
+}
+
+async function gradeQuestionAnswer(item, answer, isRecheck){
+  const sys = `Je bent een taaldocent Turks. Je krijgt een Turkse vraag en het Turkstalige antwoord van de gebruiker (GEEN vertaling — de gebruiker moet in het Turks antwoorden).
+Beoordeel of het antwoord een gepast, correct Turks antwoord op de vraag is:
+- Bij een FEITELIJKE vraag: is het antwoord feitelijk juist en logisch een antwoord op de vraag?
+- Bij een OPEN/PERSOONLIJKE vraag: is het antwoord contextueel passend en grammaticaal begrijpelijk Turks (de inhoud mag vrij zijn, elk zinnig antwoord telt)?
+NEGEER Turkse diakritische tekens volledig bij de beoordeling: behandel ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c als volledig uitwisselbaar — een antwoord getypt zonder Turkse speciale tekens (bv. "tesekkur" i.p.v. "teşekkür") is qua spelling NOOIT fout. Wees ook coulant bij ontbrekende Nederlandse accenten in eventuele Nederlandse woorden.
+BELANGRIJK OVER TYPEFOUTEN: duidelijke tikfouten (verwisselde letters e.d.) met een ondubbelzinnig duidelijke bedoeling reken je gewoon goed — dit is een taaltoets, geen typetoets.
+Beoordeel ook voor ELK genummerd woord uit de vraag, ONAFHANKELIJK EN KRITISCH, of de gebruiker begrip daarvan toont in zijn antwoord. CONSISTENTIE-EIS: als het antwoord als geheel niet klopt door een woord dat duidelijk verkeerd begrepen is, moet dat woord in "words" op false staan.
+Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je"). Structuur: begin met het oordeel, en bij fout kort en concreet wat er niet klopte.
+${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling." : ""}
+Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
+{"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen", "referentie": "een voorbeeld van een goed Turks antwoord op deze vraag", "words": [true of false, ...]}
+BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfde volgorde als hieronder genummerd.`;
+  const user = `Turkse vraag: "${item.tr}"
+Genummerde woorden in de vraag (basisvorm): ${item.words.map((w,i)=>`${i+1}. ${w}`).join(", ")}
+Antwoord van gebruiker (in het Turks): "${answer}"`;
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
+    body: JSON.stringify({
+      model: "deepseek-v4-pro", max_tokens: 600, temperature: 0,
+      messages: [{role:"system", content:sys}, {role:"user", content:user}],
+      thinking: {"type": "disabled"}
+    })
+  });
+  if(!res.ok){
+    const txt = await res.text().catch(()=> "");
+    throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
+  }
+  const data = await res.json();
+  let raw = data.choices?.[0]?.message?.content || "";
+  raw = raw.replace(/```json|```/g,"").trim();
+  const parsed = JSON.parse(raw);
+  if(!Array.isArray(parsed.words)) parsed.words = [];
+  while(parsed.words.length < item.words.length) parsed.words.push(!!parsed.correct);
+  parsed.words = parsed.words.slice(0, item.words.length).map(v=>{
+    if(typeof v === "object" && v !== null) return !!v.correct;
+    return !!v;
+  });
+  return parsed;
+}
+
 /* Laat de AI de vertaling van de hele zin beoordelen, EN per doelwoord aangeven of dat woord goed vertaald is. */
 async function gradeSentenceTranslation(item, answer, isRecheck){
   const known = allWords();
@@ -30350,8 +30467,8 @@ Antwoord van student: "${answer}"`;
 }
 
 async function askDeepSeekFree(item, question, chatHistoryMsgs){
-  const context = item.type === "sentence"
-    ? `Turkse oefenzin: "${item.tr}" (doelwoorden: ${item.words.join(", ")}).`
+  const context = (item.type === "sentence" || item.type === "question")
+    ? `Turkse oefen${item.type === "question" ? "vraag" : "zin"}: "${item.tr}" (doelwoorden: ${item.words.join(", ")}).`
     : `Turks woord: "${item.tr}" (bekende vertalingen NL: ${item.nl.join(", ")||"-"}; EN: ${item.en.join(", ")||"-"}).`;
   const sys = `Je bent een behulpzame docent Turks. Je gebruiker oefent het volgende:
 ${context}
@@ -30419,17 +30536,19 @@ async function renderPractice(){
   let picked = pickNextItem();
 
   if(picked && picked.needsGeneration){
-    el("badge-type").textContent = "zin";
-    el("badge-type").className = "badge badge-sentence";
-    el("tr-word").textContent = "🤖 AI genereert een nieuwe zin…";
+    const kind = picked.kind || "sentence";
+    const isQ = kind === "question";
+    el("badge-type").textContent = isQ ? "vraag" : "zin";
+    el("badge-type").className = "badge " + (isQ ? "badge-question" : "badge-sentence");
+    el("tr-word").textContent = isQ ? "🤖 AI bedenkt een vraag…" : "🤖 AI genereert een nieuwe zin…";
     el("tr-word").className = "tr-word sentence";
     el("level-fill").style.width = "0%";
     el("level-label").textContent = "even geduld…";
     try{
-      picked = await generateSentence();
+      picked = isQ ? await generateQuestion() : await generateSentence();
     }catch(e){
-      showFeedback("wrong", "⚠️ Kon geen zin genereren: " + e.message + ". Probeer opnieuw of ga verder met een woord.");
-      recordHistory("word"); // telt niet als zin, zodat we niet blijven vastlopen op zin-generatie
+      showFeedback("wrong", "⚠️ Kon geen " + (isQ ? "vraag" : "zin") + " genereren: " + e.message + ". Probeer opnieuw of ga verder met een woord.");
+      recordHistory("word"); // telt niet mee, zodat we niet blijven vastlopen op generatie
       picked = null;
       // val terug op gewoon een woord
       const words = allWords();
@@ -30449,13 +30568,18 @@ async function renderPractice(){
     return;
   }
   const isSentence = currentItem.type === "sentence";
-  el("badge-type").textContent = isSentence ? "zin" : "woord";
-  el("badge-type").className = "badge " + (isSentence ? "badge-sentence" : "badge-word");
+  const isQuestion = currentItem.type === "question";
+  el("badge-type").textContent = isQuestion ? "vraag" : (isSentence ? "zin" : "woord");
+  el("badge-type").className = "badge " + (isQuestion ? "badge-question" : (isSentence ? "badge-sentence" : "badge-word"));
   const wordEl = el("tr-word");
   wordEl.textContent = currentItem.tr;
-  wordEl.className = "tr-word" + (isSentence ? " sentence" : "");
+  wordEl.className = "tr-word" + ((isSentence||isQuestion) ? " sentence" : "");
 
-  if(isSentence){
+  el("answer-input").placeholder = isQuestion
+    ? "Typ je antwoord in het Turks…"
+    : "Typ de Nederlandse of Engelse vertaling…";
+
+  if(isSentence || isQuestion){
     el("level-fill").style.width = "0%";
     el("level-label").textContent = "beoordeelt woorden: " + currentItem.words.join(", ");
   } else {
@@ -30488,6 +30612,10 @@ async function handleCheck(){
 
   if(currentItem.type === "sentence"){
     await handleCheckSentence(answer);
+    return;
+  }
+  if(currentItem.type === "question"){
+    await handleCheckQuestion(answer);
     return;
   }
 
@@ -30568,6 +30696,48 @@ async function handleCheckSentence(answer){
   }
 }
 
+async function handleCheckQuestion(answer){
+  if(!settings.apiKey){
+    showFeedback("wrong", "Turkse vraag/antwoord-oefeningen kunnen alleen door AI beoordeeld worden — stel een DeepSeek API-sleutel in bij Instellingen.");
+    el("btn-check").disabled = false;
+    el("answer-input").disabled = false;
+    return;
+  }
+  showFeedback("pending", "🤖 AI beoordeelt je Turkse antwoord…");
+  try{
+    const verdict = await gradeQuestionAnswer(currentItem, answer);
+    currentAnswered = true;
+    currentCorrect = !!verdict.correct;
+    recordHistory("question");
+
+    currentItem.words.forEach((w, i)=>{
+      recordResult(w, !!verdict.words[i]);
+    });
+    saveJSON(LS_PROGRESS, progress);
+
+    const wordLines = currentItem.words.map((w, i)=>{
+      const ok = !!verdict.words[i];
+      return `${ok ? "✅" : "❌"} ${w}`;
+    }).join(" &nbsp; ");
+
+    showFeedback(verdict.correct ? "correct" : "wrong",
+      (verdict.correct ? "Correct! ✅" : "Niet helemaal juist. ❌") +
+      "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
+      (verdict.referentie ? "<br><br><b>Voorbeeldantwoord:</b> " + verdict.referentie : "") +
+      "<br><br><b>Woordscores:</b><br>" + wordLines);
+
+    el("post-actions").classList.remove("hidden");
+    el("btn-next").classList.remove("hidden");
+    el("btn-dispute").classList.remove("hidden");
+    el("answer-input").disabled = false;
+    el("answer-input").focus();
+  }catch(e){
+    showFeedback("wrong", "⚠️ Kon AI niet bereiken: " + e.message + ". Probeer het opnieuw of sla deze vraag over.");
+    el("btn-check").disabled = false;
+    el("answer-input").disabled = false;
+  }
+}
+
 function finalizeAnswer(correct, message){
   currentAnswered = true;
   currentCorrect = correct;
@@ -30597,15 +30767,18 @@ async function disputeAnswer(){
   const answer = el("answer-input").value.trim();
   el("btn-dispute").disabled = true;
 
-  if(currentItem.type === "sentence"){
+  if(currentItem.type === "sentence" || currentItem.type === "question"){
+    const isQ = currentItem.type === "question";
     if(!settings.apiKey){
       alert("Voor een herbeoordeling is een DeepSeek API-sleutel nodig (Instellingen).");
       el("btn-dispute").disabled = false;
       return;
     }
-    showFeedback("pending", "🤖 AI beoordeelt je zin nog eens kritisch…");
+    showFeedback("pending", "🤖 AI beoordeelt je " + (isQ ? "antwoord" : "zin") + " nog eens kritisch…");
     try{
-      const verdict = await gradeSentenceTranslation(currentItem, answer, true);
+      const verdict = isQ
+        ? await gradeQuestionAnswer(currentItem, answer, true)
+        : await gradeSentenceTranslation(currentItem, answer, true);
       currentItem.words.forEach((w, i)=>{
         recordResult(w, !!verdict.words[i]);
       });
@@ -30617,7 +30790,7 @@ async function disputeAnswer(){
       showFeedback(verdict.correct ? "correct" : "wrong",
         "🔁 Herbeoordeeld: " + (verdict.correct ? "toch correct! ✅" : "AI blijft bij (grotendeels) onjuist. ❌") +
         "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
-        (verdict.referentie ? "<br><br><b>Correcte vertaling:</b> " + verdict.referentie : "") +
+        (verdict.referentie ? "<br><br><b>" + (isQ ? "Voorbeeldantwoord" : "Correcte vertaling") + ":</b> " + verdict.referentie : "") +
         "<br><br><b>Woordscores:</b><br>" + wordLines);
       el("btn-dispute").classList.add("hidden");
     }catch(e){
@@ -30856,6 +31029,8 @@ function initSettingsUI(){
   el("sentence-percent-label").textContent = (settings.sentencePercent ?? 20) + "%";
   el("new-word-percent").value = settings.newWordPercent ?? 50;
   el("new-word-percent-label").textContent = (settings.newWordPercent ?? 50) + "%";
+  el("question-percent").value = settings.questionPercent ?? 0;
+  el("question-percent-label").textContent = (settings.questionPercent ?? 0) + "%";
   el("cefr-slider").value = settings.cefrLevel ?? 4;
   el("cefr-label").textContent = cefrLabel(settings.cefrLevel ?? 4);
   el("key-status").textContent = settings.apiKey ? "✅ Sleutel is ingesteld." : "Nog geen sleutel ingesteld.";
@@ -30887,8 +31062,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
   });
   el("btn-skip").addEventListener("click", ()=>{
     if(!currentItem) return;
-    if(currentItem.type === "sentence"){
-      recordHistory("sentence");
+    if(currentItem.type === "sentence" || currentItem.type === "question"){
+      recordHistory(currentItem.type);
       for(const w of currentItem.words) recordResult(w, false);
     } else {
       recordHistory("word");
@@ -30923,6 +31098,13 @@ document.addEventListener("DOMContentLoaded", ()=>{
   });
   el("new-word-percent").addEventListener("change", ()=>{
     settings.newWordPercent = parseInt(el("new-word-percent").value, 10) || 0;
+    saveJSON(LS_SETTINGS, settings);
+  });
+  el("question-percent").addEventListener("input", ()=>{
+    el("question-percent-label").textContent = el("question-percent").value + "%";
+  });
+  el("question-percent").addEventListener("change", ()=>{
+    settings.questionPercent = parseInt(el("question-percent").value, 10) || 0;
     saveJSON(LS_SETTINGS, settings);
   });
   el("cefr-slider").addEventListener("input", ()=>{
