@@ -77,7 +77,7 @@
 <body>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-02 23:45</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 09:25</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -159,7 +159,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-02 23:45</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 09:25</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -30186,22 +30186,22 @@ async function generateSentence(){
 /* Laat de AI de vertaling van de hele zin beoordelen, EN per doelwoord aangeven of dat woord goed vertaald is. */
 async function gradeSentenceTranslation(item, answer, isRecheck){
   const known = allWords();
-  const wordContext = item.words.map(tr=>{
+  const wordContext = item.words.map((tr, i)=>{
     const w = known.find(k=>k.tr===tr);
-    return `- ${tr}` + (w ? ` (${[...w.nl, ...w.en].join(", ")})` : "");
+    return `${i+1}. ${tr}` + (w ? ` (${[...w.nl, ...w.en].join(", ")})` : "");
   }).join("\n");
-  const sys = `Je bent een taaldocent Turks. Je krijgt een Turkse zin, alle betekenisvolle woorden uit die zin (in basisvorm, met eventueel hun bekende vertaling), en de vertaling (Nederlands of Engels) die de gebruiker van de HELE zin gaf.
-Beoordeel of de vertaling van de HELE zin correct is, en beoordeel voor ELK woord uit de lijst apart of de gebruiker dat specifieke woord (in welke vorm dan ook) correct heeft verwerkt.
+  const sys = `Je bent een taaldocent Turks. Je krijgt een Turkse zin, een GENUMMERDE lijst van alle betekenisvolle woorden uit die zin (in basisvorm, met eventueel hun bekende vertaling), en de vertaling (Nederlands of Engels) die de gebruiker van de HELE zin gaf.
+Beoordeel of de vertaling van de HELE zin correct is, en beoordeel voor ELK genummerd woord apart of de gebruiker dat specifieke woord (in welke vorm dan ook) correct heeft verwerkt.
 Geef ook altijd een correcte referentievertaling van de hele zin, in dezelfde taal als het antwoord van de gebruiker (Nederlands of Engels).
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"). Structuur: begin met het oordeel (goed/fout), en bij fout kort en concreet wat er niet klopte — de correcte vertaling zelf hoeft niet in de uitleg herhaald te worden, die staat al apart in "referentie".
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord (of delen ervan) toch correct kunnen zijn." : ""}
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen, rechtstreeks tegen de gebruiker gericht", "referentie": "correcte vertaling van de hele zin", "words": [{"tr": "woord1", "correct": true of false}, {"tr": "woord2", "correct": true of false}]}
-Zorg dat "words" een entry bevat voor ELK woord uit onderstaande lijst, in dezelfde volgorde.`;
+{"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen, rechtstreeks tegen de gebruiker gericht", "referentie": "correcte vertaling van de hele zin", "words": [true of false, true of false, ...]}
+BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfde volgorde als de genummerde lijst hierboven (waarde 1 = woord 1, waarde 2 = woord 2, enz.). Gebruik GEEN objecten, alleen een platte lijst van true/false.`;
   const user = `Turkse zin: "${item.tr}"
-Woorden in de zin (basisvorm):
+Genummerde woorden in de zin (basisvorm):
 ${wordContext}
-Vertaling van student: "${answer}"`;
+Vertaling van gebruiker: "${answer}"`;
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
@@ -30219,7 +30219,14 @@ Vertaling van student: "${answer}"`;
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   const parsed = JSON.parse(raw);
-  if(!parsed.words) parsed.words = item.words.map(tr=>({tr, correct: !!parsed.correct}));
+  // Verwacht: parsed.words = [true, false, ...] met exact item.words.length entries, op volgorde.
+  // Robuust tegen afwijkingen: te kort/lang/ontbrekend -> aanvullen met het algemene oordeel.
+  if(!Array.isArray(parsed.words)) parsed.words = [];
+  while(parsed.words.length < item.words.length) parsed.words.push(!!parsed.correct);
+  parsed.words = parsed.words.slice(0, item.words.length).map(v=>{
+    if(typeof v === "object" && v !== null) return !!v.correct; // vangnet als AI toch het oude object-formaat gebruikt
+    return !!v;
+  });
   return parsed;
 }
 
@@ -30490,16 +30497,14 @@ async function handleCheckSentence(answer){
     currentCorrect = !!verdict.correct;
     recordHistory("sentence");
 
-    // per doelwoord de score bijwerken
-    for(const w of currentItem.words){
-      const v = verdict.words.find(x=>x.tr === w);
-      recordResult(w, v ? !!v.correct : !!verdict.correct);
-    }
+    // per doelwoord de score bijwerken (verdict.words is een plat boolean-array, zelfde volgorde als currentItem.words)
+    currentItem.words.forEach((w, i)=>{
+      recordResult(w, !!verdict.words[i]);
+    });
     saveJSON(LS_PROGRESS, progress);
 
-    const wordLines = currentItem.words.map(w=>{
-      const v = verdict.words.find(x=>x.tr === w);
-      const ok = v ? !!v.correct : !!verdict.correct;
+    const wordLines = currentItem.words.map((w, i)=>{
+      const ok = !!verdict.words[i];
       return `${ok ? "✅" : "❌"} ${w}`;
     }).join(" &nbsp; ");
 
@@ -30512,6 +30517,8 @@ async function handleCheckSentence(answer){
     el("post-actions").classList.remove("hidden");
     el("btn-next").classList.remove("hidden");
     el("btn-dispute").classList.remove("hidden"); // bij zinnen altijd tonen, ook per-woord kan afwijken
+    el("answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken
+    el("answer-input").focus();
   }catch(e){
     showFeedback("wrong", "⚠️ Kon AI niet bereiken: " + e.message + ". Probeer het opnieuw of sla deze zin over.");
     el("btn-check").disabled = false;
@@ -30531,6 +30538,8 @@ function finalizeAnswer(correct, message){
   const p = getProgress(currentItem.tr);
   el("level-fill").style.width = (p.level*10) + "%";
   el("level-label").textContent = fmtLevel(p);
+  el("answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken
+  el("answer-input").focus();
 }
 
 function promptAddTranslation(item, answer, knownLang){
@@ -30555,14 +30564,12 @@ async function disputeAnswer(){
     showFeedback("pending", "🤖 AI beoordeelt je zin nog eens kritisch…");
     try{
       const verdict = await gradeSentenceTranslation(currentItem, answer, true);
-      for(const w of currentItem.words){
-        const v = verdict.words.find(x=>x.tr === w);
-        recordResult(w, v ? !!v.correct : !!verdict.correct);
-      }
+      currentItem.words.forEach((w, i)=>{
+        recordResult(w, !!verdict.words[i]);
+      });
       saveJSON(LS_PROGRESS, progress);
-      const wordLines = currentItem.words.map(w=>{
-        const v = verdict.words.find(x=>x.tr === w);
-        const ok = v ? !!v.correct : !!verdict.correct;
+      const wordLines = currentItem.words.map((w, i)=>{
+        const ok = !!verdict.words[i];
         return `${ok ? "✅" : "❌"} ${w}`;
       }).join(" &nbsp; ");
       showFeedback(verdict.correct ? "correct" : "wrong",
