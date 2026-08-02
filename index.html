@@ -77,7 +77,7 @@
 <body>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.7rem;margin-left:auto;">v1</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-02 21:09</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -156,6 +156,11 @@
       <h3 style="margin-top:0;">Gegevens</h3>
       <button class="btn-ghost" style="width:100%;margin-bottom:8px;" id="btn-reset-progress">Voortgang resetten (alles terug naar niveau 0)</button>
       <button class="btn-ghost" style="width:100%;" id="btn-add-to-home">📱 Hoe voeg ik dit toe aan mijn startscherm?</button>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">Versie</h3>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-02 21:09</b></div>
+      <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
 
@@ -16374,20 +16379,15 @@ function pickNextItem(){
 
 /* ===================== ZIN LATEN GENEREREN DOOR AI (niet in spaced repetition) ===================== */
 function pickWordsForSentence(){
-  // kies meestal 1, soms 2 woorden die de gebruiker aan het leren is (lage/gemiddelde score).
-  // Twee willekeurige, inhoudelijk ongerelateerde woorden verplicht in 1 zin proppen leidt
-  // tot geforceerde/onlogische zinnen — dus standaard maar 1, en 2 alleen af en toe.
+  // altijd maar 1 doelwoord. Twee woorden verplicht samenpersen leidt tot onlogische
+  // zinnen (bv. een vraagwoord + een concreet antwoord die elkaar tegenspreken),
+  // ook als het model expliciet de instructie kreeg dat te vermijden.
   const words = baseWordList().map(it=>it.tr);
   const scored = words.map(tr=>({tr, level: getProgress(tr).level}))
     .sort((a,b)=> a.level - b.level);
   const pool = scored.slice(0, Math.min(40, scored.length));
-  const count = Math.random() < 0.25 ? 2 : 1;
-  const picks = [];
-  while(picks.length < count && pool.length){
-    const idx = Math.floor(Math.random()*pool.length);
-    picks.push(pool.splice(idx,1)[0].tr);
-  }
-  return picks;
+  const idx = Math.floor(Math.random()*pool.length);
+  return pool.length ? [pool[idx].tr] : [];
 }
 
 async function generateSentence(){
@@ -16397,10 +16397,7 @@ De zin moet vooral grammaticaal correct en natuurlijk klinken voor een moedertaa
 Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met een correcte Nederlandse en Engelse vertaling van die basisvorm.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"tr": "Turkse zin", "words": [{"tr": "basisvorm1", "nl": ["vertaling"], "en": ["translation"]}, {"tr": "basisvorm2", "nl": ["vertaling"], "en": ["translation"]}]}`;
-  const wordsPart = targetWords.length > 1
-    ? `de woorden "${targetWords.join('" en "')}" (allebei, maar alleen als dat natuurlijk samen in één zin past — anders gebruik je ze in twee losse, korte, logisch samenhangende zinnen)`
-    : `het woord "${targetWords[0]}"`;
-  const user = `Maak een korte, natuurlijke Turkse zin (max. ~10 woorden) met ${wordsPart} (vervoegd/verbogen mag).`;
+  const user = `Maak een korte, natuurlijke Turkse zin (max. ~10 woorden) met het woord "${targetWords[0]}" (vervoegd/verbogen mag).`;
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
