@@ -77,7 +77,7 @@
 <body>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 10:05</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 10:50</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -118,11 +118,12 @@
       <h3 style="margin-top:0;">Voortgang</h3>
       <div class="kpi">
         <div class="box"><div class="num" id="kpi-total">0</div><div class="lbl">totaal items</div></div>
+        <div class="box"><div class="num" id="kpi-never">0</div><div class="lbl">nog niet getoond</div></div>
         <div class="box"><div class="num" id="kpi-mastered">0</div><div class="lbl">niveau 10 (beheerst)</div></div>
         <div class="box"><div class="num" id="kpi-due">0</div><div class="lbl">nu klaar om te oefenen</div></div>
-        <div class="box"><div class="num" id="kpi-avg">0</div><div class="lbl">gemiddeld niveau</div></div>
+        <div class="box"><div class="num" id="kpi-avg">0</div><div class="lbl">gemiddeld niveau (1-10)</div></div>
       </div>
-      <div class="muted">Aantal items per niveau (0 = net begonnen, 10 = een jaar interval)</div>
+      <div class="muted">Aantal items per niveau, 1 t/m 10 (niveau 0 = nog nooit getoond, apart hierboven; 10 = een jaar interval)</div>
       <div class="statbar" id="statbar"></div>
       <div class="statlbl" id="statlbl"></div>
       <div class="row" style="margin-top:14px;">
@@ -146,11 +147,12 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Oefening-instellingen</h3>
-      <div class="row space-between" style="margin-bottom:8px;">
-        <span>Aandeel zinnen (van elke 5)</span>
-        <input type="text" id="sentence-ratio" style="width:60px;text-align:center;" value="1">
+      <div class="row space-between" style="margin-bottom:4px;">
+        <span>Aandeel zinnen</span>
+        <span class="muted" id="sentence-percent-label">20%</span>
       </div>
-      <div class="muted">Zinnen worden niet uit een vaste lijst gehaald — elke zin wordt live door DeepSeek gegenereerd (vereist een API-sleutel), met woorden die je aan het leren bent.</div>
+      <input type="range" id="sentence-percent" min="0" max="100" step="5" value="20" style="width:100%;">
+      <div class="muted" style="margin-top:8px;">Zinnen worden niet uit een vaste lijst gehaald — elke zin wordt live door DeepSeek gegenereerd (vereist een API-sleutel), met woorden die je aan het leren bent.</div>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Gegevens</h3>
@@ -159,7 +161,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 10:05</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 10:50</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -29998,7 +30000,7 @@ const WORDS_DATA = [
 /* ===================== OPSLAG ===================== */
 const LS_PROGRESS = "turks_progress_v1";      // { [tr]: {level, due, reps} } — ALLEEN woorden
 const LS_CUSTOM    = "turks_custom_v1";        // { [tr]: {nl:[...], en:[...]} }
-const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentenceRatio }
+const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent }
 const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", laatste 20
 const LS_NEWWORDS  = "turks_newwords_v1";      // { [tr]: {nl:[...], en:[...]} } — via zinnen ontdekte woorden, niet in de vaste lijst
 
@@ -30010,7 +30012,12 @@ function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
 let progress = loadJSON(LS_PROGRESS, {});
 let custom   = loadJSON(LS_CUSTOM, {});
-let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentenceRatio:1});
+let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentencePercent:20});
+if(settings.sentencePercent === undefined){
+  // migratie vanaf de oude "aantal van elke 5"-instelling
+  settings.sentencePercent = Math.round(((settings.sentenceRatio || 1) / 5) * 100);
+  saveJSON(LS_SETTINGS, settings);
+}
 let history  = loadJSON(LS_HISTORY, []);
 let newWords = loadJSON(LS_NEWWORDS, {});
 
@@ -30067,7 +30074,7 @@ function pickNextItem(){
   }
 
   // Bepaal of we een zin willen (streef-verhouding ~1 op 5), alleen mogelijk met API-sleutel
-  const targetRatio = Math.max(0, Math.min(1, (settings.sentenceRatio||1) / 5));
+  const targetRatio = Math.max(0, Math.min(1, (settings.sentencePercent ?? 20) / 100));
   const recentSentences = history.slice(-5).filter(t=>t==="sentence").length;
   const wantSentence = (recentSentences / 5) < targetRatio && !!settings.apiKey;
 
@@ -30096,11 +30103,11 @@ function pickWordsForSentence(){
   // zinnen (bv. een vraagwoord + een concreet antwoord die elkaar tegenspreken),
   // ook als het model expliciet de instructie kreeg dat te vermijden.
   const words = baseWordList().map(it=>it.tr);
-  const scored = words.map(tr=>({tr, level: getProgress(tr).level}))
-    .sort((a,b)=> a.level - b.level);
-  const pool = scored.slice(0, Math.min(40, scored.length));
-  const idx = Math.floor(Math.random()*pool.length);
-  return pool.length ? [pool[idx].tr] : [];
+  const minLevel = Math.min(...words.map(tr=>getProgress(tr).level));
+  // willekeurig kiezen uit ALLE woorden op het laagste niveau (niet zomaar de eerste N in lijstvolgorde,
+  // anders komen door een stabiele sort steeds dezelfde woorden bovendrijven bij een gelijke stand)
+  const pool = words.filter(tr=>getProgress(tr).level === minLevel);
+  return pool.length ? [pool[Math.floor(Math.random()*pool.length)]] : [];
 }
 
 async function generateSentenceCandidate(targetWord){
@@ -30234,10 +30241,12 @@ Vertaling van gebruiker: "${answer}"`;
 function recordResult(tr, correct){
   const p = getProgress(tr);
   const firstTime = p.reps === 0;
-  if(correct){
-    p.level = firstTime ? 6 : Math.min(10, p.level + 1);
+  if(firstTime){
+    p.level = correct ? 7 : 1; // niveau 0 blijft zo exclusief gereserveerd voor nog nooit getoonde woorden
+  } else if(correct){
+    p.level = Math.min(10, p.level + 1);
   } else {
-    p.level = Math.max(0, p.level - 1);
+    p.level = Math.max(1, p.level - 1); // ondergrens 1 i.p.v. 0 zodra een woord ooit getoond is
   }
   p.reps += 1;
   p.due = Date.now() + intervalMinutes(p.level) * 60 * 1000;
@@ -30672,28 +30681,33 @@ function escapeHtml(s){
 /* ===================== STATISTIEKEN ===================== */
 function renderStats(){
   const words = allWords();
-  const counts = Array.from({length:11}, ()=>0);
-  let total=0, mastered=0, due=0, levelSum=0;
+  const counts = Array.from({length:11}, ()=>0); // index 0 = nog nooit getoond (apart, niet in de grafiek)
+  let total=0, mastered=0, due=0, levelSum=0, neverShown=0;
   const now = Date.now();
   for(const it of words){
     const p = getProgress(it.tr);
     total++;
     levelSum += p.level;
     if(p.level === 10) mastered++;
-    if(p.due <= now) due++;
+    if(p.level === 0) neverShown++;
+    if(p.due <= now && p.level > 0) due++; // nog niet getoonde woorden tellen niet mee als "klaar om te oefenen" in deze teller
     counts[p.level]++;
   }
   el("kpi-total").textContent = total;
   el("kpi-mastered").textContent = mastered;
   el("kpi-due").textContent = due;
   el("kpi-avg").textContent = total ? (levelSum/total).toFixed(1) : "0";
+  const neverEl = el("kpi-never");
+  if(neverEl) neverEl.textContent = neverShown;
 
-  const max = Math.max(1, ...counts);
+  const shownCounts = counts.slice(1); // alleen niveau 1 t/m 10 in de grafiek
+  const max = Math.max(1, ...shownCounts);
   const bar = el("statbar");
   bar.innerHTML = "";
   const lbl = el("statlbl");
   lbl.innerHTML = "";
-  counts.forEach((c, lvl)=>{
+  shownCounts.forEach((c, idx)=>{
+    const lvl = idx + 1;
     const h = Math.round(c/max*100);
     const col = document.createElement("div");
     col.className = "col";
@@ -30731,7 +30745,8 @@ function switchTab(tab){
 /* ===================== INIT ===================== */
 function initSettingsUI(){
   el("api-key-input").value = settings.apiKey || "";
-  el("sentence-ratio").value = settings.sentenceRatio || 1;
+  el("sentence-percent").value = settings.sentencePercent ?? 20;
+  el("sentence-percent-label").textContent = (settings.sentencePercent ?? 20) + "%";
   el("key-status").textContent = settings.apiKey ? "✅ Sleutel is ingesteld." : "Nog geen sleutel ingesteld.";
 }
 
@@ -30768,12 +30783,15 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
   el("btn-save-key").addEventListener("click", ()=>{
     settings.apiKey = el("api-key-input").value.trim();
-    settings.sentenceRatio = parseFloat(el("sentence-ratio").value) || 1;
+    settings.sentencePercent = parseInt(el("sentence-percent").value, 10) || 0;
     saveJSON(LS_SETTINGS, settings);
     initSettingsUI();
   });
-  el("sentence-ratio").addEventListener("change", ()=>{
-    settings.sentenceRatio = parseFloat(el("sentence-ratio").value) || 1;
+  el("sentence-percent").addEventListener("input", ()=>{
+    el("sentence-percent-label").textContent = el("sentence-percent").value + "%";
+  });
+  el("sentence-percent").addEventListener("change", ()=>{
+    settings.sentencePercent = parseInt(el("sentence-percent").value, 10) || 0;
     saveJSON(LS_SETTINGS, settings);
   });
   el("btn-export").addEventListener("click", exportWordlist);
