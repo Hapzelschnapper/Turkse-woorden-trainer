@@ -52,7 +52,7 @@
   .feedback.wrong{background:#331515;color:#f3a3a3;}
   .feedback.pending{background:#221f14;color:var(--warn);}
   .accepted-list{font-size:.85rem;color:var(--muted);margin-top:4px;}
-  .statbar{display:flex;align-items:flex-end;gap:4px;height:120px;margin:14px 0 6px;}
+  .statbar{display:flex;align-items:flex-end;gap:4px;height:120px;margin:26px 0 6px;}
   .statbar .col{flex:1;background:#233245;border-radius:4px 4px 0 0;position:relative;min-height:2px;}
   .statbar .col.words{background:#2fae6a;}
   .statbar .col.sentences{background:#e0a733;}
@@ -77,7 +77,7 @@
 <body>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 09:25</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 10:05</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -159,7 +159,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 09:25</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 10:05</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -30115,7 +30115,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
     body: JSON.stringify({
-      model: "deepseek-v4-flash", max_tokens: 500, temperature: 0.3,
+      model: "deepseek-v4-pro", max_tokens: 500, temperature: 0.3,
       messages: [{role:"system", content:sys}, {role:"user", content:user}],
       thinking: {"type": "disabled"}
     })
@@ -30141,7 +30141,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"natuurlijk": true of
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
     body: JSON.stringify({
-      model: "deepseek-v4-flash", max_tokens: 50, temperature: 0,
+      model: "deepseek-v4-pro", max_tokens: 50, temperature: 0,
       messages: [{role:"system", content:sys}, {role:"user", content:user}],
       thinking: {"type": "disabled"}
     })
@@ -30193,6 +30193,7 @@ async function gradeSentenceTranslation(item, answer, isRecheck){
   const sys = `Je bent een taaldocent Turks. Je krijgt een Turkse zin, een GENUMMERDE lijst van alle betekenisvolle woorden uit die zin (in basisvorm, met eventueel hun bekende vertaling), en de vertaling (Nederlands of Engels) die de gebruiker van de HELE zin gaf.
 Beoordeel of de vertaling van de HELE zin correct is, en beoordeel voor ELK genummerd woord apart of de gebruiker dat specifieke woord (in welke vorm dan ook) correct heeft verwerkt.
 Geef ook altijd een correcte referentievertaling van de hele zin, in dezelfde taal als het antwoord van de gebruiker (Nederlands of Engels).
+BELANGRIJK OVER TYPEFOUTEN: als een woord duidelijk een tikfout is (bv. verwisselde letters zoals "eht" i.p.v. "het", een ontbrekende/dubbele letter) en de bedoelde vertaling ondubbelzinnig duidelijk is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", zodat de gebruiker het weet, maar laat dit "correct" niet naar false zetten. Wees hierin coulanter dan bij een woord dat écht een andere/verkeerde vertaling is.
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"). Structuur: begin met het oordeel (goed/fout), en bij fout kort en concreet wat er niet klopte — de correcte vertaling zelf hoeft niet in de uitleg herhaald te worden, die staat al apart in "referentie".
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord (of delen ervan) toch correct kunnen zijn." : ""}
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
@@ -30206,7 +30207,7 @@ Vertaling van gebruiker: "${answer}"`;
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
     body: JSON.stringify({
-      model: "deepseek-v4-flash", max_tokens: 600, temperature: 0,
+      model: "deepseek-v4-pro", max_tokens: 600, temperature: 0,
       messages: [{role:"system", content:sys}, {role:"user", content:user}],
       thinking: {"type": "disabled"}
     })
@@ -30268,6 +30269,7 @@ async function askDeepSeekJudge(item, answer, isRecheck){
   const sys = `Je bent een strenge maar faire docent Turks voor Nederlandstalige/Engelstalige gebruikers.
 Je krijgt een Turks woord, de reeds bekende geaccepteerde vertalingen (Nederlands/Engels), en het antwoord van de gebruiker.
 Beoordeel of het antwoord een acceptabele vertaling is — accepteer synoniemen, kleine spelfouts en verschillende correcte formuleringen, in het Nederlands ÓF het Engels.
+BELANGRIJK OVER TYPEFOUTEN: als het antwoord duidelijk een tikfout bevat (bv. verwisselde letters zoals "eht" i.p.v. "het", een ontbrekende/dubbele letter) en de bedoelde vertaling ondubbelzinnig duidelijk en correct is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", maar zet "correct" niet op false enkel vanwege een duidelijke tikfout.
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"). Structuur: begin met het oordeel, en bij een fout antwoord kort en concreet wat er niet klopte plus de juiste vertaling; bij een goed antwoord volstaat een korte bevestiging.
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder 'onjuist'-oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord toch (gedeeltelijk) correct kan zijn, bijvoorbeeld als minder gangbaar synoniem, regionale variant of alternatieve betekenis." : ""}
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen, rechtstreeks tegen de gebruiker gericht", "taal": "nl of en, de taal van het antwoord van de gebruiker"}`;
@@ -30283,7 +30285,7 @@ Antwoord van student: "${answer}"`;
       "Authorization": "Bearer " + settings.apiKey
     },
     body: JSON.stringify({
-      model: "deepseek-v4-flash",
+      model: "deepseek-v4-pro",
       max_tokens: 300,
       temperature: 0,
       messages: [
@@ -30318,7 +30320,7 @@ Beantwoord vragen kort, duidelijk, rechtstreeks tegen de gebruiker gericht (spre
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({model:"deepseek-v4-flash", max_tokens:400, temperature:0.3, messages, thinking: {"type": "disabled"}})
+    body: JSON.stringify({model:"deepseek-v4-pro", max_tokens:400, temperature:0.3, messages, thinking: {"type": "disabled"}})
   });
   if(!res.ok){
     const txt = await res.text().catch(()=> "");
@@ -30697,7 +30699,8 @@ function renderStats(){
     col.className = "col";
     col.style.height = h + "%";
     col.title = `niveau ${lvl}: ${c} woorden`;
-    col.innerHTML = `<div class="col words" style="position:absolute;bottom:0;left:0;right:0;height:100%;border-radius:4px 4px 0 0;"></div>`;
+    col.innerHTML = `<div class="col words" style="position:absolute;bottom:0;left:0;right:0;height:100%;border-radius:4px 4px 0 0;"></div>` +
+      `<div style="position:absolute;bottom:100%;left:0;right:0;text-align:center;font-size:.65rem;color:var(--muted);margin-bottom:2px;white-space:nowrap;">${c}</div>`;
     bar.appendChild(col);
     const l = document.createElement("div");
     l.textContent = lvl;
