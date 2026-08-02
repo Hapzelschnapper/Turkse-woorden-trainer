@@ -83,7 +83,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 09:15</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 00:35</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -126,7 +126,7 @@
         <div class="box"><div class="num" id="kpi-total">0</div><div class="lbl">totaal items</div></div>
         <div class="box"><div class="num" id="kpi-never">0</div><div class="lbl">nog niet getoond</div></div>
         <div class="box"><div class="num" id="kpi-mastered">0</div><div class="lbl">niveau 10 (beheerst)</div></div>
-        <div class="box"><div class="num" id="kpi-due">0</div><div class="lbl">nu klaar om te oefenen</div></div>
+        <div class="box" title="Aantal AL EERDER getoonde woorden waarvan de spaced-repetition-hersteltijd is verstreken — dus 'weer aan de beurt'. Nog nooit getoonde woorden (niveau 0) tellen hier niet in mee."><div class="num" id="kpi-due">0</div><div class="lbl">nu klaar om te oefenen</div></div>
         <div class="box"><div class="num" id="kpi-avg">0</div><div class="lbl">gemiddeld niveau (1-10)</div></div>
       </div>
       <div class="muted">Aantal items per niveau, 1 t/m 10 (niveau 0 = nog nooit getoond, apart hierboven; 10 = een jaar interval)</div>
@@ -184,7 +184,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 09:15</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 00:35</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -30713,21 +30713,26 @@ function escapeHtml(s){
 function renderStats(){
   const words = allWords();
   const counts = Array.from({length:11}, ()=>0); // index 0 = nog nooit getoond (apart, niet in de grafiek)
-  let total=0, mastered=0, due=0, levelSum=0, neverShown=0;
+  let total=0, mastered=0, due=0, neverShown=0;
+  let shownTotal=0, shownLevelSum=0; // voor het gemiddelde: alléén al-getoonde woorden, niveau 0 telt niet mee
   const now = Date.now();
   for(const it of words){
     const p = getProgress(it.tr);
     total++;
-    levelSum += p.level;
     if(p.level === 10) mastered++;
-    if(p.level === 0) neverShown++;
+    if(p.level === 0){
+      neverShown++;
+    } else {
+      shownTotal++;
+      shownLevelSum += p.level;
+    }
     if(p.due <= now && p.level > 0) due++; // nog niet getoonde woorden tellen niet mee als "klaar om te oefenen" in deze teller
     counts[p.level]++;
   }
   el("kpi-total").textContent = total;
   el("kpi-mastered").textContent = mastered;
   el("kpi-due").textContent = due;
-  el("kpi-avg").textContent = total ? (levelSum/total).toFixed(1) : "0";
+  el("kpi-avg").textContent = shownTotal ? (shownLevelSum/shownTotal).toFixed(1) : "—";
   const neverEl = el("kpi-never");
   if(neverEl) neverEl.textContent = neverShown;
 
