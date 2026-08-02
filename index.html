@@ -71,13 +71,19 @@
   .chatline.user{background:#1d2b3a;}
   .chatline.ai{background:#122333;}
   a{color:var(--accent2);}
+  .peak-tab{position:fixed;top:0;right:14px;z-index:70;padding:3px 10px;border-radius:0 0 8px 8px;
+    font-size:.65rem;font-weight:700;letter-spacing:.02em;color:#fff;cursor:default;
+    box-shadow:0 2px 6px rgba(0,0,0,.3);}
+  .peak-tab.peak{background:var(--accent);}
+  .peak-tab.dal{background:var(--accent2);}
   .toplink{background:none;border:none;color:var(--muted);font-size:.8rem;text-decoration:underline;padding:0;}
 </style>
 </head>
 <body>
+<div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 11:35</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 00:05</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -172,7 +178,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 11:35</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 00:05</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -30932,6 +30938,19 @@ function initSettingsUI(){
   el("key-status").textContent = settings.apiKey ? "✅ Sleutel is ingesteld." : "Nog geen sleutel ingesteld.";
 }
 
+/* ===================== PIEK/DAL-INDICATOR (DeepSeek verwachte piekuren, UTC) ===================== */
+function updatePeakIndicator(){
+  const el2 = document.getElementById("peak-indicator");
+  if(!el2) return;
+  const h = new Date().getUTCHours();
+  const isPeak = (h >= 1 && h < 4) || (h >= 6 && h < 10);
+  el2.textContent = isPeak ? "● piek" : "● dal";
+  el2.className = "peak-tab " + (isPeak ? "peak" : "dal");
+  el2.title = isPeak
+    ? "Verwachte DeepSeek-piekuren (1:00-4:00 en 6:00-10:00 UTC) — zodra piek/dal-tarief ingaat, geldt hier 2x de prijs."
+    : "Daluren volgens DeepSeek (buiten 1:00-4:00 en 6:00-10:00 UTC) — normaal tarief.";
+}
+
 document.addEventListener("DOMContentLoaded", ()=>{
   document.querySelectorAll(".tab-btn").forEach(b=>{
     b.addEventListener("click", ()=> switchTab(b.dataset.tab));
@@ -31003,6 +31022,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
   initSettingsUI();
   renderPractice();
+  updatePeakIndicator();
+  setInterval(updatePeakIndicator, 60000);
 });
 
 </script>
