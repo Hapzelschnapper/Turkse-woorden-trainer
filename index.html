@@ -77,7 +77,7 @@
 <body>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-02 21:09</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-02 21:25</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -159,7 +159,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-02 21:09</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-02 21:25</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -16403,7 +16403,8 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
     body: JSON.stringify({
       model: "deepseek-v4-flash", max_tokens: 500, temperature: 0.3,
-      messages: [{role:"system", content:sys}, {role:"user", content:user}]
+      messages: [{role:"system", content:sys}, {role:"user", content:user}],
+      thinking: {"type": "disabled"}
     })
   });
   if(!res.ok){
@@ -16454,7 +16455,8 @@ Vertaling van student: "${answer}"`;
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
     body: JSON.stringify({
       model: "deepseek-v4-flash", max_tokens: 600, temperature: 0,
-      messages: [{role:"system", content:sys}, {role:"user", content:user}]
+      messages: [{role:"system", content:sys}, {role:"user", content:user}],
+      thinking: {"type": "disabled"}
     })
   });
   if(!res.ok){
@@ -16527,7 +16529,8 @@ Antwoord van student: "${answer}"`;
       messages: [
         {role:"system", content: sys},
         {role:"user", content: user}
-      ]
+      ],
+      thinking: {"type": "disabled"}
     })
   });
   if(!res.ok){
@@ -16555,7 +16558,7 @@ Beantwoord vragen van de student kort, duidelijk en in het Nederlands, tenzij om
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({model:"deepseek-v4-flash", max_tokens:400, temperature:0.3, messages})
+    body: JSON.stringify({model:"deepseek-v4-flash", max_tokens:400, temperature:0.3, messages, thinking: {"type": "disabled"}})
   });
   if(!res.ok){
     const txt = await res.text().catch(()=> "");
