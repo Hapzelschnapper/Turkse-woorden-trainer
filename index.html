@@ -16405,7 +16405,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
     body: JSON.stringify({
-      model: "deepseek-chat", max_tokens: 500, temperature: 0.3,
+      model: "deepseek-v4-flash", max_tokens: 500, temperature: 0.3,
       messages: [{role:"system", content:sys}, {role:"user", content:user}]
     })
   });
@@ -16456,7 +16456,7 @@ Vertaling van student: "${answer}"`;
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
     body: JSON.stringify({
-      model: "deepseek-chat", max_tokens: 600, temperature: 0,
+      model: "deepseek-v4-flash", max_tokens: 600, temperature: 0,
       messages: [{role:"system", content:sys}, {role:"user", content:user}]
     })
   });
@@ -16524,7 +16524,7 @@ Antwoord van student: "${answer}"`;
       "Authorization": "Bearer " + settings.apiKey
     },
     body: JSON.stringify({
-      model: "deepseek-chat",
+      model: "deepseek-v4-flash",
       max_tokens: 300,
       temperature: 0,
       messages: [
@@ -16558,7 +16558,7 @@ Beantwoord vragen van de student kort, duidelijk en in het Nederlands, tenzij om
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({model:"deepseek-chat", max_tokens:400, temperature:0.3, messages})
+    body: JSON.stringify({model:"deepseek-v4-flash", max_tokens:400, temperature:0.3, messages})
   });
   if(!res.ok){
     const txt = await res.text().catch(()=> "");
