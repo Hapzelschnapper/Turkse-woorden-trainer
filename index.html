@@ -84,7 +84,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 02:30</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 02:50</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -209,7 +209,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 02:30</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 02:50</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -30021,7 +30021,12 @@ async function syncPushNow(){
       },
       body: JSON.stringify(payload)
     });
-    if(!res.ok) throw new Error("status " + res.status);
+    if(!res.ok){
+      const body = await res.text().catch(()=>"" );
+      let msg = body;
+      try{ msg = JSON.parse(body).message || body; }catch(e){}
+      throw new Error(res.status + ": " + msg);
+    }
     setSyncStatus("✅ Gesynchroniseerd om " + new Date().toLocaleTimeString());
   }catch(e){
     setSyncStatus("⚠️ Synchroniseren (uploaden) mislukt: " + e.message);
@@ -30036,7 +30041,12 @@ async function syncPullNow(showAlertOnEmpty){
     const res = await fetch(`https://api.jsonbin.io/v3/b/${settings.syncBinId}/latest`, {
       headers: {"X-Master-Key": settings.syncApiKey}
     });
-    if(!res.ok) throw new Error("status " + res.status);
+    if(!res.ok){
+      const body = await res.text().catch(()=>"" );
+      let msg = body;
+      try{ msg = JSON.parse(body).message || body; }catch(e){}
+      throw new Error(res.status + ": " + msg);
+    }
     const data = await res.json();
     const remote = data.record;
     if(remote && remote.updatedAt){
@@ -30071,7 +30081,12 @@ async function syncCreateBin(){
       },
       body: JSON.stringify({ progress:{}, custom:{}, newWords:{}, updatedAt: Date.now() })
     });
-    if(!res.ok) throw new Error("status " + res.status);
+    if(!res.ok){
+      const body = await res.text().catch(()=>"" );
+      let msg = body;
+      try{ msg = JSON.parse(body).message || body; }catch(e){}
+      throw new Error(res.status + ": " + msg);
+    }
     const data = await res.json();
     settings.syncBinId = data.metadata.id;
     saveJSON(LS_SETTINGS, settings);
