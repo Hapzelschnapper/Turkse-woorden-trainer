@@ -92,7 +92,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 10:35</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 11:20</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -145,6 +145,11 @@
       <div class="row" style="margin-top:14px;">
         <span class="row" style="gap:4px;"><span style="width:10px;height:10px;background:#2fae6a;border-radius:2px;display:inline-block;"></span><span class="muted">woorden</span></span>
       </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">Grammatica-onderdelen</h3>
+      <div class="muted" style="margin-bottom:10px;">De app kiest bij elke zin/vraag automatisch het zwakste onderwerp hieronder om te oefenen. Rood/laag = nog weinig geoefend of vaak fout; groen/hoog = goed onder de knie.</div>
+      <div id="grammar-list"></div>
     </div>
     <div class="card">
       <button class="btn-secondary" id="btn-export" style="width:100%;">⬇️ Download bijgewerkte woordenlijst (JSON)</button>
@@ -217,7 +222,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 10:35</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 11:20</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -29969,6 +29974,7 @@ const LS_CUSTOM    = "turks_custom_v1";        // { [tr]: {nl:[...], en:[...]} }
 const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cefrLevel, newWordPercent, questionPercent, syncBinId, syncApiKey }
 const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", laatste 20
 const LS_NEWWORDS  = "turks_newwords_v1";      // { [tr]: {nl:[...], en:[...]} } — via zinnen ontdekte woorden, niet in de vaste lijst
+const LS_GRAMMAR   = "turks_grammar_v1";       // { [topicKey]: {level, due, reps} } — per grammaticaal onderwerp, zelfde SRS-mechaniek als woorden
 
 function loadJSON(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
@@ -29976,7 +29982,7 @@ function loadJSON(key, fallback){
 }
 function saveJSON(key, val){
   localStorage.setItem(key, JSON.stringify(val));
-  if(key === LS_PROGRESS || key === LS_CUSTOM || key === LS_NEWWORDS) syncMaybePush();
+  if(key === LS_PROGRESS || key === LS_CUSTOM || key === LS_NEWWORDS || key === LS_GRAMMAR) syncMaybePush();
 }
 
 let progress = loadJSON(LS_PROGRESS, {});
@@ -29992,6 +29998,62 @@ if(settings.sentencePercent === undefined){
 }
 let history  = loadJSON(LS_HISTORY, []);
 let newWords = loadJSON(LS_NEWWORDS, {});
+let grammar = loadJSON(LS_GRAMMAR, {});
+
+/* ===================== GRAMMATICA-TAXONOMIE ===================== */
+// Vaste lijst Turkse grammaticale onderwerpen (A1 t/m C1/C2), die de app zelf kan volgen
+// en gericht kan invlechten in gegenereerde zinnen/vragen — los van losse woordenschat.
+const GRAMMAR_TOPICS = [
+  {key:"belirtme_hali",   label:"Accusatief (-i/-ı/-u/-ü)",        hint:"bepaald lijdend voorwerp markeren, bv. \"kitabı okudum\""},
+  {key:"tamlayan_hali",   label:"Genitief (-in/-ın/-un/-ün)",      hint:"bezit/samenstelling, bv. \"annemin evi\""},
+  {key:"yonelme_hali",    label:"Datief (-e/-a)",                  hint:"richting/doel, bv. \"okula gidiyorum\""},
+  {key:"bulunma_hali",    label:"Locatief (-de/-da)",               hint:"plaats, bv. \"evde\""},
+  {key:"ayrilma_hali",    label:"Ablatief (-den/-dan)",             hint:"herkomst/vanaf, bv. \"okuldan geldim\""},
+  {key:"cogul_eki",       label:"Meervoud (-ler/-lar)",             hint:"bv. \"kitaplar\""},
+  {key:"iyelik_ekleri",   label:"Bezittelijke achtervoegsels",      hint:"mijn/jouw/zijn..., bv. \"evim, evin, evi\""},
+  {key:"simdiki_zaman",   label:"Tegenwoordige tijd -iyor",         hint:"bv. \"geliyorum\""},
+  {key:"gecmis_di",       label:"Verleden tijd -di (gezien/zeker)", hint:"bv. \"geldim\""},
+  {key:"gecmis_mis",      label:"Verleden tijd -miş (gehoord/onzeker)", hint:"bv. \"gelmiş\""},
+  {key:"gelecek_zaman",   label:"Toekomende tijd -ecek",            hint:"bv. \"geleceğim\""},
+  {key:"genis_zaman",     label:"Onbepaalde tegenwoordige tijd -ir", hint:"gewoontes/feiten, bv. \"her gün koşarım\""},
+  {key:"sart_kipi",       label:"Voorwaardelijke wijs -se",         hint:"als/mocht, bv. \"gelirse\""},
+  {key:"gereklilik_kipi", label:"Noodzakelijkheidswijs -meli",      hint:"moeten, bv. \"gitmeliyim\""},
+  {key:"olumsuzluk",      label:"Ontkenning (-me/-mi, değil)",      hint:"bv. \"gitmiyorum\", \"iyi değil\""},
+  {key:"soru_eki",        label:"Vraagpartikel mi/mı/mu/mü",        hint:"bv. \"geldin mi?\""},
+  {key:"edilgen_cati",    label:"Lijdende vorm (passief, -il/-in)", hint:"bv. \"kapı kapatıldı\""},
+  {key:"ettirgen_cati",   label:"Causatief (laten doen, -dir/-t)",  hint:"bv. \"yaptırdım\""},
+  {key:"donusluluk_cati", label:"Wederkerende vorm (-in)",          hint:"zichzelf, bv. \"yıkandım\""},
+  {key:"ortac",           label:"Deelwoorden (-en/-dik/-ecek)",     hint:"als bijvoeglijk naamwoord, bv. \"gelen adam\", \"okuduğum kitap\""},
+  {key:"zarf_fiil",       label:"Verbindingsvormen (-erek, -ken, -meden önce)", hint:"bv. \"koşarak geldi\", \"gelirken\""},
+  {key:"karsilastirma",   label:"Vergelijking (daha, en, kadar, gibi)", hint:"bv. \"ondan daha büyük\""},
+];
+function grammarTopicByKey(key){ return GRAMMAR_TOPICS.find(t=>t.key===key); }
+
+function getGrammarProgress(key){
+  if(!grammar[key]) grammar[key] = {level:0, due:Date.now(), reps:0};
+  return grammar[key];
+}
+function recordGrammarResult(key, correct){
+  const p = getGrammarProgress(key);
+  const firstTime = p.reps === 0;
+  if(firstTime){
+    p.level = correct ? 7 : 1;
+  } else if(correct){
+    p.level = Math.min(10, p.level + 1);
+  } else {
+    p.level = Math.max(1, p.level - 1);
+  }
+  p.reps += 1;
+  p.due = Date.now() + intervalMinutes(p.level) * 60 * 1000;
+  grammar[key] = p;
+  saveJSON(LS_GRAMMAR, grammar);
+}
+function pickWeakestGrammarTopic(){
+  const minLevel = Math.min(...GRAMMAR_TOPICS.map(t=>getGrammarProgress(t.key).level));
+  const pool = GRAMMAR_TOPICS.filter(t=>getGrammarProgress(t.key).level === minLevel);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
 
 /* ===================== CLOUD-SYNCHRONISATIE (GitHub Gist) ===================== */
 // Slaat progress/custom/newWords op in een privé GitHub Gist zodat je voortgang niet vastzit
@@ -30029,7 +30091,7 @@ async function syncPushNow(){
   syncInProgress = true;
   setSyncStatus("🔄 Synchroniseren…");
   try{
-    const payload = { progress, custom, newWords, updatedAt: Date.now() };
+    const payload = { progress, custom, newWords, grammar, updatedAt: Date.now() };
     const res = await fetch(`https://api.github.com/gists/${settings.syncBinId}`, {
       method: "PATCH",
       headers: {
@@ -30069,9 +30131,11 @@ async function syncPullNow(showAlertOnEmpty){
       progress = remote.progress || {};
       custom = remote.custom || {};
       newWords = remote.newWords || {};
+      grammar = remote.grammar || {};
       localStorage.setItem(LS_PROGRESS, JSON.stringify(progress));
       localStorage.setItem(LS_CUSTOM, JSON.stringify(custom));
       localStorage.setItem(LS_NEWWORDS, JSON.stringify(newWords));
+      localStorage.setItem(LS_GRAMMAR, JSON.stringify(grammar));
       setSyncStatus("✅ Opgehaald van server (laatst bijgewerkt: " + new Date(remote.updatedAt).toLocaleString() + ")");
     } else if(showAlertOnEmpty){
       setSyncStatus("ℹ️ Er staat nog niets in de cloud-opslag — je eerste synchronisatie zal deze vullen.");
@@ -30098,7 +30162,7 @@ async function syncCreateBin(){
       body: JSON.stringify({
         description: "Turks-woordentrainer voortgang (niet handmatig bewerken)",
         public: false,
-        files: { [GIST_FILENAME]: { content: JSON.stringify({ progress:{}, custom:{}, newWords:{}, updatedAt: Date.now() }) } }
+        files: { [GIST_FILENAME]: { content: JSON.stringify({ progress:{}, custom:{}, newWords:{}, grammar:{}, updatedAt: Date.now() }) } }
       })
     });
     if(!res.ok) throw await githubApiError(res);
@@ -30306,16 +30370,17 @@ function pickWordsForSentence(){
   return pool.length ? [pool[Math.floor(Math.random()*pool.length)]] : [];
 }
 
-async function generateSentenceCandidate(targetWord){
+async function generateSentenceCandidate(targetWord, grammarTopic){
   const level = settings.cefrLevel ?? 4;
   const sys = `Je maakt korte, natuurlijke Turkse oefenzinnen voor een taalleerapp, afgestemd op een specifiek taalniveau.
 Gewenst niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
 De zin moet vooral grammaticaal correct en natuurlijk klinken voor een moedertaalspreker — dat weegt zwaarder dan het geforceerd verwerken van het woord.
 Vermijd zinnen die zichzelf tegenspreken of onlogisch klinken (bv. een vraag en het antwoord daarop in één zin proppen).
+${grammarTopic ? `BELANGRIJK: bouw de zin zodanig dat die duidelijk en natuurlijk gebruikmaakt van dit grammaticale onderwerp: "${grammarTopic.label}" (${grammarTopic.hint}). Dit is het onderdeel waar de gebruiker extra oefening nodig heeft.` : ""}
 Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met een correcte Nederlandse en Engelse vertaling van die basisvorm.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"tr": "Turkse zin", "words": [{"tr": "basisvorm1", "nl": ["vertaling"], "en": ["translation"]}, {"tr": "basisvorm2", "nl": ["vertaling"], "en": ["translation"]}]}`;
-  const user = `Maak een Turkse zin op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als het niveau dat vraagt).`;
+  const user = `Maak een Turkse zin op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als het niveau dat vraagt).${grammarTopic ? ` Verwerk daarbij expliciet: ${grammarTopic.label}.` : ""}`;
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
@@ -30364,12 +30429,13 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"natuurlijk": true of
 async function generateSentence(){
   const targetWords = pickWordsForSentence();
   const targetWord = targetWords[0];
+  const grammarTopic = pickWeakestGrammarTopic();
 
-  let parsed = await generateSentenceCandidate(targetWord);
+  let parsed = await generateSentenceCandidate(targetWord, grammarTopic);
   try{
     const natural = await checkSentenceNatural(parsed.tr);
     if(!natural){
-      parsed = await generateSentenceCandidate(targetWord); // één herkansing, daarna gewoon accepteren
+      parsed = await generateSentenceCandidate(targetWord, grammarTopic); // één herkansing, daarna gewoon accepteren
     }
   }catch(e){
     // controle mislukt: geen probleem, ga door met de eerste kandidaat
@@ -30385,21 +30451,22 @@ async function generateSentence(){
   // zorg dat het doelwoord altijd meetelt, ook als de AI het om wat voor reden niet in "words" zette
   if(!trKeys.includes(targetWord)) trKeys.push(targetWord);
 
-  return {tr: parsed.tr, type:"sentence", words: [...new Set(trKeys)]};
+  return {tr: parsed.tr, type:"sentence", words: [...new Set(trKeys)], grammarTopic: grammarTopic.key};
 }
 
 /* ===================== TR-VRAAG / TR-ANTWOORD (begrip zonder vertaling) ===================== */
-async function generateQuestionCandidate(targetWord){
+async function generateQuestionCandidate(targetWord, grammarTopic){
   const level = settings.cefrLevel ?? 4;
   const sys = `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
 Gewenst niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
 Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv. rekenen, geografie, een feit uit de zin zelf), ofwel een PERSOONLIJKE/OPEN vraag waarop elk contextueel passend Turks antwoord goed is (bv. "Bugün ne yaptın?").
 KRITIEK: het resultaat MOET een echte vraag zijn, GEEN mededelende stelling. Eindig ALTIJD met een vraagteken, en gebruik een vraagwoord (ne, nasıl, kim, nerede, kaç, hangi, neden, niçin, ...) of het vraagpartikel (mi/mı/mu/mü). Een zin als "Hava soğuktu ama dışarı çıktık." is FOUT (dat is een stelling); "Hava soğuk olmasına rağmen neden dışarı çıktınız?" is GOED (dat is een echte vraag).
+${grammarTopic ? `BELANGRIJK: bouw de vraag zodanig dat die duidelijk en natuurlijk gebruikmaakt van dit grammaticale onderwerp: "${grammarTopic.label}" (${grammarTopic.hint}). Dit is het onderdeel waar de gebruiker extra oefening nodig heeft.` : ""}
 De vraag moet grammaticaal correct en natuurlijk klinken voor een moedertaalspreker.
 Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met een correcte Nederlandse en Engelse vertaling van die basisvorm.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"tr": "Turkse vraag", "feitelijk": true of false, "words": [{"tr": "basisvorm1", "nl": ["vertaling"], "en": ["translation"]}]}`;
-  const user = `Maak een Turkse vraag op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag).`;
+  const user = `Maak een Turkse vraag op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag).${grammarTopic ? ` Verwerk daarbij expliciet: ${grammarTopic.label}.` : ""}`;
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
@@ -30437,10 +30504,11 @@ function looksLikeQuestion(tr){
 async function generateQuestion(){
   const targetWords = pickWordsForSentence(); // zelfde selectielogica als bij zinnen (nieuw-woord% / due-herhaling)
   const targetWord = targetWords[0];
+  const grammarTopic = pickWeakestGrammarTopic();
 
-  let parsed = await generateQuestionCandidate(targetWord);
+  let parsed = await generateQuestionCandidate(targetWord, grammarTopic);
   if(!looksLikeQuestion(parsed.tr)){
-    parsed = await generateQuestionCandidate(targetWord); // herkansing: AI maakte een stelling i.p.v. een vraag
+    parsed = await generateQuestionCandidate(targetWord, grammarTopic); // herkansing: AI maakte een stelling i.p.v. een vraag
   }
   if(!looksLikeQuestion(parsed.tr)){
     // nog steeds geen echte vraag na de herkansing: forceer een vraagteken zodat het UI-onderscheid
@@ -30450,7 +30518,7 @@ async function generateQuestion(){
   try{
     const natural = await checkSentenceNatural(parsed.tr); // generieke check, werkt ook prima voor vragen
     if(!natural){
-      parsed = await generateQuestionCandidate(targetWord); // één herkansing
+      parsed = await generateQuestionCandidate(targetWord, grammarTopic); // één herkansing
       if(!looksLikeQuestion(parsed.tr)) parsed.tr = parsed.tr.replace(/[.!]+\s*$/, "") + "?";
     }
   }catch(e){ /* controle mislukt: gewoon doorgaan met de eerste kandidaat */ }
@@ -30464,10 +30532,11 @@ async function generateQuestion(){
   }
   if(!trKeys.includes(targetWord)) trKeys.push(targetWord);
 
-  return {tr: parsed.tr, type:"question", words: [...new Set(trKeys)]};
+  return {tr: parsed.tr, type:"question", words: [...new Set(trKeys)], grammarTopic: grammarTopic.key};
 }
 
 async function gradeQuestionAnswer(item, answer, isRecheck){
+  const gTopic = item.grammarTopic ? grammarTopicByKey(item.grammarTopic) : null;
   const sys = `Je bent een taaldocent Turks. Je krijgt een Turkse vraag en het Turkstalige antwoord van de gebruiker (GEEN vertaling — de gebruiker moet in het Turks antwoorden).
 Beoordeel of het antwoord een gepast, correct Turks antwoord op de vraag is:
 - Bij een FEITELIJKE vraag: is het antwoord feitelijk juist en logisch een antwoord op de vraag?
@@ -30477,11 +30546,12 @@ BELANGRIJK OVER TYPEFOUTEN: duidelijke tikfouten (verwisselde letters e.d.) met 
 Beoordeel ook voor ELK genummerd woord uit de vraag, ONAFHANKELIJK EN KRITISCH, of de gebruiker begrip daarvan toont in zijn antwoord.
 BELANGRIJK ONDERSCHEID: "correct" gaat over of het antwoord een GEPAST ANTWOORD op de vraag is (vorm/pragmatiek); "words" gaat puur over WOORDBEGRIP. Die twee lopen NIET altijd gelijk op. Als "correct" false is omdat de gebruiker bijvoorbeeld reageert op de inhoud in plaats van de vraag direct te beantwoorden (maar wél overduidelijk laat zien dat hij/zij elk woord begrijpt, via een taalkundig kloppende en inhoudelijk relevante reactie), moeten de afzonderlijke woorden in "words" gewoon op true staan — bestraf woordbegrip niet voor een vorm-/pragmatiekfout.
 CONSISTENTIE-EIS geldt alleen andersom: als "correct" false is SPECIFIEK doordat de gebruiker een woord verkeerd heeft opgevat (bijvoorbeeld verward met een ander Turks woord, of totaal genegeerd), moet dát woord in "words" op false staan.
+${gTopic ? `Deze vraag is BEWUST gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}). Beoordeel apart, in "grammar_correct", of de gebruiker specifiek DIT grammaticale aspect correct begrijpt/gebruikt (in de vraag zelf herkend, en/of correct toegepast in het eigen antwoord) — los van of de rest verder klopt.` : ""}
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je"). Structuur: begin met het oordeel, en bij fout kort en concreet wat er niet klopte.
 Geef ook altijd een Nederlandse vertaling van de Turkse vraag, EN een Nederlandse vertaling van wat de gebruiker met zijn Turkse antwoord daadwerkelijk heeft gezegd (ook als dat inhoudelijk niet klopt — vertaal gewoon wat er staat, zodat de gebruiker kan zien wat hij eigenlijk zei).
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling." : ""}
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen", "referentie": "een voorbeeld van een goed Turks antwoord op deze vraag", "vraag_nl": "Nederlandse vertaling van de Turkse vraag", "antwoord_nl": "Nederlandse vertaling van wat de gebruiker letterlijk heeft geantwoord", "words": [true of false, ...]}
+{"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen", "referentie": "een voorbeeld van een goed Turks antwoord op deze vraag", "vraag_nl": "Nederlandse vertaling van de Turkse vraag", "antwoord_nl": "Nederlandse vertaling van wat de gebruiker letterlijk heeft geantwoord"${gTopic ? ', "grammar_correct": true of false' : ""}, "words": [true of false, ...]}
 BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfde volgorde als hieronder genummerd.`;
   const user = `Turkse vraag: "${item.tr}"
 Genummerde woorden in de vraag (basisvorm): ${item.words.map((w,i)=>`${i+1}. ${w}`).join(", ")}
@@ -30519,15 +30589,17 @@ async function gradeSentenceTranslation(item, answer, isRecheck){
     const w = known.find(k=>k.tr===tr);
     return `${i+1}. ${tr}` + (w ? ` (${[...w.nl, ...w.en].join(", ")})` : "");
   }).join("\n");
+  const gTopic = item.grammarTopic ? grammarTopicByKey(item.grammarTopic) : null;
   const sys = `Je bent een taaldocent Turks. Je krijgt een Turkse zin, een GENUMMERDE lijst van alle betekenisvolle woorden uit die zin (in basisvorm, met eventueel hun bekende vertaling), en de vertaling (Nederlands of Engels) die de gebruiker van de HELE zin gaf.
 Beoordeel of de vertaling van de HELE zin correct is, en beoordeel voor ELK genummerd woord apart, ONAFHANKELIJK EN KRITISCH, of de gebruiker dat specifieke woord (in welke vorm dan ook) correct heeft verwerkt — ga niet ervan uit dat een woord goed is enkel omdat de zin er ergens op lijkt.
 CONSISTENTIE-EIS: als de vertaling als geheel fout is doordat de gebruiker een specifiek woord verkeerd heeft begrepen (bijvoorbeeld verward met een ander, vergelijkbaar klinkend Turks woord), MOET dat woord in "words" op false staan. Het mag nooit zo zijn dat "correct" false is vanwege woord X, terwijl woord X zelf in "words" op true staat — controleer dit zelf voordat je antwoordt.
 Geef ook altijd een correcte referentievertaling van de hele zin, in dezelfde taal als het antwoord van de gebruiker (Nederlands of Engels).
+${gTopic ? `Deze zin is BEWUST gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}). Beoordeel apart, in "grammar_correct", of de gebruiker specifiek DIT grammaticale aspect correct heeft begrepen/verwerkt in zijn vertaling — los van of de rest van de zin verder klopt.` : ""}
 BELANGRIJK OVER TYPEFOUTEN: als een woord duidelijk een tikfout is (bv. verwisselde letters zoals "eht" i.p.v. "het", een ontbrekende/dubbele letter) en de bedoelde vertaling ondubbelzinnig duidelijk is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", zodat de gebruiker het weet, maar laat dit "correct" niet naar false zetten. Wees hierin coulanter dan bij een woord dat écht een andere/verkeerde vertaling is.
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"). Structuur: begin met het oordeel (goed/fout), en bij fout kort en concreet wat er niet klopte — de correcte vertaling zelf hoeft niet in de uitleg herhaald te worden, die staat al apart in "referentie".
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord (of delen ervan) toch correct kunnen zijn." : ""}
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen, rechtstreeks tegen de gebruiker gericht", "referentie": "correcte vertaling van de hele zin", "words": [true of false, true of false, ...]}
+{"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen, rechtstreeks tegen de gebruiker gericht", "referentie": "correcte vertaling van de hele zin"${gTopic ? ', "grammar_correct": true of false' : ""}, "words": [true of false, true of false, ...]}
 BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfde volgorde als de genummerde lijst hierboven (waarde 1 = woord 1, waarde 2 = woord 2, enz.). Gebruik GEEN objecten, alleen een platte lijst van true/false.`;
   const user = `Turkse zin: "${item.tr}"
 Genummerde woorden in de zin (basisvorm):
@@ -30707,7 +30779,9 @@ function fmtDuration(ms){
 
 function renderWordChips(){
   const known = allWords();
-  el("level-label").innerHTML = "beoordeelt woorden (tik om te spieken — telt dan als fout): " +
+  const gTopic = currentItem.grammarTopic ? grammarTopicByKey(currentItem.grammarTopic) : null;
+  const gLine = gTopic ? `<div style="margin-bottom:4px;">🎯 <b>Grammaticafocus:</b> ${gTopic.label}</div>` : "";
+  el("level-label").innerHTML = gLine + "beoordeelt woorden (tik om te spieken — telt dan als fout): " +
     currentItem.words.map(w=>{
       const revealed = revealedWords.has(w);
       if(revealed){
@@ -30895,6 +30969,9 @@ async function handleCheckSentence(answer){
       recordResult(w, correct);
     });
     saveJSON(LS_PROGRESS, progress);
+    if(currentItem.grammarTopic && typeof verdict.grammar_correct === "boolean"){
+      recordGrammarResult(currentItem.grammarTopic, verdict.grammar_correct);
+    }
 
     const wordLines = currentItem.words.map((w, i)=>{
       const ok = revealedWords.has(w) ? false : !!verdict.words[i];
@@ -30938,6 +31015,9 @@ async function handleCheckQuestion(answer){
       recordResult(w, correct);
     });
     saveJSON(LS_PROGRESS, progress);
+    if(currentItem.grammarTopic && typeof verdict.grammar_correct === "boolean"){
+      recordGrammarResult(currentItem.grammarTopic, verdict.grammar_correct);
+    }
 
     const wordLines = currentItem.words.map((w, i)=>{
       const ok = revealedWords.has(w) ? false : !!verdict.words[i];
@@ -31010,6 +31090,9 @@ async function disputeAnswer(){
         recordResult(w, correct);
       });
       saveJSON(LS_PROGRESS, progress);
+      if(currentItem.grammarTopic && typeof verdict.grammar_correct === "boolean"){
+        recordGrammarResult(currentItem.grammarTopic, verdict.grammar_correct);
+      }
       const wordLines = currentItem.words.map((w, i)=>{
         const ok = revealedWords.has(w) ? false : !!verdict.words[i];
         return `${ok ? "✅" : "❌"} ${w}`;
@@ -31158,6 +31241,29 @@ function renderStats(){
     l.textContent = lvl;
     lbl.appendChild(l);
   });
+
+  renderGrammarList();
+}
+
+function renderGrammarList(){
+  const list = el("grammar-list");
+  if(!list) return;
+  const rows = GRAMMAR_TOPICS.map(t=>({t, p: getGrammarProgress(t.key)}))
+    .sort((a,b)=> a.p.level - b.p.level); // zwakste eerst
+  list.innerHTML = rows.map(({t,p})=>{
+    const pct = p.level*10;
+    const color = p.reps===0 ? "#4a5568" : (p.level<=3 ? "#e0333f" : p.level<=6 ? "#e0a733" : "#2fae6a");
+    const statusTxt = p.reps===0 ? "nog niet geoefend" : `niveau ${p.level}/10 · ${p.reps}x geoefend`;
+    return `<div style="margin-bottom:10px;">
+      <div class="row space-between" style="font-size:.85rem;margin-bottom:3px;">
+        <span title="${t.hint}">${t.label}</span>
+        <span class="muted">${statusTxt}</span>
+      </div>
+      <div style="height:6px;border-radius:4px;background:#0d1720;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${color};"></div>
+      </div>
+    </div>`;
+  }).join("");
 }
 
 function exportWordlist(){
@@ -31350,6 +31456,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-reset-progress").addEventListener("click", ()=>{
     if(confirm("Weet je zeker dat je alle voortgang wilt resetten? Dit kan niet ongedaan worden gemaakt.")){
       progress = {}; saveJSON(LS_PROGRESS, progress);
+      grammar = {}; saveJSON(LS_GRAMMAR, grammar);
       history = []; saveJSON(LS_HISTORY, history);
       renderPractice();
     }
