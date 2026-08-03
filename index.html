@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 22:35</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 23:05</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -279,7 +279,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 22:35</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 23:05</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -34010,13 +34010,14 @@ async function askDeepSeekJudge(item, answer, isRecheck){
 Je krijgt een Turks woord, de reeds bekende geaccepteerde vertalingen (Nederlands/Engels), en het antwoord van de gebruiker.
 Beoordeel of het antwoord een acceptabele vertaling is — accepteer synoniemen, kleine spelfouts en verschillende correcte formuleringen, in het Nederlands ÓF het Engels.
 BELANGRIJK OVER TYPEFOUTEN: als het antwoord duidelijk een tikfout bevat (bv. verwisselde letters zoals "eht" i.p.v. "het", een ontbrekende/dubbele letter) en de bedoelde vertaling ondubbelzinnig duidelijk en correct is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", maar zet "correct" niet op false enkel vanwege een duidelijke tikfout.
-Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"). Structuur: begin met het oordeel, en bij een fout antwoord kort en concreet wat er niet klopte plus de juiste vertaling; bij een goed antwoord volstaat een korte bevestiging.
+ALS HET ANTWOORD FOUT IS: geef in "betekenis_antwoord" aan wat het door de gebruiker ingevoerde woord ZELF betekent (in het Nederlands), mits het een bestaand, betekenisvol Nederlands of Engels woord is — dit helpt de gebruiker begrijpen welk ander woord hij in gedachten had. Is het antwoord geen bestaand woord (bv. onzin of een tikfout die niets betekent), laat "betekenis_antwoord" dan leeg (""). Bij een GOED antwoord laat je "betekenis_antwoord" ook leeg.
+Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"). Bij een fout antwoord hoeft "uitleg" niet meer te herhalen wat het antwoord betekent (dat staat al in "betekenis_antwoord") — een korte aanvullende opmerking is genoeg, of laat leeg.
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder 'onjuist'-oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord toch (gedeeltelijk) correct kan zijn, bijvoorbeeld als minder gangbaar synoniem, regionale variant of alternatieve betekenis." : ""}
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen, rechtstreeks tegen de gebruiker gericht", "taal": "nl of en, de taal van het antwoord van de gebruiker"}`;
+Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 1 zin, rechtstreeks tegen de gebruiker gericht, mag leeg zijn", "betekenis_antwoord": "betekenis van het antwoord van de gebruiker indien fout en een bestaand woord, anders leeg", "taal": "nl of en, de taal van het antwoord van de gebruiker"}`;
   const user = `Turks woord: "${item.tr}"
 Bekende vertalingen NL: ${item.nl.join(", ") || "(geen)"}
 Bekende vertalingen EN: ${item.en.join(", ") || "(geen)"}
-Antwoord van student: "${answer}"`;
+Antwoord van gebruiker: "${answer}"`;
 
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
@@ -34255,12 +34256,14 @@ function showFeedback(kind, html){
 }
 
 // Korte, duidelijk gekleurde regel: "fout antwoord: X" (rood) en/of "goed antwoord: Y" (groen)
-function answerCompareLine(userAnswer, correctAnswer, wasCorrect){
+function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning){
   const wrongPart = (!wasCorrect && userAnswer)
-    ? `fout antwoord: <span style="color:var(--accent);font-weight:600;">${escapeHtml(userAnswer)}</span>`
+    ? (wrongMeaning
+        ? `fout, <span style="color:var(--accent);font-weight:600;">${escapeHtml(userAnswer)}</span> betekent <span style="color:var(--accent);font-weight:600;">${escapeHtml(wrongMeaning)}</span>.`
+        : `fout antwoord: <span style="color:var(--accent);font-weight:600;">${escapeHtml(userAnswer)}</span>`)
     : "";
   const goodPart = correctAnswer
-    ? `goed antwoord: <span style="color:var(--accent2);font-weight:600;">${escapeHtml(correctAnswer)}</span>`
+    ? `${wasCorrect ? "goed antwoord" : "Juist is"}: <span style="color:var(--accent2);font-weight:600;">${escapeHtml(correctAnswer)}</span>`
     : "";
   return [wrongPart, goodPart].filter(Boolean).join("<br>");
 }
@@ -34326,7 +34329,7 @@ async function handleCheck(){
     const known = [...currentItem.nl, ...currentItem.en].join(", ");
     finalizeAnswer(!!verdict.correct,
       (verdict.correct ? "✅" : "❌") +
-      (known ? "<br>" + answerCompareLine(answer, known, !!verdict.correct) : ""));
+      (known ? "<br>" + answerCompareLine(answer, known, !!verdict.correct, verdict.betekenis_antwoord) : ""));
     if(verdict.correct){
       el("post-actions").querySelector("#btn-add-answer")?.remove();
       const addBtn = document.createElement("button");
@@ -34533,8 +34536,10 @@ async function disputeAnswer(){
       el("level-fill").style.width = (p.level*10) + "%";
       el("level-label").textContent = fmtLevel(p);
     } else {
+      const known = [...currentItem.nl, ...currentItem.en].join(", ");
       showFeedback("wrong",
         "🔁 ❌<br>" +
+        (known ? answerCompareLine(answer, known, false, verdict.betekenis_antwoord) + "<br><br>" : "") +
         "<button class='btn-ghost btn-small' id='btn-force-add'>Toch handmatig toevoegen</button>");
       el("btn-force-add").onclick = ()=>{
         if(!confirm('Weet je zeker dat "' + answer + '" een juiste vertaling is van "' + currentItem.tr + '", ondanks het AI-oordeel?')) return;
