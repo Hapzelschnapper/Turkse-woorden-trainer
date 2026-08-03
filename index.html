@@ -84,7 +84,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 02:50</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 03:15</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -187,11 +187,11 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">☁️ Cloud-synchronisatie (universele voortgang)</h3>
-      <div class="muted" style="margin-bottom:8px;">Je voortgang (niveaus, ontdekte woorden, betwiste vertalingen) wordt hiermee ook extern opgeslagen via <a href="https://jsonbin.io" target="_blank" rel="noopener">jsonbin.io</a> (gratis), zodat je hem op meerdere apparaten kunt gebruiken. Zonder dit blijft alles lokaal op dit apparaat, zoals nu.</div>
-      <div class="muted" style="margin-bottom:4px;">Master Key (jsonbin.io account)</div>
-      <input type="text" id="sync-api-key" placeholder="$2a$10$..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-      <div class="muted" style="margin:10px 0 4px;">Cloud-opslag-ID (Bin ID)</div>
-      <input type="text" id="sync-bin-id" placeholder="bijv. 64f3a2... (of laat leeg en maak een nieuwe aan)" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div class="muted" style="margin-bottom:8px;">Je voortgang (niveaus, ontdekte woorden, betwiste vertalingen) wordt hiermee ook opgeslagen in een privé <a href="https://gist.github.com" target="_blank" rel="noopener">GitHub Gist</a> (gratis, zelfde account als je repository), zodat je hem op meerdere apparaten kunt gebruiken. Zonder dit blijft alles lokaal op dit apparaat, zoals nu.</div>
+      <div class="muted" style="margin-bottom:4px;">GitHub Personal Access Token (scope: "gist")</div>
+      <input type="text" id="sync-api-key" placeholder="ghp_..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div class="muted" style="margin:10px 0 4px;">Cloud-opslag-ID (Gist ID)</div>
+      <input type="text" id="sync-bin-id" placeholder="bijv. a1b2c3d4... (of laat leeg en maak een nieuwe aan)" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
       <div class="row" style="margin-top:10px;gap:8px;">
         <button class="btn-primary" id="btn-sync-save" style="flex:1;">Opslaan</button>
         <button class="btn-secondary" id="btn-sync-create" style="flex:1;">Nieuwe opslag aanmaken</button>
@@ -209,7 +209,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 02:50</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 03:15</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -29985,9 +29985,12 @@ if(settings.sentencePercent === undefined){
 let history  = loadJSON(LS_HISTORY, []);
 let newWords = loadJSON(LS_NEWWORDS, {});
 
-/* ===================== CLOUD-SYNCHRONISATIE (jsonbin.io) ===================== */
-// Slaat progress/custom/newWords op in een externe, gratis JSON-opslag zodat je voortgang
-// niet vastzit aan één apparaat/browser. Werkt alleen als syncBinId + syncApiKey zijn ingesteld.
+/* ===================== CLOUD-SYNCHRONISATIE (GitHub Gist) ===================== */
+// Slaat progress/custom/newWords op in een privé GitHub Gist zodat je voortgang niet vastzit
+// aan één apparaat/browser. Werkt alleen als syncGistId + syncApiKey (GitHub token) zijn ingesteld.
+// Gebruikt GitHub i.p.v. jsonbin.io: geen apart account nodig (je hebt al GitHub voor de app zelf),
+// en geen last van jsonbin's 100KB-limiet op het gratis plan.
+const GIST_FILENAME = "turks-app-voortgang.json";
 let syncPushTimer = null;
 let syncInProgress = false;
 
@@ -30006,27 +30009,29 @@ function syncMaybePush(){
   syncPushTimer = setTimeout(syncPushNow, 1500); // debounce: pas 1,5s na de laatste wijziging echt versturen
 }
 
+async function githubApiError(res){
+  const body = await res.text().catch(()=>"" );
+  let msg = body;
+  try{ msg = JSON.parse(body).message || body; }catch(e){}
+  return new Error(res.status + ": " + msg);
+}
+
 async function syncPushNow(){
   if(!syncConfigured() || syncInProgress) return;
   syncInProgress = true;
   setSyncStatus("🔄 Synchroniseren…");
   try{
     const payload = { progress, custom, newWords, updatedAt: Date.now() };
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${settings.syncBinId}`, {
-      method: "PUT",
+    const res = await fetch(`https://api.github.com/gists/${settings.syncBinId}`, {
+      method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "X-Master-Key": settings.syncApiKey,
-        "X-Bin-Versioning": "false"
+        "Authorization": "Bearer " + settings.syncApiKey,
+        "Accept": "application/vnd.github+json"
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(payload) } } })
     });
-    if(!res.ok){
-      const body = await res.text().catch(()=>"" );
-      let msg = body;
-      try{ msg = JSON.parse(body).message || body; }catch(e){}
-      throw new Error(res.status + ": " + msg);
-    }
+    if(!res.ok) throw await githubApiError(res);
     setSyncStatus("✅ Gesynchroniseerd om " + new Date().toLocaleTimeString());
   }catch(e){
     setSyncStatus("⚠️ Synchroniseren (uploaden) mislukt: " + e.message);
@@ -30038,17 +30043,20 @@ async function syncPullNow(showAlertOnEmpty){
   if(!syncConfigured()) return;
   setSyncStatus("🔄 Voortgang ophalen…");
   try{
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${settings.syncBinId}/latest`, {
-      headers: {"X-Master-Key": settings.syncApiKey}
+    const res = await fetch(`https://api.github.com/gists/${settings.syncBinId}`, {
+      headers: {
+        "Authorization": "Bearer " + settings.syncApiKey,
+        "Accept": "application/vnd.github+json"
+      }
     });
-    if(!res.ok){
-      const body = await res.text().catch(()=>"" );
-      let msg = body;
-      try{ msg = JSON.parse(body).message || body; }catch(e){}
-      throw new Error(res.status + ": " + msg);
-    }
+    if(!res.ok) throw await githubApiError(res);
     const data = await res.json();
-    const remote = data.record;
+    const file = data.files && data.files[GIST_FILENAME];
+    if(!file){
+      if(showAlertOnEmpty) setSyncStatus("⚠️ Gist gevonden, maar bevat geen " + GIST_FILENAME + " bestand.");
+      return;
+    }
+    const remote = JSON.parse(file.content);
     if(remote && remote.updatedAt){
       progress = remote.progress || {};
       custom = remote.custom || {};
@@ -30067,32 +30075,31 @@ async function syncPullNow(showAlertOnEmpty){
 
 async function syncCreateBin(){
   if(!settings.syncApiKey){
-    alert("Vul eerst je jsonbin.io Master Key in.");
+    alert("Vul eerst je GitHub Personal Access Token in.");
     return;
   }
-  setSyncStatus("🔄 Nieuwe cloud-opslag aanmaken…");
+  setSyncStatus("🔄 Nieuwe cloud-opslag (Gist) aanmaken…");
   try{
-    const res = await fetch("https://api.jsonbin.io/v3/b", {
+    const res = await fetch("https://api.github.com/gists", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Master-Key": settings.syncApiKey,
-        "X-Bin-Name": "turks-app-voortgang"
+        "Authorization": "Bearer " + settings.syncApiKey,
+        "Accept": "application/vnd.github+json"
       },
-      body: JSON.stringify({ progress:{}, custom:{}, newWords:{}, updatedAt: Date.now() })
+      body: JSON.stringify({
+        description: "Turks-woordentrainer voortgang (niet handmatig bewerken)",
+        public: false,
+        files: { [GIST_FILENAME]: { content: JSON.stringify({ progress:{}, custom:{}, newWords:{}, updatedAt: Date.now() }) } }
+      })
     });
-    if(!res.ok){
-      const body = await res.text().catch(()=>"" );
-      let msg = body;
-      try{ msg = JSON.parse(body).message || body; }catch(e){}
-      throw new Error(res.status + ": " + msg);
-    }
+    if(!res.ok) throw await githubApiError(res);
     const data = await res.json();
-    settings.syncBinId = data.metadata.id;
+    settings.syncBinId = data.id;
     saveJSON(LS_SETTINGS, settings);
     const inputEl = document.getElementById("sync-bin-id");
     if(inputEl) inputEl.value = settings.syncBinId;
-    setSyncStatus("✅ Nieuwe cloud-opslag aangemaakt! ID is automatisch ingevuld en opgeslagen — gebruik dit ZELFDE ID op je andere apparaten.");
+    setSyncStatus("✅ Nieuwe cloud-opslag aangemaakt! Gist-ID is automatisch ingevuld en opgeslagen — gebruik dit ZELFDE ID op je andere apparaten.");
   }catch(e){
     setSyncStatus("⚠️ Aanmaken mislukt: " + e.message);
   }
