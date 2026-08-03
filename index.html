@@ -100,7 +100,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 17:20</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 17:35</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -229,7 +229,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 17:20</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 17:35</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -34189,7 +34189,13 @@ async function handleCheck(){
     if(currentItem.type === "sentence" || currentItem.type === "question"){
       recordHistory(currentItem.type);
       for(const w of currentItem.words) recordResult(w, false);
-      showFeedback("wrong", "Geen antwoord ingevuld — geteld als fout.");
+      const known = allWords();
+      const wordTranslations = currentItem.words.map(w=>{
+        const info = known.find(k=>k.tr===w);
+        const trans = info ? [...info.nl, ...info.en].slice(0,2).join(", ") : "?";
+        return `${w} = ${trans}`;
+      }).join(" &nbsp;·&nbsp; ");
+      showFeedback("wrong", "Geen antwoord ingevuld — geteld als fout.<br><br><b>Vertalingen:</b><br>" + wordTranslations);
       el("post-actions").classList.remove("hidden");
       el("btn-next").classList.remove("hidden");
       el("btn-dispute").classList.add("hidden");
@@ -34197,7 +34203,8 @@ async function handleCheck(){
       el("answer-input").disabled = false;
       if(hasLikelyPhysicalKeyboard()) el("answer-input").focus();
     } else {
-      finalizeAnswer(false, "Geen antwoord ingevuld — geteld als fout.");
+      const known = [...currentItem.nl, ...currentItem.en].join(", ");
+      finalizeAnswer(false, "Geen antwoord ingevuld.<br>" + answerCompareLine("", known, false));
     }
     return;
   }
