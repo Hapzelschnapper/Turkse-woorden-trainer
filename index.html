@@ -100,7 +100,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 16:30</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 17:20</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -169,6 +169,8 @@
       <input type="text" id="api-key-input" placeholder="sk-..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
       <button class="btn-primary" id="btn-save-key" style="width:100%;margin-top:10px;">Opslaan</button>
       <div class="muted" id="key-status" style="margin-top:8px;"></div>
+      <button class="btn-secondary" id="btn-fetch-balance" style="width:100%;margin-top:10px;">💰 Saldo ophalen bij DeepSeek</button>
+      <div class="muted" id="balance-status" style="margin-top:6px;"></div>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Oefening-instellingen</h3>
@@ -227,7 +229,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 16:30</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 17:20</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -33077,7 +33079,8 @@ const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cef
 const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", laatste 20
 const LS_NEWWORDS  = "turks_newwords_v1";      // { [tr]: {nl:[...], en:[...]} } — via zinnen ontdekte woorden, niet in de vaste lijst
 const LS_GRAMMAR   = "turks_grammar_v1";       // { [topicKey]: {level, due, reps} } — per grammaticaal onderwerp, zelfde SRS-mechaniek als woorden
-const LS_COST      = "turks_cost_v1";          // { byModel: { [model]: {hit, miss, output} } } — cumulatief tokenverbruik, lokaal (niet gesynct)
+const LS_COST      = "turks_cost_v1";          // { byModel: {...} } — bevestigd/gesynct totaal
+const LS_COST_PENDING = "turks_cost_pending_v1"; // { byModel: {...} } — lokaal verbruik nog niet samengevoegd met cloud
 
 function loadJSON(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
@@ -33103,6 +33106,7 @@ let history  = loadJSON(LS_HISTORY, []);
 let newWords = loadJSON(LS_NEWWORDS, {});
 let grammar = loadJSON(LS_GRAMMAR, {});
 let costUsage = loadJSON(LS_COST, {byModel:{}});
+let costPending = loadJSON(LS_COST_PENDING, {byModel:{}});
 
 /* ===================== KOSTENTELLER (grove, lokale schatting) ===================== */
 // Prijzen in USD per 1M tokens. Alleen een indicatie — DeepSeek kan tarieven wijzigen
@@ -33112,9 +33116,22 @@ const MODEL_PRICING = {
   "deepseek-v4-flash": {hit:0.0028,   miss:0.14,  output:0.28},
 };
 
+function mergeCostUsage(a, b){
+  const result = {byModel:{}};
+  for(const src of [a, b]){
+    for(const [model, u] of Object.entries((src && src.byModel) || {})){
+      const m = result.byModel[model] || (result.byModel[model] = {hit:0, miss:0, output:0});
+      m.hit += u.hit || 0;
+      m.miss += u.miss || 0;
+      m.output += u.output || 0;
+    }
+  }
+  return result;
+}
+
 function recordUsage(model, usage){
   if(!usage) return; // sommige/oude responses geven geen usage-object terug
-  const m = costUsage.byModel[model] || (costUsage.byModel[model] = {hit:0, miss:0, output:0});
+  const m = costPending.byModel[model] || (costPending.byModel[model] = {hit:0, miss:0, output:0});
   const hit = usage.prompt_cache_hit_tokens || 0;
   const miss = (usage.prompt_cache_miss_tokens != null)
     ? usage.prompt_cache_miss_tokens
@@ -33122,13 +33139,14 @@ function recordUsage(model, usage){
   m.hit += hit;
   m.miss += miss;
   m.output += usage.completion_tokens || 0;
-  localStorage.setItem(LS_COST, JSON.stringify(costUsage)); // bewust geen syncMaybePush: puur lokale schatting
+  localStorage.setItem(LS_COST_PENDING, JSON.stringify(costPending));
   updateCostDisplay();
+  syncMaybePush(); // plant ook een cloud-sync in, die costPending bij het cloud-totaal optelt (zie syncPushNow)
 }
 
-function estimateTotalCostUSD(){
+function estimateTotalCostUSD(usage){
   let total = 0;
-  for(const [model, u] of Object.entries(costUsage.byModel)){
+  for(const [model, u] of Object.entries((usage && usage.byModel) || {})){
     const p = MODEL_PRICING[model] || MODEL_PRICING["deepseek-v4-pro"];
     total += (u.hit/1e6*p.hit) + (u.miss/1e6*p.miss) + (u.output/1e6*p.output);
   }
@@ -33138,11 +33156,41 @@ function estimateTotalCostUSD(){
 function updateCostDisplay(){
   const elC = document.getElementById("cost-tracker");
   if(!elC) return;
-  const usd = estimateTotalCostUSD();
-  elC.textContent = usd < 0.01
-    ? `~$${usd.toFixed(4)} tot nu toe`
-    : `~$${usd.toFixed(3)} tot nu toe`;
-  elC.title = "Grove lokale schatting o.b.v. daadwerkelijk gemeten tokenverbruik (incl. cache-hits/misses) × huidige DeepSeek-tarieven. Niet je officiële factuur — check die op platform.deepseek.com.";
+  const usd = estimateTotalCostUSD(mergeCostUsage(costUsage, costPending));
+  const estTxt = usd < 0.01 ? `~$${usd.toFixed(4)} geschat` : `~$${usd.toFixed(3)} geschat`;
+  const bal = loadJSON(LS_BALANCE, null);
+  const balTxt = bal ? ` · saldo: ${bal.currency === "CNY" ? "¥" : "$"}${bal.total}` : "";
+  elC.textContent = estTxt + balTxt;
+  elC.title = "Schatting o.b.v. daadwerkelijk gemeten tokenverbruik (incl. cache-hits/misses) × huidige DeepSeek-tarieven, opgeteld over al je gesynchroniseerde apparaten, plus (indien opgehaald) je echte resterende saldo bij DeepSeek. Geen officiële factuur — check die op platform.deepseek.com.";
+}
+
+const LS_BALANCE = "turks_balance_v1"; // { total, granted, toppedUp, currency, fetchedAt } — laatst opgehaalde saldo (lokaal, niet gesynct)
+
+async function fetchDeepSeekBalance(){
+  if(!settings.apiKey){
+    alert("Stel eerst je DeepSeek API-sleutel in.");
+    return;
+  }
+  const statusEl = document.getElementById("balance-status");
+  if(statusEl) statusEl.textContent = "🔄 Saldo ophalen…";
+  try{
+    const res = await fetch("https://api.deepseek.com/user/balance", {
+      headers: {"Authorization": "Bearer " + settings.apiKey, "Accept": "application/json"}
+    });
+    if(!res.ok) throw new Error("status " + res.status);
+    const data = await res.json();
+    const info = data.balance_infos && data.balance_infos[0];
+    if(!info) throw new Error("geen saldo-informatie ontvangen");
+    const balance = {
+      total: info.total_balance, granted: info.granted_balance, toppedUp: info.topped_up_balance,
+      currency: info.currency, fetchedAt: Date.now()
+    };
+    localStorage.setItem(LS_BALANCE, JSON.stringify(balance));
+    if(statusEl) statusEl.textContent = `✅ Resterend saldo: ${balance.currency === "CNY" ? "¥" : "$"}${balance.total} (waarvan ${balance.currency === "CNY" ? "¥" : "$"}${balance.toppedUp} zelf opgeladen)`;
+    updateCostDisplay();
+  }catch(e){
+    if(statusEl) statusEl.textContent = "⚠️ Saldo ophalen mislukt: " + e.message;
+  }
 }
 
 
@@ -33240,12 +33288,44 @@ async function githubApiError(res){
   return new Error(res.status + ": " + msg);
 }
 
+async function fetchRemoteGistData(){
+  const res = await fetch(`https://api.github.com/gists/${settings.syncBinId}`, {
+    headers: {
+      "Authorization": "Bearer " + settings.syncApiKey,
+      "Accept": "application/vnd.github+json"
+    }
+  });
+  if(!res.ok) throw await githubApiError(res);
+  const data = await res.json();
+  const file = data.files && data.files[GIST_FILENAME];
+  if(!file) return null;
+  return JSON.parse(file.content);
+}
+
 async function syncPushNow(){
   if(!syncConfigured() || syncInProgress) return;
   syncInProgress = true;
   setSyncStatus("🔄 Synchroniseren…");
   try{
-    const payload = { progress, custom, newWords, grammar, updatedAt: Date.now() };
+    // kosten-verbruik optellen i.p.v. overschrijven: eerst het cloud-totaal ophalen,
+    // daar het nog-niet-samengevoegde lokale verbruik bij optellen, dán pas opslaan+pushen
+    let mergedCost = costUsage;
+    try{
+      const remoteNow = await fetchRemoteGistData();
+      const remoteCost = (remoteNow && remoteNow.cost) || {byModel:{}};
+      mergedCost = mergeCostUsage(remoteCost, costPending);
+    }catch(e){
+      // ophalen mislukt: val terug op lokaal samenvoegen, dan gaat er bij een sync-conflict
+      // in het ergste geval iets kosten-verbruik verloren, maar nooit de rest van de voortgang
+      mergedCost = mergeCostUsage(costUsage, costPending);
+    }
+    costUsage = mergedCost;
+    costPending = {byModel:{}};
+    localStorage.setItem(LS_COST, JSON.stringify(costUsage));
+    localStorage.setItem(LS_COST_PENDING, JSON.stringify(costPending));
+    updateCostDisplay();
+
+    const payload = { progress, custom, newWords, grammar, cost: costUsage, updatedAt: Date.now() };
     const res = await fetch(`https://api.github.com/gists/${settings.syncBinId}`, {
       method: "PATCH",
       headers: {
@@ -33286,10 +33366,13 @@ async function syncPullNow(showAlertOnEmpty){
       custom = remote.custom || {};
       newWords = remote.newWords || {};
       grammar = remote.grammar || {};
+      costUsage = remote.cost || costUsage; // laat lokaal costPending ongemoeid, dat wordt bij de volgende push meegeteld
       localStorage.setItem(LS_PROGRESS, JSON.stringify(progress));
       localStorage.setItem(LS_CUSTOM, JSON.stringify(custom));
       localStorage.setItem(LS_NEWWORDS, JSON.stringify(newWords));
       localStorage.setItem(LS_GRAMMAR, JSON.stringify(grammar));
+      localStorage.setItem(LS_COST, JSON.stringify(costUsage));
+      updateCostDisplay();
       setSyncStatus("✅ Opgehaald van server (laatst bijgewerkt: " + new Date(remote.updatedAt).toLocaleString() + ")");
     } else if(showAlertOnEmpty){
       setSyncStatus("ℹ️ Er staat nog niets in de cloud-opslag — je eerste synchronisatie zal deze vullen.");
@@ -33316,7 +33399,7 @@ async function syncCreateBin(){
       body: JSON.stringify({
         description: "Turks-woordentrainer voortgang (niet handmatig bewerken)",
         public: false,
-        files: { [GIST_FILENAME]: { content: JSON.stringify({ progress:{}, custom:{}, newWords:{}, grammar:{}, updatedAt: Date.now() }) } }
+        files: { [GIST_FILENAME]: { content: JSON.stringify({ progress:{}, custom:{}, newWords:{}, grammar:{}, cost:{byModel:{}}, updatedAt: Date.now() }) } }
       })
     });
     if(!res.ok) throw await githubApiError(res);
@@ -34631,6 +34714,11 @@ function initSettingsUI(){
   el("cefr-label").textContent = cefrLabel(settings.cefrLevel ?? 4);
   updateCefrUnlockedInfo();
   el("key-status").textContent = settings.apiKey ? "✅ Sleutel is ingesteld." : "Nog geen sleutel ingesteld.";
+  const bal = loadJSON(LS_BALANCE, null);
+  if(bal){
+    const sym = bal.currency === "CNY" ? "¥" : "$";
+    el("balance-status").textContent = `Laatst opgehaald: ${sym}${bal.total} resterend (${new Date(bal.fetchedAt).toLocaleString()})`;
+  }
   el("sync-api-key").value = settings.syncApiKey || "";
   el("sync-bin-id").value = settings.syncBinId || "";
   el("sync-status").textContent = syncConfigured() ? "" : "Nog niet ingesteld — voortgang blijft lokaal op dit apparaat.";
@@ -34686,6 +34774,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     saveJSON(LS_SETTINGS, settings);
     initSettingsUI();
   });
+  el("btn-fetch-balance").addEventListener("click", fetchDeepSeekBalance);
   el("sentence-percent").addEventListener("input", ()=>{
     el("sentence-percent-label").textContent = el("sentence-percent").value + "%";
   });
