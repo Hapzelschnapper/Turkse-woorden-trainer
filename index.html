@@ -88,7 +88,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 04:05</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 04:25</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -213,7 +213,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 04:05</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 04:25</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -30390,6 +30390,7 @@ async function generateQuestionCandidate(targetWord){
   const sys = `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
 Gewenst niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
 Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv. rekenen, geografie, een feit uit de zin zelf), ofwel een PERSOONLIJKE/OPEN vraag waarop elk contextueel passend Turks antwoord goed is (bv. "Bugün ne yaptın?").
+KRITIEK: het resultaat MOET een echte vraag zijn, GEEN mededelende stelling. Eindig ALTIJD met een vraagteken, en gebruik een vraagwoord (ne, nasıl, kim, nerede, kaç, hangi, neden, niçin, ...) of het vraagpartikel (mi/mı/mu/mü). Een zin als "Hava soğuktu ama dışarı çıktık." is FOUT (dat is een stelling); "Hava soğuk olmasına rağmen neden dışarı çıktınız?" is GOED (dat is een echte vraag).
 De vraag moet grammaticaal correct en natuurlijk klinken voor een moedertaalspreker.
 Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met een correcte Nederlandse en Engelse vertaling van die basisvorm.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
@@ -30416,15 +30417,37 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
   return parsed;
 }
 
+// Lokale, snelle check (geen extra AI-call) of een zin daadwerkelijk een vraag is —
+// vangt het geval af waarin de AI per ongeluk een mededelende stelling maakt.
+function looksLikeQuestion(tr){
+  const clean = tr.trim();
+  if(/\?\s*$/.test(clean)) return true; // eindigt op vraagteken
+  const qWords = new Set(["ne","nasıl","niçin","neden","kim","kime","kimi","kimin","nerede","nereye",
+    "nereden","kaç","kaçta","kaçıncı","hangi","hangisi","mi","mı","mu","mü",
+    "misin","musun","müsün","mısın","misiniz","musunuz","müsünüz","mısınız",
+    "mıyım","miyim","muyum","müyüm","mıyız","miyiz","muyuz","müyüz"]);
+  const tokens = clean.toLowerCase().replace(/[.,!]/g,"").split(/\s+/);
+  return tokens.some(t=>qWords.has(t));
+}
+
 async function generateQuestion(){
   const targetWords = pickWordsForSentence(); // zelfde selectielogica als bij zinnen (nieuw-woord% / due-herhaling)
   const targetWord = targetWords[0];
 
   let parsed = await generateQuestionCandidate(targetWord);
+  if(!looksLikeQuestion(parsed.tr)){
+    parsed = await generateQuestionCandidate(targetWord); // herkansing: AI maakte een stelling i.p.v. een vraag
+  }
+  if(!looksLikeQuestion(parsed.tr)){
+    // nog steeds geen echte vraag na de herkansing: forceer een vraagteken zodat het UI-onderscheid
+    // (badge "vraag" + instructie "beantwoord in het Turks") niet misleidend blijft
+    parsed.tr = parsed.tr.replace(/[.!]+\s*$/, "") + "?";
+  }
   try{
     const natural = await checkSentenceNatural(parsed.tr); // generieke check, werkt ook prima voor vragen
     if(!natural){
       parsed = await generateQuestionCandidate(targetWord); // één herkansing
+      if(!looksLikeQuestion(parsed.tr)) parsed.tr = parsed.tr.replace(/[.!]+\s*$/, "") + "?";
     }
   }catch(e){ /* controle mislukt: gewoon doorgaan met de eerste kandidaat */ }
 
@@ -30447,7 +30470,9 @@ Beoordeel of het antwoord een gepast, correct Turks antwoord op de vraag is:
 - Bij een OPEN/PERSOONLIJKE vraag: is het antwoord contextueel passend en grammaticaal begrijpelijk Turks (de inhoud mag vrij zijn, elk zinnig antwoord telt)?
 NEGEER Turkse diakritische tekens volledig bij de beoordeling: behandel ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c als volledig uitwisselbaar — een antwoord getypt zonder Turkse speciale tekens (bv. "tesekkur" i.p.v. "teşekkür") is qua spelling NOOIT fout. Wees ook coulant bij ontbrekende Nederlandse accenten in eventuele Nederlandse woorden.
 BELANGRIJK OVER TYPEFOUTEN: duidelijke tikfouten (verwisselde letters e.d.) met een ondubbelzinnig duidelijke bedoeling reken je gewoon goed — dit is een taaltoets, geen typetoets.
-Beoordeel ook voor ELK genummerd woord uit de vraag, ONAFHANKELIJK EN KRITISCH, of de gebruiker begrip daarvan toont in zijn antwoord. CONSISTENTIE-EIS: als het antwoord als geheel niet klopt door een woord dat duidelijk verkeerd begrepen is, moet dat woord in "words" op false staan.
+Beoordeel ook voor ELK genummerd woord uit de vraag, ONAFHANKELIJK EN KRITISCH, of de gebruiker begrip daarvan toont in zijn antwoord.
+BELANGRIJK ONDERSCHEID: "correct" gaat over of het antwoord een GEPAST ANTWOORD op de vraag is (vorm/pragmatiek); "words" gaat puur over WOORDBEGRIP. Die twee lopen NIET altijd gelijk op. Als "correct" false is omdat de gebruiker bijvoorbeeld reageert op de inhoud in plaats van de vraag direct te beantwoorden (maar wél overduidelijk laat zien dat hij/zij elk woord begrijpt, via een taalkundig kloppende en inhoudelijk relevante reactie), moeten de afzonderlijke woorden in "words" gewoon op true staan — bestraf woordbegrip niet voor een vorm-/pragmatiekfout.
+CONSISTENTIE-EIS geldt alleen andersom: als "correct" false is SPECIFIEK doordat de gebruiker een woord verkeerd heeft opgevat (bijvoorbeeld verward met een ander Turks woord, of totaal genegeerd), moet dát woord in "words" op false staan.
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je"). Structuur: begin met het oordeel, en bij fout kort en concreet wat er niet klopte.
 Geef ook altijd een Nederlandse vertaling van de Turkse vraag, EN een Nederlandse vertaling van wat de gebruiker met zijn Turkse antwoord daadwerkelijk heeft gezegd (ook als dat inhoudelijk niet klopt — vertaal gewoon wat er staat, zodat de gebruiker kan zien wat hij eigenlijk zei).
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling." : ""}
