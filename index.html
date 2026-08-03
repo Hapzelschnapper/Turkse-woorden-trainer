@@ -84,7 +84,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 01:15</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 01:35</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -191,7 +191,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 01:15</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 01:35</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -30304,9 +30304,10 @@ NEGEER Turkse diakritische tekens volledig bij de beoordeling: behandel ı/i, ş
 BELANGRIJK OVER TYPEFOUTEN: duidelijke tikfouten (verwisselde letters e.d.) met een ondubbelzinnig duidelijke bedoeling reken je gewoon goed — dit is een taaltoets, geen typetoets.
 Beoordeel ook voor ELK genummerd woord uit de vraag, ONAFHANKELIJK EN KRITISCH, of de gebruiker begrip daarvan toont in zijn antwoord. CONSISTENTIE-EIS: als het antwoord als geheel niet klopt door een woord dat duidelijk verkeerd begrepen is, moet dat woord in "words" op false staan.
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je"). Structuur: begin met het oordeel, en bij fout kort en concreet wat er niet klopte.
+Geef ook altijd een Nederlandse vertaling van de Turkse vraag, EN een Nederlandse vertaling van wat de gebruiker met zijn Turkse antwoord daadwerkelijk heeft gezegd (ook als dat inhoudelijk niet klopt — vertaal gewoon wat er staat, zodat de gebruiker kan zien wat hij eigenlijk zei).
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling." : ""}
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen", "referentie": "een voorbeeld van een goed Turks antwoord op deze vraag", "words": [true of false, ...]}
+{"correct": true of false, "uitleg": "korte uitleg in het Nederlands, max 2 zinnen", "referentie": "een voorbeeld van een goed Turks antwoord op deze vraag", "vraag_nl": "Nederlandse vertaling van de Turkse vraag", "antwoord_nl": "Nederlandse vertaling van wat de gebruiker letterlijk heeft geantwoord", "words": [true of false, ...]}
 BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfde volgorde als hieronder genummerd.`;
   const user = `Turkse vraag: "${item.tr}"
 Genummerde woorden in de vraag (basisvorm): ${item.words.map((w,i)=>`${i+1}. ${w}`).join(", ")}
@@ -30504,6 +30505,15 @@ let chatMsgs = []; // voor de "vraag aan AI"-modal, per huidige item
 
 const el = id => document.getElementById(id);
 
+// Detecteert apparaten met waarschijnlijk een fysiek toetsenbord (laptop/desktop met muis/trackpad),
+// zodat we daar automatisch focussen (Enter = volgende) maar op telefoon/tablet niet (voorkomt dat
+// het schermtoetsenbord na elk antwoord vanzelf opduikt).
+function hasLikelyPhysicalKeyboard(){
+  try{
+    return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  }catch(e){ return false; }
+}
+
 function fmtLevel(p){
   return `niveau ${p.level} / 10 · volgende beurt over ${fmtDuration(p.due - Date.now())}`;
 }
@@ -30688,7 +30698,7 @@ async function handleCheckSentence(answer){
     el("btn-next").classList.remove("hidden");
     el("btn-dispute").classList.remove("hidden"); // bij zinnen altijd tonen, ook per-woord kan afwijken
     el("answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken
-    el("answer-input").focus();
+    if(hasLikelyPhysicalKeyboard()) el("answer-input").focus(); // alleen auto-focus bij laptop/desktop, niet bij touch (voorkomt oppoppend schermtoetsenbord)
   }catch(e){
     showFeedback("wrong", "⚠️ Kon AI niet bereiken: " + e.message + ". Probeer het opnieuw of sla deze zin over.");
     el("btn-check").disabled = false;
@@ -30723,6 +30733,8 @@ async function handleCheckQuestion(answer){
     showFeedback(verdict.correct ? "correct" : "wrong",
       (verdict.correct ? "Correct! ✅" : "Niet helemaal juist. ❌") +
       "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
+      (verdict.vraag_nl ? "<br><br><b>Vraag (NL):</b> " + verdict.vraag_nl : "") +
+      (verdict.antwoord_nl ? "<br><b>Jouw antwoord (NL):</b> " + verdict.antwoord_nl : "") +
       (verdict.referentie ? "<br><br><b>Voorbeeldantwoord:</b> " + verdict.referentie : "") +
       "<br><br><b>Woordscores:</b><br>" + wordLines);
 
@@ -30730,7 +30742,7 @@ async function handleCheckQuestion(answer){
     el("btn-next").classList.remove("hidden");
     el("btn-dispute").classList.remove("hidden");
     el("answer-input").disabled = false;
-    el("answer-input").focus();
+    if(hasLikelyPhysicalKeyboard()) el("answer-input").focus(); // alleen auto-focus bij laptop/desktop, niet bij touch
   }catch(e){
     showFeedback("wrong", "⚠️ Kon AI niet bereiken: " + e.message + ". Probeer het opnieuw of sla deze vraag over.");
     el("btn-check").disabled = false;
@@ -30751,7 +30763,7 @@ function finalizeAnswer(correct, message){
   el("level-fill").style.width = (p.level*10) + "%";
   el("level-label").textContent = fmtLevel(p);
   el("answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken
-  el("answer-input").focus();
+  if(hasLikelyPhysicalKeyboard()) el("answer-input").focus(); // alleen auto-focus bij laptop/desktop, niet bij touch
 }
 
 function promptAddTranslation(item, answer, knownLang){
@@ -30790,6 +30802,8 @@ async function disputeAnswer(){
       showFeedback(verdict.correct ? "correct" : "wrong",
         "🔁 Herbeoordeeld: " + (verdict.correct ? "toch correct! ✅" : "AI blijft bij (grotendeels) onjuist. ❌") +
         "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
+        (isQ && verdict.vraag_nl ? "<br><br><b>Vraag (NL):</b> " + verdict.vraag_nl : "") +
+        (isQ && verdict.antwoord_nl ? "<br><b>Jouw antwoord (NL):</b> " + verdict.antwoord_nl : "") +
         (verdict.referentie ? "<br><br><b>" + (isQ ? "Voorbeeldantwoord" : "Correcte vertaling") + ":</b> " + verdict.referentie : "") +
         "<br><br><b>Woordscores:</b><br>" + wordLines);
       el("btn-dispute").classList.add("hidden");
