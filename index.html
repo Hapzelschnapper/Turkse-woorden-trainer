@@ -55,6 +55,14 @@
     cursor:pointer;margin:2px 2px 2px 0;font-size:.8rem;}
   .word-chip:active{background:#2c3d54;}
   .word-chip.revealed{background:#3a2a1d;color:var(--warn);cursor:default;}
+  .cefr-macro{margin-bottom:18px;}
+  .cefr-macro-title{font-weight:700;font-size:.95rem;margin-bottom:6px;}
+  .cefr-bars{display:flex;gap:6px;}
+  .cefr-bar{flex:1;display:flex;flex-direction:column;align-items:center;}
+  .cefr-track{width:100%;height:70px;background:#0d1720;border-radius:4px;position:relative;overflow:hidden;}
+  .cefr-fill{position:absolute;bottom:0;left:0;right:0;border-radius:0 0 4px 4px;}
+  .cefr-pct{font-size:.68rem;color:var(--muted);margin-top:3px;}
+  .cefr-lbl{font-size:.6rem;color:var(--muted);text-align:center;margin-top:1px;line-height:1.15;}
   .level-bar-fill{height:100%;background:linear-gradient(90deg,#e0333f,#e0a733,#2fae6a);}
   .feedback{border-radius:10px;padding:12px;margin-top:10px;font-size:.95rem;}
   .feedback.correct{background:#123322;color:#7be3a5;}
@@ -92,7 +100,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 14:35</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 16:30</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -139,12 +147,8 @@
         <div class="box" title="Aantal AL EERDER getoonde woorden waarvan de spaced-repetition-hersteltijd is verstreken — dus 'weer aan de beurt'. Nog nooit getoonde woorden (niveau 0) tellen hier niet in mee."><div class="num" id="kpi-due">0</div><div class="lbl">nu klaar om te oefenen</div></div>
         <div class="box"><div class="num" id="kpi-avg">0</div><div class="lbl">gemiddeld niveau (1-10)</div></div>
       </div>
-      <div class="muted">Aantal items per niveau, 1 t/m 10 (niveau 0 = nog nooit getoond, apart hierboven; 10 = een jaar interval)</div>
-      <div class="statbar" id="statbar"></div>
-      <div class="statlbl" id="statlbl"></div>
-      <div class="row" style="margin-top:14px;">
-        <span class="row" style="gap:4px;"><span style="width:10px;height:10px;background:#2fae6a;border-radius:2px;display:inline-block;"></span><span class="muted">woorden</span></span>
-      </div>
+      <div class="muted">Voortgang per CEFR-subniveau (woorden + grammatica samen, gemiddelde beheersing als %)</div>
+      <div id="cefr-progress" style="margin-top:10px;"></div>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Grammatica-onderdelen</h3>
@@ -223,10 +227,12 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 14:35</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 16:30</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
+
+  <div id="cost-tracker" style="text-align:center;font-size:.62rem;color:var(--muted);opacity:.7;padding:2px 0;"></div>
 
   <div class="tabbar">
     <button class="tab-btn active" data-tab="practice"><span class="ic">📝</span>Oefenen</button>
@@ -33071,6 +33077,7 @@ const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cef
 const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", laatste 20
 const LS_NEWWORDS  = "turks_newwords_v1";      // { [tr]: {nl:[...], en:[...]} } — via zinnen ontdekte woorden, niet in de vaste lijst
 const LS_GRAMMAR   = "turks_grammar_v1";       // { [topicKey]: {level, due, reps} } — per grammaticaal onderwerp, zelfde SRS-mechaniek als woorden
+const LS_COST      = "turks_cost_v1";          // { byModel: { [model]: {hit, miss, output} } } — cumulatief tokenverbruik, lokaal (niet gesynct)
 
 function loadJSON(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
@@ -33095,6 +33102,49 @@ if(settings.sentencePercent === undefined){
 let history  = loadJSON(LS_HISTORY, []);
 let newWords = loadJSON(LS_NEWWORDS, {});
 let grammar = loadJSON(LS_GRAMMAR, {});
+let costUsage = loadJSON(LS_COST, {byModel:{}});
+
+/* ===================== KOSTENTELLER (grove, lokale schatting) ===================== */
+// Prijzen in USD per 1M tokens. Alleen een indicatie — DeepSeek kan tarieven wijzigen
+// (zie o.a. de aangekondigde piek/dal-prijzen) en cache-gedrag is niet 100% te voorspellen.
+const MODEL_PRICING = {
+  "deepseek-v4-pro":   {hit:0.003625, miss:0.435, output:0.87},
+  "deepseek-v4-flash": {hit:0.0028,   miss:0.14,  output:0.28},
+};
+
+function recordUsage(model, usage){
+  if(!usage) return; // sommige/oude responses geven geen usage-object terug
+  const m = costUsage.byModel[model] || (costUsage.byModel[model] = {hit:0, miss:0, output:0});
+  const hit = usage.prompt_cache_hit_tokens || 0;
+  const miss = (usage.prompt_cache_miss_tokens != null)
+    ? usage.prompt_cache_miss_tokens
+    : Math.max(0, (usage.prompt_tokens || 0) - hit);
+  m.hit += hit;
+  m.miss += miss;
+  m.output += usage.completion_tokens || 0;
+  localStorage.setItem(LS_COST, JSON.stringify(costUsage)); // bewust geen syncMaybePush: puur lokale schatting
+  updateCostDisplay();
+}
+
+function estimateTotalCostUSD(){
+  let total = 0;
+  for(const [model, u] of Object.entries(costUsage.byModel)){
+    const p = MODEL_PRICING[model] || MODEL_PRICING["deepseek-v4-pro"];
+    total += (u.hit/1e6*p.hit) + (u.miss/1e6*p.miss) + (u.output/1e6*p.output);
+  }
+  return total;
+}
+
+function updateCostDisplay(){
+  const elC = document.getElementById("cost-tracker");
+  if(!elC) return;
+  const usd = estimateTotalCostUSD();
+  elC.textContent = usd < 0.01
+    ? `~$${usd.toFixed(4)} tot nu toe`
+    : `~$${usd.toFixed(3)} tot nu toe`;
+  elC.title = "Grove lokale schatting o.b.v. daadwerkelijk gemeten tokenverbruik (incl. cache-hits/misses) × huidige DeepSeek-tarieven. Niet je officiële factuur — check die op platform.deepseek.com.";
+}
+
 
 /* ===================== GRAMMATICA-TAXONOMIE ===================== */
 // Vaste lijst Turkse grammaticale onderwerpen (A1 t/m C1/C2), die de app zelf kan volgen
@@ -33431,6 +33481,7 @@ Waarbij niveau_index correspondeert met: 0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=
     throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   const parsed = JSON.parse(raw);
@@ -33458,6 +33509,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"niveau_index": 0-17,
     throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   const parsed = JSON.parse(raw);
@@ -33520,6 +33572,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
     throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   const parsed = JSON.parse(raw);
@@ -33543,6 +33596,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"natuurlijk": true of
   });
   if(!res.ok) return true; // check zelf mislukt -> kandidaat gewoon accepteren, niet blokkeren
   const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   try{
@@ -33607,6 +33661,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
     throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   const parsed = JSON.parse(raw);
@@ -33696,6 +33751,7 @@ Antwoord van gebruiker (in het Turks): "${answer}"`;
     throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   const parsed = JSON.parse(raw);
@@ -33745,6 +33801,7 @@ Vertaling van gebruiker: "${answer}"`;
     throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   const parsed = JSON.parse(raw);
@@ -33830,6 +33887,7 @@ Antwoord van student: "${answer}"`;
     throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   try{
@@ -33857,6 +33915,7 @@ Beantwoord vragen kort, duidelijk, rechtstreeks tegen de gebruiker gericht (spre
     throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
   return data.choices?.[0]?.message?.content || "(geen antwoord)";
 }
 
@@ -34024,13 +34083,41 @@ function showFeedback(kind, html){
   box.innerHTML = `<div class="feedback ${kind}">${html}</div>`;
 }
 
+// Korte, duidelijk gekleurde regel: "fout antwoord: X" (rood) en/of "goed antwoord: Y" (groen)
+function answerCompareLine(userAnswer, correctAnswer, wasCorrect){
+  const wrongPart = (!wasCorrect && userAnswer)
+    ? `fout antwoord: <span style="color:var(--accent);font-weight:600;">${escapeHtml(userAnswer)}</span>`
+    : "";
+  const goodPart = correctAnswer
+    ? `goed antwoord: <span style="color:var(--accent2);font-weight:600;">${escapeHtml(correctAnswer)}</span>`
+    : "";
+  return [wrongPart, goodPart].filter(Boolean).join(" &nbsp;·&nbsp; ");
+}
+
 async function handleCheck(){
   if(!currentItem || currentAnswered) return;
   const answer = el("answer-input").value.trim();
-  if(!answer) return;
 
   el("btn-check").disabled = true;
   el("answer-input").disabled = true;
+
+  if(!answer){
+    // leeg antwoord = "ik weet het niet", meteen als fout tellen, geen AI-call nodig
+    if(currentItem.type === "sentence" || currentItem.type === "question"){
+      recordHistory(currentItem.type);
+      for(const w of currentItem.words) recordResult(w, false);
+      showFeedback("wrong", "Geen antwoord ingevuld — geteld als fout.");
+      el("post-actions").classList.remove("hidden");
+      el("btn-next").classList.remove("hidden");
+      el("btn-dispute").classList.add("hidden");
+      currentAnswered = true;
+      el("answer-input").disabled = false;
+      if(hasLikelyPhysicalKeyboard()) el("answer-input").focus();
+    } else {
+      finalizeAnswer(false, "Geen antwoord ingevuld — geteld als fout.");
+    }
+    return;
+  }
 
   if(currentItem.type === "sentence"){
     await handleCheckSentence(answer);
@@ -34049,7 +34136,8 @@ async function handleCheck(){
   }
 
   if(!settings.apiKey){
-    finalizeAnswer(false, "Niet gevonden in de woordenlijst. Stel een DeepSeek API-sleutel in bij Instellingen om ook andere correcte vertalingen te laten beoordelen, of betwist dit resultaat direct.");
+    const known = [...currentItem.nl, ...currentItem.en].join(", ");
+    finalizeAnswer(false, "Niet gevonden in de woordenlijst.<br>" + answerCompareLine(answer, known, false) + "<br><span class='muted'>Stel een DeepSeek API-sleutel in bij Instellingen om ook andere correcte vertalingen te laten beoordelen, of betwist dit resultaat direct.</span>");
     return;
   }
 
@@ -34060,7 +34148,7 @@ async function handleCheck(){
     finalizeAnswer(!!verdict.correct,
       (verdict.correct ? "Correct! ✅ (beoordeeld door AI)" : "Helaas, dat lijkt niet juist. ❌") +
       "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
-      (known ? "<br><br><b>Correcte vertaling(en):</b> " + known : ""));
+      (known ? "<br>" + answerCompareLine(answer, known, !!verdict.correct) : ""));
     if(verdict.correct){
       el("post-actions").querySelector("#btn-add-answer")?.remove();
       const addBtn = document.createElement("button");
@@ -34107,7 +34195,7 @@ async function handleCheckSentence(answer){
     showFeedback(verdict.correct ? "correct" : "wrong",
       (verdict.correct ? "Correct! ✅" : "Niet helemaal juist. ❌") +
       "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
-      (verdict.referentie ? "<br><br><b>Correcte vertaling:</b> " + verdict.referentie : "") +
+      (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct) : "") +
       "<br><br><b>Woordscores:</b><br>" + wordLines);
 
     el("post-actions").classList.remove("hidden");
@@ -34153,9 +34241,12 @@ async function handleCheckQuestion(answer){
     showFeedback(verdict.correct ? "correct" : "wrong",
       (verdict.correct ? "Correct! ✅" : "Niet helemaal juist. ❌") +
       "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
-      (verdict.vraag_nl ? "<br><br><b>Vraag (NL):</b> " + verdict.vraag_nl : "") +
-      (verdict.antwoord_nl ? "<br><b>Jouw antwoord (NL):</b> " + verdict.antwoord_nl : "") +
-      (verdict.referentie ? "<br><br><b>Voorbeeldantwoord:</b> " + verdict.referentie : "") +
+      (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct) : "") +
+      ((verdict.vraag_nl || verdict.antwoord_nl) ? "<br><span class='muted'>" +
+        (verdict.vraag_nl ? "Vraag (NL): " + verdict.vraag_nl : "") +
+        (verdict.vraag_nl && verdict.antwoord_nl ? " · " : "") +
+        (verdict.antwoord_nl ? "Jouw antwoord (NL): " + verdict.antwoord_nl : "") +
+        "</span>" : "") +
       "<br><br><b>Woordscores:</b><br>" + wordLines);
 
     el("post-actions").classList.remove("hidden");
@@ -34226,9 +34317,12 @@ async function disputeAnswer(){
       showFeedback(verdict.correct ? "correct" : "wrong",
         "🔁 Herbeoordeeld: " + (verdict.correct ? "toch correct! ✅" : "AI blijft bij (grotendeels) onjuist. ❌") +
         "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
-        (isQ && verdict.vraag_nl ? "<br><br><b>Vraag (NL):</b> " + verdict.vraag_nl : "") +
-        (isQ && verdict.antwoord_nl ? "<br><b>Jouw antwoord (NL):</b> " + verdict.antwoord_nl : "") +
-        (verdict.referentie ? "<br><br><b>" + (isQ ? "Voorbeeldantwoord" : "Correcte vertaling") + ":</b> " + verdict.referentie : "") +
+        (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct) : "") +
+        (isQ && (verdict.vraag_nl || verdict.antwoord_nl) ? "<br><span class='muted'>" +
+          (verdict.vraag_nl ? "Vraag (NL): " + verdict.vraag_nl : "") +
+          (verdict.vraag_nl && verdict.antwoord_nl ? " · " : "") +
+          (verdict.antwoord_nl ? "Jouw antwoord (NL): " + verdict.antwoord_nl : "") +
+          "</span>" : "") +
         "<br><br><b>Woordscores:</b><br>" + wordLines);
       el("btn-dispute").classList.add("hidden");
     }catch(e){
@@ -34321,6 +34415,54 @@ function escapeHtml(s){
 }
 
 /* ===================== STATISTIEKEN ===================== */
+// Gemiddelde beheersing (0-100%) van alle items (woorden + grammatica) die bij CEFR-subniveau idx (0-17) horen.
+// null als er geen enkel item in die bucket zit.
+function cefrBucketProgress(idx){
+  const words = allWords().filter(w => (w.cefr ?? null) === idx);
+  const topics = GRAMMAR_TOPICS.filter(t => t.minCefr === idx);
+  const levels = [
+    ...words.map(w => getProgress(w.tr).level),
+    ...topics.map(t => getGrammarProgress(t.key).level),
+  ];
+  if(!levels.length) return null;
+  const avg = levels.reduce((a,b)=>a+b, 0) / levels.length;
+  return Math.round(avg / 10 * 100);
+}
+
+function cefrBarColor(pct){
+  if(pct === null) return "#2a3547";
+  if(pct < 34) return "#e0333f";
+  if(pct < 67) return "#e0a733";
+  return "#2fae6a";
+}
+
+function renderCefrProgress(){
+  const container = el("cefr-progress");
+  if(!container) return;
+  const macros = [
+    {title:"A (A1 – A2)", subs:[0,1,2,3,4,5]},
+    {title:"B (B1 – B2)", subs:[6,7,8,9,10,11]},
+    {title:"C (C1 – C2)", subs:[12,13,14,15,16,17]},
+  ];
+  container.innerHTML = macros.map(m=>{
+    const bars = m.subs.map(idx=>{
+      const pct = cefrBucketProgress(idx);
+      const h = pct === null ? 0 : pct;
+      const color = cefrBarColor(pct);
+      const label = cefrLabel(idx).replace(/^(A1|A2|B1|B2|C1|C2) /, "");
+      return `<div class="cefr-bar" title="${cefrLabel(idx)}: ${pct===null?'nog geen items':pct+'%'}">
+        <div class="cefr-track"><div class="cefr-fill" style="height:${h}%;background:${color};"></div></div>
+        <div class="cefr-pct">${pct===null?"–":pct+"%"}</div>
+        <div class="cefr-lbl">${label}</div>
+      </div>`;
+    }).join("");
+    return `<div class="cefr-macro">
+      <div class="cefr-macro-title">${m.title}</div>
+      <div class="cefr-bars">${bars}</div>
+    </div>`;
+  }).join("");
+}
+
 function renderStats(){
   const words = allWords();
   const counts = Array.from({length:11}, ()=>0); // index 0 = nog nooit getoond (apart, niet in de grafiek)
@@ -34347,26 +34489,8 @@ function renderStats(){
   const neverEl = el("kpi-never");
   if(neverEl) neverEl.textContent = neverShown;
 
-  const shownCounts = counts.slice(1); // alleen niveau 1 t/m 10 in de grafiek
-  const max = Math.max(1, ...shownCounts);
-  const bar = el("statbar");
-  bar.innerHTML = "";
-  const lbl = el("statlbl");
-  lbl.innerHTML = "";
-  shownCounts.forEach((c, idx)=>{
-    const lvl = idx + 1;
-    const h = Math.round(c/max*100);
-    const col = document.createElement("div");
-    col.className = "col";
-    col.style.height = h + "%";
-    col.title = `niveau ${lvl}: ${c} woorden`;
-    col.innerHTML = `<div class="col words" style="position:absolute;bottom:0;left:0;right:0;height:100%;border-radius:4px 4px 0 0;"></div>` +
-      `<div style="position:absolute;bottom:100%;left:0;right:0;text-align:center;font-size:.65rem;color:var(--muted);margin-bottom:2px;white-space:nowrap;">${c}</div>`;
-    bar.appendChild(col);
-    const l = document.createElement("div");
-    l.textContent = lvl;
-    lbl.appendChild(l);
-  });
+  renderCefrProgress();
+
 
   renderGrammarList();
 }
@@ -34642,6 +34766,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   }
   updatePeakIndicator();
   setInterval(updatePeakIndicator, 60000);
+  updateCostDisplay();
 });
 
 </script>
