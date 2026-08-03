@@ -47,6 +47,10 @@
   .tr-word{font-size:1.7rem;font-weight:700;margin:10px 0 4px;line-height:1.3;}
   .tr-word.sentence{font-size:1.3rem;}
   .level-bar{height:6px;border-radius:4px;background:#0d1720;overflow:hidden;margin-top:8px;}
+  .word-chip{display:inline-block;padding:2px 8px;border-radius:12px;background:#233245;
+    cursor:pointer;margin:2px 2px 2px 0;font-size:.8rem;}
+  .word-chip:active{background:#2c3d54;}
+  .word-chip.revealed{background:#3a2a1d;color:var(--warn);cursor:default;}
   .level-bar-fill{height:100%;background:linear-gradient(90deg,#e0333f,#e0a733,#2fae6a);}
   .feedback{border-radius:10px;padding:12px;margin-top:10px;font-size:.95rem;}
   .feedback.correct{background:#123322;color:#7be3a5;}
@@ -84,7 +88,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 03:15</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 04:05</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -209,7 +213,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 03:15</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 04:05</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -30643,6 +30647,7 @@ let currentItem = null;
 let currentAnswered = false;
 let currentCorrect = null;
 let chatMsgs = []; // voor de "vraag aan AI"-modal, per huidige item
+let revealedWords = new Set(); // woorden waarvan de gebruiker binnen deze oefening de vertaling heeft opgevraagd -> tellen als fout
 
 const el = id => document.getElementById(id);
 
@@ -30671,10 +30676,34 @@ function fmtDuration(ms){
   return (dag/365).toFixed(1) + " jaar";
 }
 
+function renderWordChips(){
+  const known = allWords();
+  el("level-label").innerHTML = "beoordeelt woorden (tik om te spieken — telt dan als fout): " +
+    currentItem.words.map(w=>{
+      const revealed = revealedWords.has(w);
+      if(revealed){
+        const info = known.find(k=>k.tr===w);
+        const trans = info ? [...info.nl, ...info.en].slice(0,2).join(", ") : "?";
+        return `<span class="word-chip revealed">${w} = ${trans}</span>`;
+      }
+      return `<span class="word-chip" data-word="${w.replace(/"/g,'&quot;')}">${w} 👁️</span>`;
+    }).join(" ");
+  el("level-label").querySelectorAll(".word-chip:not(.revealed)").forEach(chip=>{
+    chip.addEventListener("click", ()=> revealWord(chip.dataset.word));
+  });
+}
+
+function revealWord(w){
+  if(currentAnswered) return; // na beoordeling niet meer relevant
+  revealedWords.add(w);
+  renderWordChips();
+}
+
 async function renderPractice(){
   currentAnswered = false;
   currentCorrect = null;
   chatMsgs = [];
+  revealedWords = new Set();
   el("feedback-box").innerHTML = "";
   el("post-actions").classList.add("hidden");
   el("btn-dispute").disabled = false;
@@ -30745,7 +30774,7 @@ async function renderPractice(){
 
   if(isSentence || isQuestion){
     el("level-fill").style.width = "0%";
-    el("level-label").textContent = "beoordeelt woorden: " + currentItem.words.join(", ");
+    renderWordChips();
   } else {
     const p = getProgress(currentItem.tr);
     el("level-fill").style.width = (p.level*10) + "%";
@@ -30833,12 +30862,13 @@ async function handleCheckSentence(answer){
 
     // per doelwoord de score bijwerken (verdict.words is een plat boolean-array, zelfde volgorde als currentItem.words)
     currentItem.words.forEach((w, i)=>{
-      recordResult(w, !!verdict.words[i]);
+      const correct = revealedWords.has(w) ? false : !!verdict.words[i]; // opgezocht woord = altijd fout
+      recordResult(w, correct);
     });
     saveJSON(LS_PROGRESS, progress);
 
     const wordLines = currentItem.words.map((w, i)=>{
-      const ok = !!verdict.words[i];
+      const ok = revealedWords.has(w) ? false : !!verdict.words[i];
       return `${ok ? "✅" : "❌"} ${w}`;
     }).join(" &nbsp; ");
 
@@ -30875,12 +30905,13 @@ async function handleCheckQuestion(answer){
     recordHistory("question");
 
     currentItem.words.forEach((w, i)=>{
-      recordResult(w, !!verdict.words[i]);
+      const correct = revealedWords.has(w) ? false : !!verdict.words[i]; // opgezocht woord = altijd fout
+      recordResult(w, correct);
     });
     saveJSON(LS_PROGRESS, progress);
 
     const wordLines = currentItem.words.map((w, i)=>{
-      const ok = !!verdict.words[i];
+      const ok = revealedWords.has(w) ? false : !!verdict.words[i];
       return `${ok ? "✅" : "❌"} ${w}`;
     }).join(" &nbsp; ");
 
@@ -30946,11 +30977,12 @@ async function disputeAnswer(){
         ? await gradeQuestionAnswer(currentItem, answer, true)
         : await gradeSentenceTranslation(currentItem, answer, true);
       currentItem.words.forEach((w, i)=>{
-        recordResult(w, !!verdict.words[i]);
+        const correct = revealedWords.has(w) ? false : !!verdict.words[i]; // opgezocht woord = altijd fout
+        recordResult(w, correct);
       });
       saveJSON(LS_PROGRESS, progress);
       const wordLines = currentItem.words.map((w, i)=>{
-        const ok = !!verdict.words[i];
+        const ok = revealedWords.has(w) ? false : !!verdict.words[i];
         return `${ok ? "✅" : "❌"} ${w}`;
       }).join(" &nbsp; ");
       showFeedback(verdict.correct ? "correct" : "wrong",
