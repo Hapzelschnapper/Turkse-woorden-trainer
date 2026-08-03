@@ -84,7 +84,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 01:45</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 02:30</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -186,13 +186,30 @@
       <div class="muted" id="test-result" style="margin-top:8px;"></div>
     </div>
     <div class="card">
+      <h3 style="margin-top:0;">☁️ Cloud-synchronisatie (universele voortgang)</h3>
+      <div class="muted" style="margin-bottom:8px;">Je voortgang (niveaus, ontdekte woorden, betwiste vertalingen) wordt hiermee ook extern opgeslagen via <a href="https://jsonbin.io" target="_blank" rel="noopener">jsonbin.io</a> (gratis), zodat je hem op meerdere apparaten kunt gebruiken. Zonder dit blijft alles lokaal op dit apparaat, zoals nu.</div>
+      <div class="muted" style="margin-bottom:4px;">Master Key (jsonbin.io account)</div>
+      <input type="text" id="sync-api-key" placeholder="$2a$10$..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div class="muted" style="margin:10px 0 4px;">Cloud-opslag-ID (Bin ID)</div>
+      <input type="text" id="sync-bin-id" placeholder="bijv. 64f3a2... (of laat leeg en maak een nieuwe aan)" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div class="row" style="margin-top:10px;gap:8px;">
+        <button class="btn-primary" id="btn-sync-save" style="flex:1;">Opslaan</button>
+        <button class="btn-secondary" id="btn-sync-create" style="flex:1;">Nieuwe opslag aanmaken</button>
+      </div>
+      <div class="row" style="margin-top:8px;gap:8px;">
+        <button class="btn-ghost" id="btn-sync-pull" style="flex:1;">⬇️ Nu ophalen</button>
+        <button class="btn-ghost" id="btn-sync-push" style="flex:1;">⬆️ Nu uploaden</button>
+      </div>
+      <div class="muted" id="sync-status" style="margin-top:8px;"></div>
+    </div>
+    <div class="card">
       <h3 style="margin-top:0;">Gegevens</h3>
       <button class="btn-ghost" style="width:100%;margin-bottom:8px;" id="btn-reset-progress">Voortgang resetten (alles terug naar niveau 0)</button>
       <button class="btn-ghost" style="width:100%;" id="btn-add-to-home">📱 Hoe voeg ik dit toe aan mijn startscherm?</button>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 01:45</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 02:30</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -29941,7 +29958,7 @@ const WORDS_DATA = [
 /* ===================== OPSLAG ===================== */
 const LS_PROGRESS = "turks_progress_v1";      // { [tr]: {level, due, reps} } — ALLEEN woorden
 const LS_CUSTOM    = "turks_custom_v1";        // { [tr]: {nl:[...], en:[...]} }
-const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cefrLevel, newWordPercent, questionPercent }
+const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cefrLevel, newWordPercent, questionPercent, syncBinId, syncApiKey }
 const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", laatste 20
 const LS_NEWWORDS  = "turks_newwords_v1";      // { [tr]: {nl:[...], en:[...]} } — via zinnen ontdekte woorden, niet in de vaste lijst
 
@@ -29949,7 +29966,10 @@ function loadJSON(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch(e){ return fallback; }
 }
-function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+function saveJSON(key, val){
+  localStorage.setItem(key, JSON.stringify(val));
+  if(key === LS_PROGRESS || key === LS_CUSTOM || key === LS_NEWWORDS) syncMaybePush();
+}
 
 let progress = loadJSON(LS_PROGRESS, {});
 let custom   = loadJSON(LS_CUSTOM, {});
@@ -29964,6 +29984,104 @@ if(settings.sentencePercent === undefined){
 }
 let history  = loadJSON(LS_HISTORY, []);
 let newWords = loadJSON(LS_NEWWORDS, {});
+
+/* ===================== CLOUD-SYNCHRONISATIE (jsonbin.io) ===================== */
+// Slaat progress/custom/newWords op in een externe, gratis JSON-opslag zodat je voortgang
+// niet vastzit aan één apparaat/browser. Werkt alleen als syncBinId + syncApiKey zijn ingesteld.
+let syncPushTimer = null;
+let syncInProgress = false;
+
+function syncConfigured(){
+  return !!(settings.syncBinId && settings.syncApiKey);
+}
+
+function setSyncStatus(text){
+  const elS = document.getElementById("sync-status");
+  if(elS) elS.textContent = text;
+}
+
+function syncMaybePush(){
+  if(!syncConfigured()) return;
+  clearTimeout(syncPushTimer);
+  syncPushTimer = setTimeout(syncPushNow, 1500); // debounce: pas 1,5s na de laatste wijziging echt versturen
+}
+
+async function syncPushNow(){
+  if(!syncConfigured() || syncInProgress) return;
+  syncInProgress = true;
+  setSyncStatus("🔄 Synchroniseren…");
+  try{
+    const payload = { progress, custom, newWords, updatedAt: Date.now() };
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${settings.syncBinId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": settings.syncApiKey,
+        "X-Bin-Versioning": "false"
+      },
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error("status " + res.status);
+    setSyncStatus("✅ Gesynchroniseerd om " + new Date().toLocaleTimeString());
+  }catch(e){
+    setSyncStatus("⚠️ Synchroniseren (uploaden) mislukt: " + e.message);
+  }
+  syncInProgress = false;
+}
+
+async function syncPullNow(showAlertOnEmpty){
+  if(!syncConfigured()) return;
+  setSyncStatus("🔄 Voortgang ophalen…");
+  try{
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${settings.syncBinId}/latest`, {
+      headers: {"X-Master-Key": settings.syncApiKey}
+    });
+    if(!res.ok) throw new Error("status " + res.status);
+    const data = await res.json();
+    const remote = data.record;
+    if(remote && remote.updatedAt){
+      progress = remote.progress || {};
+      custom = remote.custom || {};
+      newWords = remote.newWords || {};
+      localStorage.setItem(LS_PROGRESS, JSON.stringify(progress));
+      localStorage.setItem(LS_CUSTOM, JSON.stringify(custom));
+      localStorage.setItem(LS_NEWWORDS, JSON.stringify(newWords));
+      setSyncStatus("✅ Opgehaald van server (laatst bijgewerkt: " + new Date(remote.updatedAt).toLocaleString() + ")");
+    } else if(showAlertOnEmpty){
+      setSyncStatus("ℹ️ Er staat nog niets in de cloud-opslag — je eerste synchronisatie zal deze vullen.");
+    }
+  }catch(e){
+    setSyncStatus("⚠️ Ophalen mislukt: " + e.message);
+  }
+}
+
+async function syncCreateBin(){
+  if(!settings.syncApiKey){
+    alert("Vul eerst je jsonbin.io Master Key in.");
+    return;
+  }
+  setSyncStatus("🔄 Nieuwe cloud-opslag aanmaken…");
+  try{
+    const res = await fetch("https://api.jsonbin.io/v3/b", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": settings.syncApiKey,
+        "X-Bin-Name": "turks-app-voortgang"
+      },
+      body: JSON.stringify({ progress:{}, custom:{}, newWords:{}, updatedAt: Date.now() })
+    });
+    if(!res.ok) throw new Error("status " + res.status);
+    const data = await res.json();
+    settings.syncBinId = data.metadata.id;
+    saveJSON(LS_SETTINGS, settings);
+    const inputEl = document.getElementById("sync-bin-id");
+    if(inputEl) inputEl.value = settings.syncBinId;
+    setSyncStatus("✅ Nieuwe cloud-opslag aangemaakt! ID is automatisch ingevuld en opgeslagen — gebruik dit ZELFDE ID op je andere apparaten.");
+  }catch(e){
+    setSyncStatus("⚠️ Aanmaken mislukt: " + e.message);
+  }
+}
 
 /* ===================== SPACED REPETITION (alleen woorden) ===================== */
 const MIN_MIN = 15;                 // niveau 0 -> 15 minuten
@@ -30976,7 +31094,7 @@ function switchTab(tab){
   el("screen-stats").classList.toggle("hidden", tab!=="stats");
   el("screen-settings").classList.toggle("hidden", tab!=="settings");
   if(tab==="stats") renderStats();
-  if(tab==="practice") renderPractice();
+  if(tab==="practice" && !currentItem) renderPractice(); // niet opnieuw genereren als er al een opgave actief is
 }
 
 /* ===================== TAALTOETS ===================== */
@@ -31062,6 +31180,9 @@ function initSettingsUI(){
   el("cefr-slider").value = settings.cefrLevel ?? 4;
   el("cefr-label").textContent = cefrLabel(settings.cefrLevel ?? 4);
   el("key-status").textContent = settings.apiKey ? "✅ Sleutel is ingesteld." : "Nog geen sleutel ingesteld.";
+  el("sync-api-key").value = settings.syncApiKey || "";
+  el("sync-bin-id").value = settings.syncBinId || "";
+  el("sync-status").textContent = syncConfigured() ? "" : "Nog niet ingesteld — voortgang blijft lokaal op dit apparaat.";
 }
 
 /* ===================== PIEK/DAL-INDICATOR (DeepSeek verwachte piekuren, UTC) ===================== */
@@ -31151,6 +31272,30 @@ document.addEventListener("DOMContentLoaded", ()=>{
     }
   });
   el("btn-add-to-home").addEventListener("click", ()=> el("modal-home").classList.remove("hidden"));
+  el("btn-sync-save").addEventListener("click", ()=>{
+    settings.syncApiKey = el("sync-api-key").value.trim();
+    settings.syncBinId = el("sync-bin-id").value.trim();
+    saveJSON(LS_SETTINGS, settings);
+    el("sync-status").textContent = syncConfigured() ? "Opgeslagen. Klik \"Nu ophalen\" om je bestaande cloud-voortgang op te halen." : "Opgeslagen (nog onvolledig).";
+  });
+  el("btn-sync-create").addEventListener("click", async ()=>{
+    settings.syncApiKey = el("sync-api-key").value.trim();
+    saveJSON(LS_SETTINGS, settings);
+    await syncCreateBin();
+  });
+  el("btn-sync-pull").addEventListener("click", async ()=>{
+    settings.syncApiKey = el("sync-api-key").value.trim();
+    settings.syncBinId = el("sync-bin-id").value.trim();
+    saveJSON(LS_SETTINGS, settings);
+    await syncPullNow(true);
+    renderPractice();
+  });
+  el("btn-sync-push").addEventListener("click", async ()=>{
+    settings.syncApiKey = el("sync-api-key").value.trim();
+    settings.syncBinId = el("sync-bin-id").value.trim();
+    saveJSON(LS_SETTINGS, settings);
+    await syncPushNow();
+  });
   el("btn-home-close").addEventListener("click", ()=> el("modal-home").classList.add("hidden"));
   el("btn-start-test").addEventListener("click", startPlacementTest);
   el("btn-test-next").addEventListener("click", handleTestNext);
@@ -31161,7 +31306,11 @@ document.addEventListener("DOMContentLoaded", ()=>{
   });
 
   initSettingsUI();
-  renderPractice();
+  if(syncConfigured()){
+    syncPullNow(false).then(renderPractice);
+  } else {
+    renderPractice();
+  }
   updatePeakIndicator();
   setInterval(updatePeakIndicator, 60000);
 });
