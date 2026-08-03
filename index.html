@@ -100,7 +100,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 17:35</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 18:15</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -229,7 +229,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 17:35</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 18:15</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -33129,6 +33129,23 @@ function mergeCostUsage(a, b){
   return result;
 }
 
+// Per teller het MAXIMUM nemen i.p.v. optellen — gebruikt als basis vóór het toevoegen van costPending,
+// zodat een lokaal totaal dat (nog) niet op de cloud stond nooit stilzwijgend kleiner gemaakt wordt.
+function maxCostUsage(a, b){
+  const result = {byModel:{}};
+  const models = new Set([...Object.keys((a && a.byModel) || {}), ...Object.keys((b && b.byModel) || {})]);
+  for(const model of models){
+    const ua = (a && a.byModel && a.byModel[model]) || {hit:0, miss:0, output:0};
+    const ub = (b && b.byModel && b.byModel[model]) || {hit:0, miss:0, output:0};
+    result.byModel[model] = {
+      hit: Math.max(ua.hit || 0, ub.hit || 0),
+      miss: Math.max(ua.miss || 0, ub.miss || 0),
+      output: Math.max(ua.output || 0, ub.output || 0),
+    };
+  }
+  return result;
+}
+
 function recordUsage(model, usage){
   if(!usage) return; // sommige/oude responses geven geen usage-object terug
   const m = costPending.byModel[model] || (costPending.byModel[model] = {hit:0, miss:0, output:0});
@@ -33307,13 +33324,15 @@ async function syncPushNow(){
   syncInProgress = true;
   setSyncStatus("🔄 Synchroniseren…");
   try{
-    // kosten-verbruik optellen i.p.v. overschrijven: eerst het cloud-totaal ophalen,
-    // daar het nog-niet-samengevoegde lokale verbruik bij optellen, dán pas opslaan+pushen
+    // kosten-verbruik optellen i.p.v. overschrijven: eerst het cloud-totaal ophalen, het maximum
+    // nemen t.o.v. het lokale totaal (veiligheidsnet tegen dataverlies, bv. als lokaal nog nooit
+    // gesynct was), en daar pas het nog-niet-samengevoegde lokale verbruik bij optellen
     let mergedCost = costUsage;
     try{
       const remoteNow = await fetchRemoteGistData();
       const remoteCost = (remoteNow && remoteNow.cost) || {byModel:{}};
-      mergedCost = mergeCostUsage(remoteCost, costPending);
+      const base = maxCostUsage(costUsage, remoteCost);
+      mergedCost = mergeCostUsage(base, costPending);
     }catch(e){
       // ophalen mislukt: val terug op lokaal samenvoegen, dan gaat er bij een sync-conflict
       // in het ergste geval iets kosten-verbruik verloren, maar nooit de rest van de voortgang
@@ -33366,7 +33385,7 @@ async function syncPullNow(showAlertOnEmpty){
       custom = remote.custom || {};
       newWords = remote.newWords || {};
       grammar = remote.grammar || {};
-      costUsage = remote.cost || costUsage; // laat lokaal costPending ongemoeid, dat wordt bij de volgende push meegeteld
+      costUsage = remote.cost ? maxCostUsage(costUsage, remote.cost) : costUsage; // laat lokaal costPending ongemoeid, dat wordt bij de volgende push meegeteld
       localStorage.setItem(LS_PROGRESS, JSON.stringify(progress));
       localStorage.setItem(LS_CUSTOM, JSON.stringify(custom));
       localStorage.setItem(LS_NEWWORDS, JSON.stringify(newWords));
@@ -34174,7 +34193,7 @@ function answerCompareLine(userAnswer, correctAnswer, wasCorrect){
   const goodPart = correctAnswer
     ? `goed antwoord: <span style="color:var(--accent2);font-weight:600;">${escapeHtml(correctAnswer)}</span>`
     : "";
-  return [wrongPart, goodPart].filter(Boolean).join(" &nbsp;·&nbsp; ");
+  return [wrongPart, goodPart].filter(Boolean).join("<br>");
 }
 
 async function handleCheck(){
@@ -34195,7 +34214,7 @@ async function handleCheck(){
         const trans = info ? [...info.nl, ...info.en].slice(0,2).join(", ") : "?";
         return `${w} = ${trans}`;
       }).join(" &nbsp;·&nbsp; ");
-      showFeedback("wrong", "Geen antwoord ingevuld — geteld als fout.<br><br><b>Vertalingen:</b><br>" + wordTranslations);
+      showFeedback("wrong", "❌<br><br><b>Vertalingen:</b><br>" + wordTranslations);
       el("post-actions").classList.remove("hidden");
       el("btn-next").classList.remove("hidden");
       el("btn-dispute").classList.add("hidden");
@@ -34204,7 +34223,7 @@ async function handleCheck(){
       if(hasLikelyPhysicalKeyboard()) el("answer-input").focus();
     } else {
       const known = [...currentItem.nl, ...currentItem.en].join(", ");
-      finalizeAnswer(false, "Geen antwoord ingevuld.<br>" + answerCompareLine("", known, false));
+      finalizeAnswer(false, "❌<br>" + answerCompareLine("", known, false));
     }
     return;
   }
@@ -34221,13 +34240,13 @@ async function handleCheck(){
   const staticMatch = checkStaticMatch(currentItem, answer);
 
   if(staticMatch){
-    finalizeAnswer(true, "Correct! ✅ Dit stond al in de woordenlijst.");
+    finalizeAnswer(true, "✅");
     return;
   }
 
   if(!settings.apiKey){
     const known = [...currentItem.nl, ...currentItem.en].join(", ");
-    finalizeAnswer(false, "Niet gevonden in de woordenlijst.<br>" + answerCompareLine(answer, known, false) + "<br><span class='muted'>Stel een DeepSeek API-sleutel in bij Instellingen om ook andere correcte vertalingen te laten beoordelen, of betwist dit resultaat direct.</span>");
+    finalizeAnswer(false, "❌<br>" + answerCompareLine(answer, known, false) + "<br><span class='muted'>Niet gevonden in de woordenlijst. Stel een DeepSeek API-sleutel in om ook andere vertalingen te laten beoordelen, of betwist dit resultaat.</span>");
     return;
   }
 
@@ -34236,8 +34255,7 @@ async function handleCheck(){
     const verdict = await askDeepSeekJudge(currentItem, answer);
     const known = [...currentItem.nl, ...currentItem.en].join(", ");
     finalizeAnswer(!!verdict.correct,
-      (verdict.correct ? "Correct! ✅ (beoordeeld door AI)" : "Helaas, dat lijkt niet juist. ❌") +
-      "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
+      (verdict.correct ? "✅" : "❌") +
       (known ? "<br>" + answerCompareLine(answer, known, !!verdict.correct) : ""));
     if(verdict.correct){
       el("post-actions").querySelector("#btn-add-answer")?.remove();
@@ -34283,8 +34301,7 @@ async function handleCheckSentence(answer){
     }).join(" &nbsp; ");
 
     showFeedback(verdict.correct ? "correct" : "wrong",
-      (verdict.correct ? "Correct! ✅" : "Niet helemaal juist. ❌") +
-      "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
+      (verdict.correct ? "✅" : "❌") +
       (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct) : "") +
       "<br><br><b>Woordscores:</b><br>" + wordLines);
 
@@ -34329,12 +34346,11 @@ async function handleCheckQuestion(answer){
     }).join(" &nbsp; ");
 
     showFeedback(verdict.correct ? "correct" : "wrong",
-      (verdict.correct ? "Correct! ✅" : "Niet helemaal juist. ❌") +
-      "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
+      (verdict.correct ? "✅" : "❌") +
       (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct) : "") +
       ((verdict.vraag_nl || verdict.antwoord_nl) ? "<br><span class='muted'>" +
         (verdict.vraag_nl ? "Vraag (NL): " + verdict.vraag_nl : "") +
-        (verdict.vraag_nl && verdict.antwoord_nl ? " · " : "") +
+        (verdict.vraag_nl && verdict.antwoord_nl ? "<br>" : "") +
         (verdict.antwoord_nl ? "Jouw antwoord (NL): " + verdict.antwoord_nl : "") +
         "</span>" : "") +
       "<br><br><b>Woordscores:</b><br>" + wordLines);
@@ -34405,12 +34421,11 @@ async function disputeAnswer(){
         return `${ok ? "✅" : "❌"} ${w}`;
       }).join(" &nbsp; ");
       showFeedback(verdict.correct ? "correct" : "wrong",
-        "🔁 Herbeoordeeld: " + (verdict.correct ? "toch correct! ✅" : "AI blijft bij (grotendeels) onjuist. ❌") +
-        "<br><span class='muted'>" + (verdict.uitleg||"") + "</span>" +
+        "🔁 " + (verdict.correct ? "✅" : "❌") +
         (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct) : "") +
         (isQ && (verdict.vraag_nl || verdict.antwoord_nl) ? "<br><span class='muted'>" +
           (verdict.vraag_nl ? "Vraag (NL): " + verdict.vraag_nl : "") +
-          (verdict.vraag_nl && verdict.antwoord_nl ? " · " : "") +
+          (verdict.vraag_nl && verdict.antwoord_nl ? "<br>" : "") +
           (verdict.antwoord_nl ? "Jouw antwoord (NL): " + verdict.antwoord_nl : "") +
           "</span>" : "") +
         "<br><br><b>Woordscores:</b><br>" + wordLines);
@@ -34438,16 +34453,14 @@ async function disputeAnswer(){
       p.due = Date.now() + intervalMinutes(p.level) * 60 * 1000;
       saveJSON(LS_PROGRESS, progress);
       showFeedback("correct",
-        "🔁 Herbeoordeeld: AI bevestigt dat dit correct is. ✅<br>" +
-        "<span class='muted'>" + (verdict.uitleg||"") + "</span><br><br>" +
+        "🔁 ✅<br>" +
         "Automatisch toegevoegd als " + (lang==="nl"?"Nederlandse":"Engelse") + " vertaling, en score hersteld.");
       el("btn-dispute").classList.add("hidden");
       el("level-fill").style.width = (p.level*10) + "%";
       el("level-label").textContent = fmtLevel(p);
     } else {
       showFeedback("wrong",
-        "🔁 Herbeoordeeld: AI blijft bij het oordeel dat dit niet correct is. ❌<br>" +
-        "<span class='muted'>" + (verdict.uitleg||"") + "</span><br><br>" +
+        "🔁 ❌<br>" +
         "<button class='btn-ghost btn-small' id='btn-force-add'>Toch handmatig toevoegen</button>");
       el("btn-force-add").onclick = ()=>{
         if(!confirm('Weet je zeker dat "' + answer + '" een juiste vertaling is van "' + currentItem.tr + '", ondanks het AI-oordeel?')) return;
