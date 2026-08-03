@@ -84,7 +84,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 01:35</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 01:45</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -98,6 +98,7 @@
       <div class="muted" id="level-label" style="margin-top:4px;">niveau 0 / 10</div>
 
       <div style="margin-top:16px;">
+        <div id="answer-instruction" class="row space-between" style="margin-bottom:6px;font-weight:700;font-size:.85rem;"><span></span></div>
         <input type="text" id="answer-input" placeholder="Typ de Nederlandse of Engelse vertaling…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
       </div>
       <div class="row" style="margin-top:10px;">
@@ -191,7 +192,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 01:35</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 01:45</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -30554,6 +30555,7 @@ async function renderPractice(){
     el("tr-word").className = "tr-word sentence";
     el("level-fill").style.width = "0%";
     el("level-label").textContent = "even geduld…";
+    el("answer-instruction").querySelector("span").textContent = "";
     try{
       picked = isQ ? await generateQuestion() : await generateSentence();
     }catch(e){
@@ -30588,6 +30590,18 @@ async function renderPractice(){
   el("answer-input").placeholder = isQuestion
     ? "Typ je antwoord in het Turks…"
     : "Typ de Nederlandse of Engelse vertaling…";
+
+  const instrEl = el("answer-instruction").querySelector("span");
+  if(isQuestion){
+    instrEl.textContent = "❓ Beantwoord deze Turkse vraag — in het TURKS (geen vertaling!)";
+    instrEl.style.color = "#5fc4e8";
+  } else if(isSentence){
+    instrEl.textContent = "✍️ Vertaal deze Turkse zin naar het Nederlands of Engels";
+    instrEl.style.color = "var(--warn)";
+  } else {
+    instrEl.textContent = "✍️ Vertaal dit Turkse woord naar het Nederlands of Engels";
+    instrEl.style.color = "var(--muted)";
+  }
 
   if(isSentence || isQuestion){
     el("level-fill").style.width = "0%";
