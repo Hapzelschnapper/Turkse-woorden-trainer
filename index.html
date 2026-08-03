@@ -92,7 +92,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 11:20</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 14:10</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -194,7 +194,8 @@
         <span class="muted" id="cefr-label">A2 midden</span>
       </div>
       <input type="range" id="cefr-slider" min="0" max="17" step="1" value="4" style="width:100%;">
-      <div class="muted" style="margin-top:8px;">Bepaalt de zinslengte, grammaticale complexiteit en woordzeldzaamheid van gegenereerde zinnen — niet de losse woordenlijst zelf.</div>
+      <div class="muted" style="margin-top:8px;">Bepaalt de zinslengte, grammaticale complexiteit en woordzeldzaamheid van gegenereerde zinnen, ÉN welke nog-niet-geziene woorden als eerste worden geïntroduceerd (woorden die duidelijk boven je niveau liggen worden nog even achtergehouden).</div>
+      <div class="muted" id="cefr-unlocked-info" style="margin-top:6px;"></div>
       <button class="btn-secondary" id="btn-start-test" style="width:100%;margin-top:12px;">📝 Doe een taaltoets om je niveau te bepalen</button>
       <div class="muted" id="test-result" style="margin-top:8px;"></div>
     </div>
@@ -222,7 +223,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 11:20</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 14:10</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -33289,7 +33290,7 @@ function getProgress(tr){
 
 function baseWordList(){
   // vaste (opgeschoonde) lijst + woorden die tijdens zinsoefeningen zijn ontdekt en toegevoegd
-  const extra = Object.entries(newWords).map(([tr, v])=>({tr, nl: v.nl, en: v.en}));
+  const extra = Object.entries(newWords).map(([tr, v])=>({tr, nl: v.nl, en: v.en, cefr: v.cefr}));
   return [...WORDS_DATA, ...extra];
 }
 
@@ -33302,14 +33303,33 @@ function allWords(){
       type: "word",
       nl: c && c.nl ? [...new Set([...item.nl, ...c.nl])] : item.nl,
       en: c && c.en ? [...new Set([...item.en, ...c.en])] : item.en,
+      cefr: item.cefr,
     };
   });
 }
 
+// Levert alleen nog-nooit-getoonde woorden op die "binnen bereik" liggen van het ingestelde
+// CEFR-niveau (met een kleine uitdagingsmarge), zodat nieuwe stof gedoseerd wordt geïntroduceerd
+// i.p.v. willekeurig uit alle 3000+ woorden — de kern van een echte niveau-opbouw.
+function getIntroducibleWords(){
+  const words = baseWordList();
+  const neverShown = words.filter(w => getProgress(w.tr).reps === 0);
+  if(!neverShown.length) return [];
+  const userLevel = settings.cefrLevel ?? 4;
+  let gate = userLevel + 2; // sta iets boven je huidige niveau toe (lichte uitdaging)
+  let pool = neverShown.filter(w => (w.cefr ?? userLevel) <= gate);
+  while(!pool.length && gate < 17){
+    gate += 3;
+    pool = neverShown.filter(w => (w.cefr ?? userLevel) <= gate);
+  }
+  if(!pool.length) pool = neverShown; // veiligheidsnet: nooit een lege pool teruggeven zolang er iets is
+  return pool;
+}
+
 /* Voegt een nieuw woord toe aan de lijst (ontdekt via een zin), tenzij het al bestaat. */
-function ensureWordExists(tr, nl, en){
+function ensureWordExists(tr, nl, en, cefr){
   if(WORDS_DATA.some(w=>w.tr===tr) || newWords[tr]) return false;
-  newWords[tr] = {nl: nl && nl.length ? nl : [], en: en && en.length ? en : []};
+  newWords[tr] = {nl: nl && nl.length ? nl : [], en: en && en.length ? en : [], cefr: typeof cefr === "number" ? cefr : (settings.cefrLevel ?? 4)};
   saveJSON(LS_NEWWORDS, newWords);
   return true;
 }
@@ -33318,11 +33338,12 @@ function pickNextItem(){
   const words = allWords();
   const now = Date.now();
 
-  const dueWords = [];
-  for(const it of words){
-    const p = getProgress(it.tr);
-    if(p.due <= now) dueWords.push(it);
-  }
+  // due-voor-herhaling (al eerder getoond) blijft ongefilterd; nog-nooit-getoonde woorden worden
+  // eerst gefilterd op CEFR-bereik, zodat nieuwe stof gedoseerd binnenkomt i.p.v. willekeurig
+  const reviewDue = words.filter(it => { const p = getProgress(it.tr); return p.reps > 0 && p.due <= now; });
+  const introducibleTrs = new Set(getIntroducibleWords().map(w=>w.tr));
+  const introducibleAsWords = words.filter(it => introducibleTrs.has(it.tr));
+  const dueWords = [...reviewDue, ...introducibleAsWords];
 
   // Bepaal of we een zin of TR-vraag willen (streef-verhoudingen), alleen mogelijk met API-sleutel
   const sentenceRatio = Math.max(0, Math.min(1, (settings.sentencePercent ?? 20) / 100));
@@ -33446,8 +33467,8 @@ function pickWordsForSentence(){
   const wantNew = Math.random() * 100 < (settings.newWordPercent ?? 50);
 
   if(wantNew){
-    const neverShown = words.filter(tr => getProgress(tr).reps === 0);
-    if(neverShown.length) return [neverShown[Math.floor(Math.random()*neverShown.length)]];
+    const introducible = getIntroducibleWords(); // al gefilterd op CEFR-bereik
+    if(introducible.length) return [introducible[Math.floor(Math.random()*introducible.length)].tr];
     // geen nieuwe woorden meer over -> val door naar het herhalingspad hieronder
   }
 
@@ -33474,7 +33495,8 @@ Vermijd zinnen die zichzelf tegenspreken of onlogisch klinken (bv. een vraag en 
 ${grammarTopic ? `BELANGRIJK: bouw de zin zodanig dat die duidelijk en natuurlijk gebruikmaakt van dit grammaticale onderwerp: "${grammarTopic.label}" (${grammarTopic.hint}). Dit is het onderdeel waar de gebruiker extra oefening nodig heeft.` : ""}
 Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met een correcte Nederlandse en Engelse vertaling van die basisvorm.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"tr": "Turkse zin", "words": [{"tr": "basisvorm1", "nl": ["vertaling"], "en": ["translation"]}, {"tr": "basisvorm2", "nl": ["vertaling"], "en": ["translation"]}]}`;
+{"tr": "Turkse zin", "words": [{"tr": "basisvorm1", "nl": ["vertaling"], "en": ["translation"], "cefr": 0}, {"tr": "basisvorm2", "nl": ["vertaling"], "en": ["translation"], "cefr": 0}]}`;
+// "cefr" per woord: schat het CEFR-niveau van dat basiswoord zelf in op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin.
   const user = `Maak een Turkse zin op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als het niveau dat vraagt).${grammarTopic ? ` Verwerk daarbij expliciet: ${grammarTopic.label}.` : ""}`;
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
@@ -33540,7 +33562,7 @@ async function generateSentence(){
   const trKeys = [];
   for(const w of wordList){
     if(!w.tr) continue;
-    ensureWordExists(w.tr, w.nl, w.en); // voegt alleen toe als het nog niet bestaat
+    ensureWordExists(w.tr, w.nl, w.en, w.cefr); // voegt alleen toe als het nog niet bestaat
     trKeys.push(w.tr);
   }
   // zorg dat het doelwoord altijd meetelt, ook als de AI het om wat voor reden niet in "words" zette
@@ -33560,7 +33582,8 @@ ${grammarTopic ? `BELANGRIJK: bouw de vraag zodanig dat die duidelijk en natuurl
 De vraag moet grammaticaal correct en natuurlijk klinken voor een moedertaalspreker.
 Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met een correcte Nederlandse en Engelse vertaling van die basisvorm.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"tr": "Turkse vraag", "feitelijk": true of false, "words": [{"tr": "basisvorm1", "nl": ["vertaling"], "en": ["translation"]}]}`;
+{"tr": "Turkse vraag", "feitelijk": true of false, "words": [{"tr": "basisvorm1", "nl": ["vertaling"], "en": ["translation"], "cefr": 0}]}`;
+// "cefr" per woord: schat het CEFR-niveau van dat basiswoord zelf in op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
   const user = `Maak een Turkse vraag op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag).${grammarTopic ? ` Verwerk daarbij expliciet: ${grammarTopic.label}.` : ""}`;
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
@@ -33622,7 +33645,7 @@ async function generateQuestion(){
   const trKeys = [];
   for(const w of wordList){
     if(!w.tr) continue;
-    ensureWordExists(w.tr, w.nl, w.en);
+    ensureWordExists(w.tr, w.nl, w.en, w.cefr);
     trKeys.push(w.tr);
   }
   if(!trKeys.includes(targetWord)) trKeys.push(targetWord);
@@ -34452,6 +34475,15 @@ function closeTestModal(){
   el("modal-test").classList.add("hidden");
 }
 
+function updateCefrUnlockedInfo(){
+  const elI = el("cefr-unlocked-info");
+  if(!elI) return;
+  const words = baseWordList();
+  const neverShown = words.filter(w => getProgress(w.tr).reps === 0);
+  const reachable = getIntroducibleWords().length;
+  elI.textContent = `${reachable} van de ${neverShown.length} nog niet geziene woorden liggen nu binnen bereik.`;
+}
+
 /* ===================== INIT ===================== */
 function initSettingsUI(){
   el("api-key-input").value = settings.apiKey || "";
@@ -34463,6 +34495,7 @@ function initSettingsUI(){
   el("question-percent-label").textContent = (settings.questionPercent ?? 0) + "%";
   el("cefr-slider").value = settings.cefrLevel ?? 4;
   el("cefr-label").textContent = cefrLabel(settings.cefrLevel ?? 4);
+  updateCefrUnlockedInfo();
   el("key-status").textContent = settings.apiKey ? "✅ Sleutel is ingesteld." : "Nog geen sleutel ingesteld.";
   el("sync-api-key").value = settings.syncApiKey || "";
   el("sync-bin-id").value = settings.syncBinId || "";
@@ -34546,6 +34579,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("cefr-slider").addEventListener("change", ()=>{
     settings.cefrLevel = parseInt(el("cefr-slider").value, 10);
     saveJSON(LS_SETTINGS, settings);
+    updateCefrUnlockedInfo();
   });
   el("btn-export").addEventListener("click", exportWordlist);
   el("btn-reset-progress").addEventListener("click", ()=>{
