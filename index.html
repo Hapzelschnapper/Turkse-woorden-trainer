@@ -35,6 +35,15 @@
   button:disabled{opacity:.45;}
   input[type=text]{width:100%;padding:13px;border-radius:10px;border:1px solid var(--border);
     background:#0d1720;color:var(--text);font-size:1.05rem;}
+  .select-input{padding:10px;border-radius:10px;border:1px solid var(--border);
+    background:#0d1720;color:var(--text);font-size:.85rem;}
+  .btn-ghost.lang-active{background:var(--accent2);color:#fff;border-color:var(--accent2);}
+  .word-row{display:flex;justify-content:space-between;align-items:center;
+    padding:9px 0;border-bottom:1px solid var(--border);}
+  .word-row:last-child{border-bottom:none;}
+  .word-row-tr{font-weight:700;}
+  .word-row-trans{color:var(--muted);font-size:.8rem;margin-top:1px;}
+  .word-row-score{font-size:.75rem;font-weight:700;white-space:nowrap;padding-left:10px;}
   textarea{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);
     background:#0d1720;color:var(--text);font-size:.95rem;font-family:inherit;resize:vertical;}
   .tabbar{position:fixed;bottom:0;left:0;right:0;background:#101b26;border-top:1px solid var(--border);
@@ -100,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 18:15</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 18:45</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -123,8 +132,10 @@
       </div>
 
       <div id="feedback-box"></div>
+      <div id="explanation-box" class="muted hidden" style="margin-top:8px;font-size:.9rem;"></div>
 
       <div id="post-actions" class="row wrap hidden" style="margin-top:12px;">
+        <button class="btn-ghost btn-small hidden" id="btn-show-explanation">💬 Uitleg</button>
         <button class="btn-ghost btn-small" id="btn-ask-ai">🤖 Vraag aan AI</button>
         <button class="btn-ghost btn-small" id="btn-dispute">⚖️ Ik ben het oneens</button>
         <button class="btn-primary btn-small hidden" id="btn-next" style="flex:1;">Volgende ▶</button>
@@ -137,6 +148,34 @@
   </section>
 
   <!-- ===================== STATS SCREEN ===================== -->
+  <!-- ===================== WOORDEN-SCHERM ===================== -->
+  <section id="screen-words" class="hidden">
+    <div class="card">
+      <div class="row space-between" style="margin-bottom:10px;">
+        <div class="row" style="gap:6px;">
+          <button class="btn-ghost btn-small" id="words-lang-nl">🇳🇱 NL</button>
+          <button class="btn-ghost btn-small" id="words-lang-en">🇬🇧 EN</button>
+        </div>
+        <span class="muted" id="words-count">0 woorden</span>
+      </div>
+      <input type="text" id="words-search" placeholder="Zoeken op Turks of vertaling…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-bottom:8px;">
+      <div class="row" style="gap:6px;">
+        <select id="words-sort" class="select-input" style="flex:1;">
+          <option value="proficiency-asc">Score: laag → hoog</option>
+          <option value="proficiency-desc">Score: hoog → laag</option>
+          <option value="alpha">Alfabetisch (A-Z)</option>
+        </select>
+        <select id="words-filter" class="select-input" style="flex:1;">
+          <option value="introduced">Al geïntroduceerd</option>
+          <option value="all">Alle woorden</option>
+        </select>
+      </div>
+    </div>
+    <div class="card" style="max-height:65vh;overflow-y:auto;">
+      <div id="words-list"></div>
+    </div>
+  </section>
+
   <section id="screen-stats" class="hidden">
     <div class="card">
       <h3 style="margin-top:0;">Voortgang</h3>
@@ -229,7 +268,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 18:15</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 18:45</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -238,6 +277,7 @@
 
   <div class="tabbar">
     <button class="tab-btn active" data-tab="practice"><span class="ic">📝</span>Oefenen</button>
+    <button class="tab-btn" data-tab="words"><span class="ic">📖</span>Woorden</button>
     <button class="tab-btn" data-tab="stats"><span class="ic">📊</span>Statistieken</button>
     <button class="tab-btn" data-tab="settings"><span class="ic">⚙️</span>Instellingen</button>
   </div>
@@ -34036,8 +34076,25 @@ let currentAnswered = false;
 let currentCorrect = null;
 let chatMsgs = []; // voor de "vraag aan AI"-modal, per huidige item
 let revealedWords = new Set(); // woorden waarvan de gebruiker binnen deze oefening de vertaling heeft opgevraagd -> tellen als fout
+let lastExplanation = "";
 
 const el = id => document.getElementById(id);
+
+function setExplanation(text){
+  lastExplanation = (text || "").trim();
+  el("explanation-box").classList.add("hidden");
+  el("explanation-box").textContent = "";
+  el("btn-show-explanation").classList.toggle("hidden", !lastExplanation);
+}
+function toggleExplanation(){
+  const box = el("explanation-box");
+  if(box.classList.contains("hidden")){
+    box.textContent = lastExplanation;
+    box.classList.remove("hidden");
+  } else {
+    box.classList.add("hidden");
+  }
+}
 
 // Detecteert apparaten met waarschijnlijk een fysiek toetsenbord (laptop/desktop met muis/trackpad),
 // zodat we daar automatisch focussen (Enter = volgende) maar op telefoon/tablet niet (voorkomt dat
@@ -34094,6 +34151,7 @@ async function renderPractice(){
   currentCorrect = null;
   chatMsgs = [];
   revealedWords = new Set();
+  setExplanation("");
   el("feedback-box").innerHTML = "";
   el("post-actions").classList.add("hidden");
   el("btn-dispute").disabled = false;
@@ -34253,6 +34311,7 @@ async function handleCheck(){
   showFeedback("pending", "🤖 AI beoordeelt je antwoord…");
   try{
     const verdict = await askDeepSeekJudge(currentItem, answer);
+    setExplanation(verdict.uitleg);
     const known = [...currentItem.nl, ...currentItem.en].join(", ");
     finalizeAnswer(!!verdict.correct,
       (verdict.correct ? "✅" : "❌") +
@@ -34281,6 +34340,7 @@ async function handleCheckSentence(answer){
   showFeedback("pending", "🤖 AI beoordeelt je vertaling en de losse woorden…");
   try{
     const verdict = await gradeSentenceTranslation(currentItem, answer);
+    setExplanation(verdict.uitleg);
     currentAnswered = true;
     currentCorrect = !!verdict.correct;
     recordHistory("sentence");
@@ -34327,6 +34387,7 @@ async function handleCheckQuestion(answer){
   showFeedback("pending", "🤖 AI beoordeelt je Turkse antwoord…");
   try{
     const verdict = await gradeQuestionAnswer(currentItem, answer);
+    setExplanation(verdict.uitleg);
     currentAnswered = true;
     currentCorrect = !!verdict.correct;
     recordHistory("question");
@@ -34408,6 +34469,7 @@ async function disputeAnswer(){
       const verdict = isQ
         ? await gradeQuestionAnswer(currentItem, answer, true)
         : await gradeSentenceTranslation(currentItem, answer, true);
+      setExplanation(verdict.uitleg);
       currentItem.words.forEach((w, i)=>{
         const correct = revealedWords.has(w) ? false : !!verdict.words[i]; // opgezocht woord = altijd fout
         recordResult(w, correct);
@@ -34446,6 +34508,7 @@ async function disputeAnswer(){
   showFeedback("pending", "🤖 AI beoordeelt je antwoord nog eens kritisch…");
   try{
     const verdict = await askDeepSeekJudge(currentItem, answer, true);
+    setExplanation(verdict.uitleg);
     if(verdict.correct){
       const lang = promptAddTranslation(currentItem, answer, verdict.taal === "en" ? "en" : "nl");
       const p = getProgress(currentItem.tr);
@@ -34632,12 +34695,57 @@ function exportWordlist(){
 }
 
 /* ===================== TABS ===================== */
+/* ===================== WOORDEN-TAB (bladeren door de hele lijst) ===================== */
+let wordsTabLang = "nl";
+
+function renderWordsTab(){
+  el("words-lang-nl").classList.toggle("lang-active", wordsTabLang === "nl");
+  el("words-lang-en").classList.toggle("lang-active", wordsTabLang === "en");
+
+  const sort = el("words-sort").value;
+  const filter = el("words-filter").value;
+  const search = el("words-search").value.trim().toLowerCase();
+
+  let words = allWords().map(w => ({...w, level: getProgress(w.tr).level, reps: getProgress(w.tr).reps}));
+
+  if(filter === "introduced") words = words.filter(w => w.reps > 0);
+
+  if(search){
+    words = words.filter(w =>
+      w.tr.toLowerCase().includes(search) ||
+      w.nl.join(" ").toLowerCase().includes(search) ||
+      w.en.join(" ").toLowerCase().includes(search)
+    );
+  }
+
+  if(sort === "proficiency-asc") words.sort((a,b)=> a.level - b.level || a.tr.localeCompare(b.tr, "tr"));
+  else if(sort === "proficiency-desc") words.sort((a,b)=> b.level - a.level || a.tr.localeCompare(b.tr, "tr"));
+  else words.sort((a,b)=> a.tr.localeCompare(b.tr, "tr"));
+
+  el("words-count").textContent = words.length + " woord" + (words.length===1?"":"en");
+
+  el("words-list").innerHTML = words.map(w=>{
+    const trans = (wordsTabLang === "nl" ? w.nl : w.en).join(", ") || "—";
+    const color = w.reps===0 ? "#4a5568" : (w.level<=3 ? "#e0333f" : w.level<=6 ? "#e0a733" : "#2fae6a");
+    const scoreLabel = w.reps===0 ? "nieuw" : `${w.level}/10`;
+    return `<div class="word-row">
+      <div>
+        <div class="word-row-tr">${escapeHtml(w.tr)}</div>
+        <div class="word-row-trans">${escapeHtml(trans)}</div>
+      </div>
+      <div class="word-row-score" style="color:${color};">${scoreLabel}</div>
+    </div>`;
+  }).join("") || `<div class="muted" style="padding:12px 0;">Geen woorden gevonden.</div>`;
+}
+
 function switchTab(tab){
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
   el("screen-practice").classList.toggle("hidden", tab!=="practice");
+  el("screen-words").classList.toggle("hidden", tab!=="words");
   el("screen-stats").classList.toggle("hidden", tab!=="stats");
   el("screen-settings").classList.toggle("hidden", tab!=="settings");
   if(tab==="stats") renderStats();
+  if(tab==="words") renderWordsTab();
   if(tab==="practice" && !currentItem) renderPractice(); // niet opnieuw genereren als er al een opgave actief is
 }
 
@@ -34781,6 +34889,12 @@ document.addEventListener("DOMContentLoaded", ()=>{
   });
   el("btn-next").addEventListener("click", renderPractice);
   el("btn-dispute").addEventListener("click", disputeAnswer);
+  el("btn-show-explanation").addEventListener("click", toggleExplanation);
+  el("words-lang-nl").addEventListener("click", ()=>{ wordsTabLang = "nl"; renderWordsTab(); });
+  el("words-lang-en").addEventListener("click", ()=>{ wordsTabLang = "en"; renderWordsTab(); });
+  el("words-sort").addEventListener("change", renderWordsTab);
+  el("words-filter").addEventListener("change", renderWordsTab);
+  el("words-search").addEventListener("input", renderWordsTab);
   el("btn-ask-ai").addEventListener("click", openAiModal);
   el("btn-chat-close").addEventListener("click", closeAiModal);
   el("btn-chat-send").addEventListener("click", sendChat);
