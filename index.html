@@ -92,7 +92,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 14:10</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 14:35</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -223,7 +223,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 14:10</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 14:35</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -33100,28 +33100,28 @@ let grammar = loadJSON(LS_GRAMMAR, {});
 // Vaste lijst Turkse grammaticale onderwerpen (A1 t/m C1/C2), die de app zelf kan volgen
 // en gericht kan invlechten in gegenereerde zinnen/vragen — los van losse woordenschat.
 const GRAMMAR_TOPICS = [
-  {key:"belirtme_hali",   label:"Accusatief (-i/-ı/-u/-ü)",        hint:"bepaald lijdend voorwerp markeren, bv. \"kitabı okudum\""},
-  {key:"tamlayan_hali",   label:"Genitief (-in/-ın/-un/-ün)",      hint:"bezit/samenstelling, bv. \"annemin evi\""},
-  {key:"yonelme_hali",    label:"Datief (-e/-a)",                  hint:"richting/doel, bv. \"okula gidiyorum\""},
-  {key:"bulunma_hali",    label:"Locatief (-de/-da)",               hint:"plaats, bv. \"evde\""},
-  {key:"ayrilma_hali",    label:"Ablatief (-den/-dan)",             hint:"herkomst/vanaf, bv. \"okuldan geldim\""},
-  {key:"cogul_eki",       label:"Meervoud (-ler/-lar)",             hint:"bv. \"kitaplar\""},
-  {key:"iyelik_ekleri",   label:"Bezittelijke achtervoegsels",      hint:"mijn/jouw/zijn..., bv. \"evim, evin, evi\""},
-  {key:"simdiki_zaman",   label:"Tegenwoordige tijd -iyor",         hint:"bv. \"geliyorum\""},
-  {key:"gecmis_di",       label:"Verleden tijd -di (gezien/zeker)", hint:"bv. \"geldim\""},
-  {key:"gecmis_mis",      label:"Verleden tijd -miş (gehoord/onzeker)", hint:"bv. \"gelmiş\""},
-  {key:"gelecek_zaman",   label:"Toekomende tijd -ecek",            hint:"bv. \"geleceğim\""},
-  {key:"genis_zaman",     label:"Onbepaalde tegenwoordige tijd -ir", hint:"gewoontes/feiten, bv. \"her gün koşarım\""},
-  {key:"sart_kipi",       label:"Voorwaardelijke wijs -se",         hint:"als/mocht, bv. \"gelirse\""},
-  {key:"gereklilik_kipi", label:"Noodzakelijkheidswijs -meli",      hint:"moeten, bv. \"gitmeliyim\""},
-  {key:"olumsuzluk",      label:"Ontkenning (-me/-mi, değil)",      hint:"bv. \"gitmiyorum\", \"iyi değil\""},
-  {key:"soru_eki",        label:"Vraagpartikel mi/mı/mu/mü",        hint:"bv. \"geldin mi?\""},
-  {key:"edilgen_cati",    label:"Lijdende vorm (passief, -il/-in)", hint:"bv. \"kapı kapatıldı\""},
-  {key:"ettirgen_cati",   label:"Causatief (laten doen, -dir/-t)",  hint:"bv. \"yaptırdım\""},
-  {key:"donusluluk_cati", label:"Wederkerende vorm (-in)",          hint:"zichzelf, bv. \"yıkandım\""},
-  {key:"ortac",           label:"Deelwoorden (-en/-dik/-ecek)",     hint:"als bijvoeglijk naamwoord, bv. \"gelen adam\", \"okuduğum kitap\""},
-  {key:"zarf_fiil",       label:"Verbindingsvormen (-erek, -ken, -meden önce)", hint:"bv. \"koşarak geldi\", \"gelirken\""},
-  {key:"karsilastirma",   label:"Vergelijking (daha, en, kadar, gibi)", hint:"bv. \"ondan daha büyük\""},
+  {key:"olumsuzluk",      label:"Ontkenning (-me/-mi, değil)",      hint:"bv. \"gitmiyorum\", \"iyi değil\"", minCefr:0},
+  {key:"soru_eki",        label:"Vraagpartikel mi/mı/mu/mü",        hint:"bv. \"geldin mi?\"", minCefr:0},
+  {key:"cogul_eki",       label:"Meervoud (-ler/-lar)",             hint:"bv. \"kitaplar\"", minCefr:0},
+  {key:"simdiki_zaman",   label:"Tegenwoordige tijd -iyor",         hint:"bv. \"geliyorum\"", minCefr:0},
+  {key:"iyelik_ekleri",   label:"Bezittelijke achtervoegsels",      hint:"mijn/jouw/zijn..., bv. \"evim, evin, evi\"", minCefr:1},
+  {key:"bulunma_hali",    label:"Locatief (-de/-da)",               hint:"plaats, bv. \"evde\"", minCefr:1},
+  {key:"yonelme_hali",    label:"Datief (-e/-a)",                   hint:"richting/doel, bv. \"okula gidiyorum\"", minCefr:2},
+  {key:"ayrilma_hali",    label:"Ablatief (-den/-dan)",             hint:"herkomst/vanaf, bv. \"okuldan geldim\"", minCefr:2},
+  {key:"belirtme_hali",   label:"Accusatief (-i/-ı/-u/-ü)",         hint:"bepaald lijdend voorwerp markeren, bv. \"kitabı okudum\"", minCefr:2},
+  {key:"gecmis_di",       label:"Verleden tijd -di (gezien/zeker)", hint:"bv. \"geldim\"", minCefr:3},
+  {key:"tamlayan_hali",   label:"Genitief (-in/-ın/-un/-ün)",       hint:"bezit/samenstelling, bv. \"annemin evi\"", minCefr:3},
+  {key:"gelecek_zaman",   label:"Toekomende tijd -ecek",            hint:"bv. \"geleceğim\"", minCefr:4},
+  {key:"karsilastirma",   label:"Vergelijking (daha, en, kadar, gibi)", hint:"bv. \"ondan daha büyük\"", minCefr:5},
+  {key:"genis_zaman",     label:"Onbepaalde tegenwoordige tijd -ir", hint:"gewoontes/feiten, bv. \"her gün koşarım\"", minCefr:5},
+  {key:"gereklilik_kipi", label:"Noodzakelijkheidswijs -meli",      hint:"moeten, bv. \"gitmeliyim\"", minCefr:6},
+  {key:"gecmis_mis",      label:"Verleden tijd -miş (gehoord/onzeker)", hint:"bv. \"gelmiş\"", minCefr:6},
+  {key:"sart_kipi",       label:"Voorwaardelijke wijs -se",         hint:"als/mocht, bv. \"gelirse\"", minCefr:7},
+  {key:"ortac",           label:"Deelwoorden (-en/-dik/-ecek)",     hint:"als bijvoeglijk naamwoord, bv. \"gelen adam\", \"okuduğum kitap\"", minCefr:9},
+  {key:"zarf_fiil",       label:"Verbindingsvormen (-erek, -ken, -meden önce)", hint:"bv. \"koşarak geldi\", \"gelirken\"", minCefr:10},
+  {key:"edilgen_cati",    label:"Lijdende vorm (passief, -il/-in)", hint:"bv. \"kapı kapatıldı\"", minCefr:11},
+  {key:"ettirgen_cati",   label:"Causatief (laten doen, -dir/-t)",  hint:"bv. \"yaptırdım\"", minCefr:12},
+  {key:"donusluluk_cati", label:"Wederkerende vorm (-in)",          hint:"zichzelf, bv. \"yıkandım\"", minCefr:12},
 ];
 function grammarTopicByKey(key){ return GRAMMAR_TOPICS.find(t=>t.key===key); }
 
@@ -33145,8 +33145,16 @@ function recordGrammarResult(key, correct){
   saveJSON(LS_GRAMMAR, grammar);
 }
 function pickWeakestGrammarTopic(){
-  const minLevel = Math.min(...GRAMMAR_TOPICS.map(t=>getGrammarProgress(t.key).level));
-  const pool = GRAMMAR_TOPICS.filter(t=>getGrammarProgress(t.key).level === minLevel);
+  const userLevel = settings.cefrLevel ?? 4;
+  let gate = userLevel + 1; // lichte marge, net als bij woorden
+  let eligible = GRAMMAR_TOPICS.filter(t => t.minCefr <= gate);
+  while(!eligible.length && gate < 17){
+    gate += 2;
+    eligible = GRAMMAR_TOPICS.filter(t => t.minCefr <= gate);
+  }
+  if(!eligible.length) eligible = GRAMMAR_TOPICS; // veiligheidsnet
+  const minLevel = Math.min(...eligible.map(t=>getGrammarProgress(t.key).level));
+  const pool = eligible.filter(t=>getGrammarProgress(t.key).level === minLevel);
   return pool[Math.floor(Math.random()*pool.length)];
 }
 
@@ -34366,19 +34374,21 @@ function renderStats(){
 function renderGrammarList(){
   const list = el("grammar-list");
   if(!list) return;
-  const rows = GRAMMAR_TOPICS.map(t=>({t, p: getGrammarProgress(t.key)}))
-    .sort((a,b)=> a.p.level - b.p.level); // zwakste eerst
-  list.innerHTML = rows.map(({t,p})=>{
+  const userLevel = settings.cefrLevel ?? 4;
+  const gate = userLevel + 1;
+  const rows = GRAMMAR_TOPICS.map(t=>({t, p: getGrammarProgress(t.key), locked: t.minCefr > gate}))
+    .sort((a,b)=> (a.locked - b.locked) || (a.p.level - b.p.level)); // bereikbare eerst, daarbinnen zwakste eerst
+  list.innerHTML = rows.map(({t,p,locked})=>{
     const pct = p.level*10;
-    const color = p.reps===0 ? "#4a5568" : (p.level<=3 ? "#e0333f" : p.level<=6 ? "#e0a733" : "#2fae6a");
-    const statusTxt = p.reps===0 ? "nog niet geoefend" : `niveau ${p.level}/10 · ${p.reps}x geoefend`;
-    return `<div style="margin-bottom:10px;">
+    const color = locked ? "#3a4356" : (p.reps===0 ? "#4a5568" : (p.level<=3 ? "#e0333f" : p.level<=6 ? "#e0a733" : "#2fae6a"));
+    const statusTxt = locked ? `🔒 vanaf ${cefrLabel(t.minCefr)}` : (p.reps===0 ? "nog niet geoefend" : `niveau ${p.level}/10 · ${p.reps}x geoefend`);
+    return `<div style="margin-bottom:10px;${locked?'opacity:.55;':''}">
       <div class="row space-between" style="font-size:.85rem;margin-bottom:3px;">
         <span title="${t.hint}">${t.label}</span>
         <span class="muted">${statusTxt}</span>
       </div>
       <div style="height:6px;border-radius:4px;background:#0d1720;overflow:hidden;">
-        <div style="height:100%;width:${pct}%;background:${color};"></div>
+        <div style="height:100%;width:${locked?100:pct}%;background:${color};"></div>
       </div>
     </div>`;
   }).join("");
