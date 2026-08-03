@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek piek/dal-tarief (o.b.v. UTC-tijd)">● dal</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 22:15</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-03 22:35</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -168,6 +168,17 @@
         <select id="words-filter" class="select-input" style="flex:1;">
           <option value="introduced">Al geïntroduceerd</option>
           <option value="all">Alle woorden</option>
+        </select>
+      </div>
+      <div class="row" style="gap:6px;margin-top:6px;">
+        <select id="words-cefr-filter" class="select-input" style="flex:1;">
+          <option value="all">Alle CEFR-niveaus</option>
+          <option value="A1">A1</option>
+          <option value="A2">A2</option>
+          <option value="B1">B1</option>
+          <option value="B2">B2</option>
+          <option value="C1">C1</option>
+          <option value="C2">C2</option>
         </select>
       </div>
     </div>
@@ -268,7 +279,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Versie</h3>
-      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 22:15</b></div>
+      <div class="muted">Laatste build: <b id="build-stamp-settings">2026-08-03 22:35</b></div>
       <div class="muted" style="margin-top:4px;">Als dit tijdstip niet verandert na een update, is de nieuwe versie niet goed geüpload of ververst — check dan of het bestand echt is overschreven op GitHub en ververs de pagina (evt. incognito-tabblad tegen cache).</div>
     </div>
   </section>
@@ -34704,11 +34715,16 @@ function renderWordsTab(){
 
   const sort = el("words-sort").value;
   const filter = el("words-filter").value;
+  const cefrFilter = el("words-cefr-filter").value;
   const search = el("words-search").value.trim().toLowerCase();
 
   let words = allWords().map(w => ({...w, level: getProgress(w.tr).level, reps: getProgress(w.tr).reps}));
 
   if(filter === "introduced") words = words.filter(w => w.reps > 0);
+
+  if(cefrFilter !== "all"){
+    words = words.filter(w => CEFR_MAJOR[w.cefr] === cefrFilter);
+  }
 
   if(search){
     words = words.filter(w =>
@@ -34728,12 +34744,16 @@ function renderWordsTab(){
     const trans = (wordsTabLang === "nl" ? w.nl : w.en).join(", ") || "—";
     const color = w.reps===0 ? "#4a5568" : (w.level<=3 ? "#e0333f" : w.level<=6 ? "#e0a733" : "#2fae6a");
     const scoreLabel = w.reps===0 ? "nieuw" : `${w.level}/10`;
+    const cefrTxt = typeof w.cefr === "number" ? cefrLabel(w.cefr) : "?";
     return `<div class="word-row">
       <div>
         <div class="word-row-tr">${escapeHtml(w.tr)}</div>
         <div class="word-row-trans">${escapeHtml(trans)}</div>
       </div>
-      <div class="word-row-score" style="color:${color};">${scoreLabel}</div>
+      <div style="text-align:right;">
+        <div class="word-row-score" style="color:${color};">${scoreLabel}</div>
+        <div class="muted" style="font-size:.68rem;margin-top:2px;">${cefrTxt}</div>
+      </div>
     </div>`;
   }).join("") || `<div class="muted" style="padding:12px 0;">Geen woorden gevonden.</div>`;
 }
@@ -34894,6 +34914,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("words-lang-en").addEventListener("click", ()=>{ wordsTabLang = "en"; renderWordsTab(); });
   el("words-sort").addEventListener("change", renderWordsTab);
   el("words-filter").addEventListener("change", renderWordsTab);
+  el("words-cefr-filter").addEventListener("change", renderWordsTab);
   el("words-search").addEventListener("input", renderWordsTab);
   el("btn-ask-ai").addEventListener("click", openAiModal);
   el("btn-chat-close").addEventListener("click", closeAiModal);
