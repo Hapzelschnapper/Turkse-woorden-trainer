@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 12:50</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 13:10</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -311,7 +311,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 12:50</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 13:10</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -27120,17 +27120,22 @@ function advanceLessonSession(){
   if(!l || isLessonCompleted(l.id)) return "";
   let done = false;
   let progressTxt = "";
+  // Bij oudere voortgang (van vóór deze correctie) bestaat p.correct nog niet — in dat geval schatten
+  // we 'm op basis van het niveau, puur als eenmalige overgang; nieuw verzamelde data is exact.
+  const accuracyOf = p => (typeof p.correct === "number") ? p.correct : Math.round(p.reps * (p.level / 10));
   if(l.words && l.words.length){
     const attempted = l.words.filter(en => getProgress(en).reps > 0);
     const allAttempted = attempted.length >= l.words.length;
-    const avgPct = attempted.length ? Math.round(100 * attempted.reduce((s,en)=>s+getProgress(en).level, 0) / (attempted.length*10)) : 0;
+    let totalReps = 0, totalCorrect = 0;
+    for(const en of attempted){ const p = getProgress(en); totalReps += p.reps; totalCorrect += accuracyOf(p); }
+    const avgPct = totalReps ? Math.round(100 * totalCorrect / totalReps) : 0;
     done = allAttempted && avgPct >= LESSON_ACCURACY_THRESHOLD;
-    progressTxt = `Lesson progress: ${attempted.length}/${l.words.length} words introduced, ${avgPct}% average accuracy (need ${LESSON_ACCURACY_THRESHOLD}%)`;
+    progressTxt = `Lesson progress: ${attempted.length}/${l.words.length} words introduced, ${avgPct}% accuracy (need ${LESSON_ACCURACY_THRESHOLD}%)`;
   } else if(l.grammarTopics && l.grammarTopics.length){
     const topic = grammarTopicByKey(l.grammarTopics[0]);
     const p = getGrammarProgress(topic.key);
     const enoughReps = p.reps >= l.targetExercises;
-    const pct = Math.round(p.level / 10 * 100);
+    const pct = p.reps ? Math.round(100 * accuracyOf(p) / p.reps) : 0;
     done = enoughReps && pct >= LESSON_ACCURACY_THRESHOLD;
     progressTxt = `Lesson progress: ${Math.min(p.reps, l.targetExercises)}/${l.targetExercises} exercises on "${topic.label}", ${pct}% accuracy (need ${LESSON_ACCURACY_THRESHOLD}%)`;
   } else {
@@ -27251,6 +27256,7 @@ function recordGrammarResult(key, correct){
     p.level = Math.max(1, p.level - 1);
   }
   p.reps += 1;
+  p.correct = (p.correct || 0) + (correct ? 1 : 0); // ECHTE nauwkeurigheid, los van het SRS-niveau hierboven
   p.due = Date.now() + intervalMinutes(p.level) * 60 * 1000;
   grammar[key] = p;
   saveJSON(LS_GRAMMAR, grammar);
@@ -27987,6 +27993,7 @@ function recordResult(tr, correct){
     p.level = Math.max(1, p.level - 1); // ondergrens 1 i.p.v. 0 zodra een woord ooit getoond is
   }
   p.reps += 1;
+  p.correct = (p.correct || 0) + (correct ? 1 : 0); // ECHTE nauwkeurigheid, los van het SRS-niveau hierboven
   p.due = Date.now() + intervalMinutes(p.level) * 60 * 1000;
   saveJSON(LS_PROGRESS, progress);
 }
