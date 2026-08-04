@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 09:40</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 11:05</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -296,7 +296,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 09:40</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 11:05</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -26473,6 +26473,8 @@ const LS_NEWWORDS  = "turks_newwords_v1";      // { [en]: {cefr} } — via zinne
 const LS_GRAMMAR   = "turks_grammar_v1";       // { [topicKey]: {level, due, reps} } — per grammaticaal onderwerp, zelfde SRS-mechaniek als woorden
 const LS_TRCACHE   = "turks_trcache_v1";       // { [en]: {tr:[...], fetchedAt} } — op-aanvraag gegenereerde Turkse vertaling, 1x per woord
 const LS_LESSONS   = "turks_lessons_v1";       // { [lessonId]: {completed:bool, done:n} } — voortgang door het gestructureerde lespad
+const LS_ACTIVE_LESSON  = "turks_active_lesson_v1";   // { lessonId, sessionDone } — tussentijdse les-sessie, overleeft tabwissel/minimaliseren
+const LS_ACTIVE_CHECKUP = "turks_active_checkup_v1";  // volledige activeCheckup-state — tussentijdse kennischeck-sessie
 const LS_COST      = "turks_cost_v1";          // { byModel: {...} } — bevestigd/gesynct totaal
 const LS_COST_PENDING = "turks_cost_pending_v1"; // { byModel: {...} } — lokaal verbruik nog niet samengevoegd met cloud
 
@@ -26619,22 +26621,38 @@ const GRAMMAR_TOPICS = [
   {key:"soru_eki",        label:"Question particle mi/mı/mu/mü",    hint:"e.g. \"geldin mi?\" (did you come?)", minCefr:0},
   {key:"cogul_eki",       label:"Plural (-ler/-lar)",                hint:"e.g. \"kitaplar\" (books)", minCefr:0},
   {key:"simdiki_zaman",   label:"Present continuous -iyor",          hint:"e.g. \"geliyorum\" (I'm coming)", minCefr:0},
+  {key:"mastar",          label:"Infinitive -mek/-mak",              hint:"e.g. \"gitmek istiyorum\" (I want to go)", minCefr:1},
+  {key:"sayilar_siralar", label:"Numbers & ordinals (-inci)",        hint:"e.g. \"üçüncü\" (third)", minCefr:1},
   {key:"iyelik_ekleri",   label:"Possessive suffixes",               hint:"my/your/his..., e.g. \"evim, evin, evi\" (my/your/his house)", minCefr:1},
   {key:"bulunma_hali",    label:"Locative (-de/-da)",                hint:"location, e.g. \"evde\" (at home)", minCefr:1},
+  {key:"emir_kipi",       label:"Imperative (all persons)",          hint:"e.g. \"gel!\" (come!), \"gidin\" (go, pl./formal)", minCefr:2},
   {key:"yonelme_hali",    label:"Dative (-e/-a)",                    hint:"direction/goal, e.g. \"okula gidiyorum\" (I'm going to school)", minCefr:2},
   {key:"ayrilma_hali",    label:"Ablative (-den/-dan)",              hint:"origin/from, e.g. \"okuldan geldim\" (I came from school)", minCefr:2},
   {key:"belirtme_hali",   label:"Accusative (-i/-ı/-u/-ü)",          hint:"marks a definite direct object, e.g. \"kitabı okudum\" (I read the book)", minCefr:2},
+  {key:"gecmis_copula",   label:"Past copula -ydi",                  hint:"e.g. \"öğrenciydim\" (I was a student)", minCefr:3},
   {key:"gecmis_di",       label:"Past tense -di (witnessed/certain)", hint:"e.g. \"geldim\" (I came)", minCefr:3},
   {key:"tamlayan_hali",   label:"Genitive (-in/-ın/-un/-ün)",        hint:"possession/compounds, e.g. \"annemin evi\" (my mother's house)", minCefr:3},
+  {key:"isim_tamlamasi",  label:"Noun compounds (isim tamlaması)",   hint:"e.g. \"araba anahtarı\" (car key), \"okulun bahçesi\" (the school's garden)", minCefr:4},
+  {key:"edatlar",         label:"Postpositions (için, ile, göre, rağmen)", hint:"e.g. \"senin için\" (for you), \"buna rağmen\" (despite this)", minCefr:4},
   {key:"gelecek_zaman",   label:"Future tense -ecek",                hint:"e.g. \"geleceğim\" (I will come)", minCefr:4},
   {key:"karsilastirma",   label:"Comparison (daha, en, kadar, gibi)", hint:"e.g. \"ondan daha büyük\" (bigger than that)", minCefr:5},
   {key:"genis_zaman",     label:"Aorist (general truth) -ir",        hint:"habits/facts, e.g. \"her gün koşarım\" (I run every day)", minCefr:5},
+  {key:"baglaclar",       label:"Conjunctions (ki, hem...hem, ya...ya)", hint:"e.g. \"hem yorgunum hem açım\" (I'm both tired and hungry)", minCefr:6},
   {key:"gereklilik_kipi", label:"Necessitative -meli",               hint:"must/have to, e.g. \"gitmeliyim\" (I must go)", minCefr:6},
   {key:"gecmis_mis",      label:"Past tense -miş (hearsay/inferred)", hint:"e.g. \"gelmiş\" (apparently came)", minCefr:6},
+  {key:"gecmis_devam",    label:"Past continuous -iyordu",           hint:"e.g. \"geliyordum\" (I was coming)", minCefr:7},
   {key:"sart_kipi",       label:"Conditional -se",                   hint:"if/should, e.g. \"gelirse\" (if he comes)", minCefr:7},
+  {key:"istek_kipi",      label:"Optative (wish) -e",                hint:"e.g. \"gideyim\" (let me go)", minCefr:8},
+  {key:"ki_eki",          label:"The suffix -ki (relative/possessive)", hint:"e.g. \"benimki\" (mine), \"masadaki kitap\" (the book on the table)", minCefr:8},
+  {key:"gelecek_gecmis",  label:"Future-in-the-past -ecekti",        hint:"e.g. \"gelecekti\" (he was going to come)", minCefr:9},
+  {key:"isim_fiil",       label:"Verbal nouns (-me/-iş)",            hint:"e.g. \"gitme\" (the going), \"gidiş\" (the departure)", minCefr:9},
+  {key:"kucultme_eki",    label:"Diminutive -cik",                   hint:"e.g. \"azıcık\" (just a little bit)", minCefr:9},
   {key:"ortac",           label:"Participles (-en/-dik/-ecek)",      hint:"used as adjectives, e.g. \"gelen adam\" (the man who came), \"okuduğum kitap\" (the book I read)", minCefr:9},
+  {key:"birlesik_gecmis", label:"Compound past combinations -mişti", hint:"e.g. \"gitmişti\" (he had apparently gone)", minCefr:10},
+  {key:"dolayli_anlatim", label:"Direct/indirect speech",            hint:"e.g. \"'geliyorum' dedi\" (he said 'I'm coming') vs \"geleceğini söyledi\" (he said he'd come)", minCefr:10},
   {key:"zarf_fiil",       label:"Converbs (-erek, -ken, -meden önce)", hint:"e.g. \"koşarak geldi\" (he came running), \"gelirken\" (while coming)", minCefr:10},
   {key:"edilgen_cati",    label:"Passive voice (-il/-in)",            hint:"e.g. \"kapı kapatıldı\" (the door was closed)", minCefr:11},
+  {key:"islik_cati",      label:"Reciprocal voice -iş",               hint:"e.g. \"görüşmek\" (to see each other)", minCefr:11},
   {key:"ettirgen_cati",   label:"Causative (make/have done, -dir/-t)", hint:"e.g. \"yaptırdım\" (I had it made)", minCefr:12},
   {key:"donusluluk_cati", label:"Reflexive voice (-in)",              hint:"oneself, e.g. \"yıkandım\" (I washed myself)", minCefr:12},
 ];
@@ -26796,6 +26814,152 @@ const GRAMMAR_LESSONS = [
 </ul>
 <p>This tense is used for actions you witnessed or are certain happened — Turkish actually has a <i>second</i> past tense (-miş) for hearsay/inference, which is a fascinating topic for later once you're comfortable here.</p>`
   },
+  {
+    id:"infinitive", title:"The Infinitive", icon:"➰", grammarTopics:["mastar"], targetExercises:8,
+    explanation:`<p>The Turkish infinitive is formed with <b>-mek/-mak</b> (vowel harmony) and works much like English "to + verb":</p>
+<ul>
+<li><b>gitmek</b> — to go</li>
+<li><b>gitmek istiyorum</b> — I want to go</li>
+</ul>
+<p>You'll see this constantly attached to other verbs like <i>istemek</i> (to want) and <i>gerekmek</i> (to be necessary) — it's also the form you'll find infinitives listed under in a dictionary.</p>`
+  },
+  {
+    id:"numbers_ordinals", title:"Numbers & Ordinals", icon:"🔢", grammarTopics:["sayilar_siralar"], targetExercises:8,
+    explanation:`<p>Cardinal numbers (bir, iki, üç...) are straightforward. Ordinals ("first, second, third...") add the suffix <b>-inci</b> (with vowel-harmony variants):</p>
+<ul>
+<li><b>üç</b> (three) → <b>üçüncü</b> (third)</li>
+<li><b>bir</b> (one) → <b>birinci</b> (first)</li>
+</ul>
+<p>Remember from the noun lesson: numbers keep the following noun <b>singular</b> — "üç kitap" not "üç kitaplar".</p>`
+  },
+  {
+    id:"imperative", title:"The Imperative", icon:"❗", grammarTopics:["emir_kipi"], targetExercises:8,
+    explanation:`<p>Commands in Turkish change by who you're addressing:</p>
+<ul>
+<li><b>Gel!</b> — Come! (to sen, informal singular)</li>
+<li><b>Gelin!</b> / <b>Gelin!</b> — Come! (to siz, plural/formal)</li>
+</ul>
+<p>Negative commands use <b>-me/-ma</b>: <b>Gelme!</b> — Don't come! This is one of the most frequently heard verb forms in everyday spoken Turkish.</p>`
+  },
+  {
+    id:"past_copula", title:"Past Copula", icon:"🔗", grammarTopics:["gecmis_copula"], targetExercises:8,
+    explanation:`<p>Just as the present-tense copula ("to be") is a suffix, so is its past-tense form: <b>-ydi</b> (with vowel-harmony variants -ydı/-ydu/-ydü):</p>
+<ul>
+<li><b>öğrenciydim</b> — I was a student</li>
+<li><b>hastaydı</b> — he/she was sick</li>
+</ul>
+<p>This attaches to the same personal-ending pattern you already learned for the present copula — just with -ydi- inserted before it.</p>`
+  },
+  {
+    id:"noun_compounds", title:"Noun Compounds", icon:"🧷", grammarTopics:["isim_tamlamasi"], targetExercises:8,
+    explanation:`<p>Turkish links two nouns together ("noun compounds") in two ways:</p>
+<p><b>Indefinite compound</b> (a general category, no specific owner): <b>araba anahtarı</b> — a car key.</p>
+<p><b>Definite compound</b> (specific possession, combines genitive + possessive suffix): <b>okulun bahçesi</b> — the school's garden (okul + un [genitive] + bahçe + si [possessive]).</p>
+<p>Recognising which type you're looking at just takes practice — you'll get plenty of exposure here.</p>`
+  },
+  {
+    id:"postpositions", title:"Postpositions", icon:"🧭", grammarTopics:["edatlar"], targetExercises:8,
+    explanation:`<p>Where English uses prepositions (before the noun), Turkish uses <b>postpositions</b> — separate words placed <i>after</i> the noun:</p>
+<ul>
+<li><b>senin için</b> — for you</li>
+<li><b>seninle</b> / <b>senin ile</b> — with you</li>
+<li><b>bana göre</b> — according to me</li>
+<li><b>buna rağmen</b> — despite this</li>
+</ul>
+<p>Some require a specific case on the preceding noun (e.g. "göre" pairs with dative) — you'll pick up the common pairings through the example sentences.</p>`
+  },
+  {
+    id:"conjunctions", title:"Conjunctions", icon:"🔀", grammarTopics:["baglaclar"], targetExercises:8,
+    explanation:`<p>Beyond the basics (ve "and", ama "but", çünkü "because"), Turkish has some distinctive paired conjunctions:</p>
+<ul>
+<li><b>hem...hem (de)</b> — both...and: <i>hem yorgunum hem açım</i> (I'm both tired and hungry)</li>
+<li><b>ya...ya (da)</b> — either...or</li>
+<li><b>ki</b> — that/so that (borrowed from Persian, links clauses): <i>biliyorum ki haklısın</i> (I know that you're right)</li>
+</ul>`
+  },
+  {
+    id:"past_continuous", title:"Past Continuous", icon:"⏱️", grammarTopics:["gecmis_devam"], targetExercises:8,
+    explanation:`<p>Combine the present-continuous marker <b>-iyor</b> with the past copula <b>-du</b> to describe an ongoing action in the past:</p>
+<ul>
+<li><b>geliyordum</b> — I was coming</li>
+<li><b>okuyordu</b> — he/she was reading</li>
+</ul>
+<p>Just like English "was/were -ing", this sets the scene for something else that happened — very common in storytelling.</p>`
+  },
+  {
+    id:"optative", title:"The Optative (Wish)", icon:"🙏", grammarTopics:["istek_kipi"], targetExercises:8,
+    explanation:`<p>The optative suffix <b>-e/-a</b> expresses a wish, suggestion, or "let me/us..." :</p>
+<ul>
+<li><b>Gideyim.</b> — Let me go. / I think I'll go.</li>
+<li><b>Gidelim!</b> — Let's go!</li>
+</ul>
+<p>It's less common than the imperative but essential for polite suggestions and self-directed intentions.</p>`
+  },
+  {
+    id:"ki_suffix", title:"The Suffix -ki", icon:"🔖", grammarTopics:["ki_eki"], targetExercises:8,
+    explanation:`<p>Don't confuse this with the conjunction "ki" from the previous conjunctions lesson — this <b>-ki</b> is a suffix with two related uses:</p>
+<p><b>Possessive:</b> <b>benimki</b> — mine, <b>seninki</b> — yours (stands in for "my one/yours" without repeating the noun).</p>
+<p><b>Relative/locational:</b> <b>masadaki kitap</b> — the book [that is] on the table (attaches to a locative form to make it modify a noun, like an adjective).</p>`
+  },
+  {
+    id:"future_in_past", title:"Future-in-the-Past", icon:"↩️", grammarTopics:["gelecek_gecmis"], targetExercises:8,
+    explanation:`<p>Combine the future marker <b>-ecek</b> with the past copula to talk about something that WAS going to happen (regardless of whether it actually did):</p>
+<ul>
+<li><b>Gelecekti ama gelmedi.</b> — He was going to come, but he didn't.</li>
+</ul>
+<p>This is a nuance English handles the same way ("was going to..."), so the logic should feel familiar even though the Turkish form is new.</p>`
+  },
+  {
+    id:"verbal_nouns", title:"Verbal Nouns", icon:"📇", grammarTopics:["isim_fiil"], targetExercises:8,
+    explanation:`<p>Turkish can turn a verb into a noun with <b>-me</b> or <b>-iş</b> — similar to English "-ing" as a noun ("the going", "the arrival"):</p>
+<ul>
+<li><b>gitme</b> — the act of going (more abstract/grammatical)</li>
+<li><b>gidiş</b> — the departure (more concrete, often lexicalised as its own word)</li>
+</ul>
+<p>You'll often see these as the subject or object of a sentence, where English would use a gerund.</p>`
+  },
+  {
+    id:"diminutive", title:"The Diminutive -cik", icon:"🤏", grammarTopics:["kucultme_eki"], targetExercises:8,
+    explanation:`<p>Adding <b>-cik</b> (with variants) makes something smaller, cuter, or softer — similar to "-ie/-y" in English (doggy, teeny):</p>
+<ul>
+<li><b>az</b> (little) → <b>azıcık</b> (just a tiny bit)</li>
+<li><b>kedi</b> (cat) → <b>kedicik</b> (kitty)</li>
+</ul>
+<p>Very common in affectionate or informal speech.</p>`
+  },
+  {
+    id:"participles", title:"Participles", icon:"🧩", grammarTopics:["ortac"], targetExercises:9,
+    explanation:`<p>Participles turn a verb into an adjective-like modifier attached directly to a noun — no relative pronoun ("who/which/that") needed, unlike English:</p>
+<ul>
+<li><b>gelen adam</b> — the man who is coming/came (lit. "coming man")</li>
+<li><b>okuduğum kitap</b> — the book that I read (lit. "my-read book")</li>
+</ul>
+<p>This takes some getting used to since Turkish builds the whole relative clause BEFORE the noun it describes — the opposite order from English.</p>`
+  },
+  {
+    id:"compound_past", title:"Compound Past Combinations", icon:"🕰️", grammarTopics:["birlesik_gecmis"], targetExercises:8,
+    explanation:`<p>Turkish tenses can stack: combining <b>-miş</b> (hearsay past) with another past-tense copula gives a "past of the past" — roughly like English past perfect ("had gone"):</p>
+<ul>
+<li><b>gitmişti</b> — he had (apparently) gone</li>
+</ul>
+<p>This is genuinely advanced material — take your time here, it builds directly on the two separate past tenses you already know.</p>`
+  },
+  {
+    id:"reported_speech", title:"Direct & Indirect Speech", icon:"💬", grammarTopics:["dolayli_anlatim"], targetExercises:8,
+    explanation:`<p><b>Direct speech</b> quotes the exact words, followed by "dedi" (said):</p>
+<p>"Geliyorum" dedi. — "I'm coming," he said.</p>
+<p><b>Indirect speech</b> reports what was said without quoting, restructuring the verb (often into a verbal noun + possessive, from the earlier lesson):</p>
+<p>Geleceğini söyledi. — He said that he would come. (lit. "his-coming-ness he-told")</p>`
+  },
+  {
+    id:"reciprocal", title:"Reciprocal Voice", icon:"🤝", grammarTopics:["islik_cati"], targetExercises:8,
+    explanation:`<p>The suffix <b>-iş</b> added to a verb stem creates a "reciprocal" meaning — doing something to/with each other:</p>
+<ul>
+<li><b>görmek</b> (to see) → <b>görüşmek</b> (to see each other / to meet up)</li>
+<li><b>Görüşürüz!</b> — See you! (lit. "we'll see each other")</li>
+</ul>
+<p>You've actually already used this suffix without realising it, in the common goodbye "görüşürüz".</p>`
+  },
 ];
 
 /* Bouwt de volledige cursus: de 238 auto-gegenereerde vocabulaire-lessen (28-woordbatches per
@@ -26894,6 +27058,7 @@ function startCheckup(){
   const queue = buildCheckupQueue();
   if(queue.length < 4){ alert("Practice a bit more first — there isn't enough already-practiced material yet for a meaningful check."); return; }
   activeCheckup = {queue, index:0, results:[]};
+  persistCheckupState();
   currentItem = null;
   switchTab("practice");
 }
@@ -26901,6 +27066,49 @@ function startCheckup(){
 /* Wordt aangeroepen direct na het verwerken van een antwoord op een kennischeck-item.
    Herijkt het niveau STERKER dan de normale +1/-1-stap (dit is een bewuste toets, geen losse herhaling),
    en levert een stukje feedback-HTML op om aan het bestaande feedbackbericht te plakken. */
+/* Tussentijdse opslag van een actieve les/kennischeck-sessie, zodat deze een tabwissel,
+   het minimaliseren van de app, of zelfs een herladen van de pagina overleeft. */
+function persistLessonState(){
+  if(activeLesson) localStorage.setItem(LS_ACTIVE_LESSON, JSON.stringify({lessonId: activeLesson.id, sessionDone: lessonSessionDone}));
+  else localStorage.removeItem(LS_ACTIVE_LESSON);
+}
+function persistCheckupState(){
+  if(activeCheckup) localStorage.setItem(LS_ACTIVE_CHECKUP, JSON.stringify(activeCheckup));
+  else localStorage.removeItem(LS_ACTIVE_CHECKUP);
+}
+function restoreActiveSessions(){
+  try{
+    const raw = localStorage.getItem(LS_ACTIVE_LESSON);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      const lesson = LESSONS.find(l=>l.id===parsed.lessonId);
+      if(lesson){ activeLesson = lesson; lessonSessionDone = parsed.sessionDone || 0; }
+    }
+  }catch(e){ activeLesson = null; lessonSessionDone = 0; }
+  try{
+    const raw = localStorage.getItem(LS_ACTIVE_CHECKUP);
+    if(raw) activeCheckup = JSON.parse(raw);
+  }catch(e){ activeCheckup = null; }
+}
+
+/* Centrale plek voor lesvoortgang bijwerken na een oefening (correct, fout, overgeslagen of leeg) —
+   hergebruikt door alle antwoordpaden zodat er geen losse, uiteenlopende kopieën meer bestaan. */
+function advanceLessonSession(){
+  if(!activeLesson) return "";
+  lessonSessionDone++;
+  let note;
+  if(lessonSessionDone >= activeLesson.targetExercises){
+    markLessonComplete(activeLesson.id);
+    note = `<br><br>🎉 <b>Lesson complete: ${activeLesson.title}!</b> The next lesson is now unlocked.`;
+    activeLesson = null;
+    lessonSessionDone = 0;
+  } else {
+    note = `<br><br><span class="muted">Lesson progress: ${lessonSessionDone}/${activeLesson.targetExercises}</span>`;
+  }
+  persistLessonState();
+  return note;
+}
+
 function checkupNoteAfterAnswer(correct){
   if(!activeCheckup) return "";
   const q = activeCheckup.queue[activeCheckup.index];
@@ -26926,8 +27134,10 @@ function checkupNoteAfterAnswer(correct){
     const note = `<br><br>📋 <b>Knowledge check complete: ${correctCount}/${total} correct.</b>` +
       (weak.length ? `<br>Needs more work: ${weak.join(", ")}` : `<br>Nice — everything checked out solid!`);
     activeCheckup = null;
+    persistCheckupState();
     return note;
   }
+  persistCheckupState();
   return `<br><br><span class="muted">Knowledge check: ${activeCheckup.index}/${activeCheckup.queue.length}</span>`;
 }
 
@@ -27879,13 +28089,13 @@ async function renderPractice(){
     el("lesson-banner").innerHTML = `🎓 <b>${activeLesson.title}</b> — exercise ${lessonSessionDone+1}/${activeLesson.targetExercises}
       &nbsp; <button class="toplink" id="btn-exit-lesson">exit lesson</button>`;
     const exitBtn = el("btn-exit-lesson");
-    if(exitBtn) exitBtn.addEventListener("click", ()=>{ activeLesson = null; lessonSessionDone = 0; renderPractice(); });
+    if(exitBtn) exitBtn.addEventListener("click", ()=>{ activeLesson = null; lessonSessionDone = 0; persistLessonState(); renderPractice(); });
   } else if(activeCheckup){
     el("lesson-banner").classList.remove("hidden");
     el("lesson-banner").innerHTML = `📋 <b>Knowledge check</b> — item ${activeCheckup.index+1}/${activeCheckup.queue.length}
       &nbsp; <button class="toplink" id="btn-exit-lesson">exit check</button>`;
     const exitBtn = el("btn-exit-lesson");
-    if(exitBtn) exitBtn.addEventListener("click", ()=>{ activeCheckup = null; renderPractice(); });
+    if(exitBtn) exitBtn.addEventListener("click", ()=>{ activeCheckup = null; persistCheckupState(); renderPractice(); });
   } else {
     el("lesson-banner").classList.add("hidden");
   }
@@ -28022,17 +28232,7 @@ async function handleCheck(){
     if(currentItem.type === "sentence" || currentItem.type === "question"){
       recordHistory(currentItem.type);
       for(const w of currentItem.words) recordResult(w.en, false);
-      let lessonNote = "";
-      if(activeLesson){
-        lessonSessionDone++;
-        if(lessonSessionDone >= activeLesson.targetExercises){
-          markLessonComplete(activeLesson.id);
-          lessonNote = `<br><br>🎉 <b>Lesson complete: ${activeLesson.title}!</b> The next lesson is now unlocked.`;
-          activeLesson = null; lessonSessionDone = 0;
-        } else {
-          lessonNote = `<br><br><span class="muted">Lesson progress: ${lessonSessionDone}/${activeLesson.targetExercises}</span>`;
-        }
-      }
+      const lessonNote = advanceLessonSession();
       const checkupNote = checkupNoteAfterAnswer(false);
       const wordTranslations = currentItem.words.map(w=> `${w.tr} = ${w.en}`).join(" &nbsp;·&nbsp; ");
       showFeedback("wrong", "❌<br><br><b>Translations:</b><br>" + wordTranslations + lessonNote + checkupNote);
@@ -28118,18 +28318,7 @@ async function handleCheckSentence(answer){
       recordGrammarResult(currentItem.grammarTopic, verdict.grammar_correct);
     }
 
-    let lessonNote = "";
-    if(activeLesson){
-      lessonSessionDone++;
-      if(lessonSessionDone >= activeLesson.targetExercises){
-        markLessonComplete(activeLesson.id);
-        lessonNote = `<br><br>🎉 <b>Lesson complete: ${activeLesson.title}!</b> The next lesson is now unlocked.`;
-        activeLesson = null;
-        lessonSessionDone = 0;
-      } else {
-        lessonNote = `<br><br><span class="muted">Lesson progress: ${lessonSessionDone}/${activeLesson.targetExercises}</span>`;
-      }
-    }
+    const lessonNote = advanceLessonSession();
     const checkupNote = checkupNoteAfterAnswer(typeof verdict.grammar_correct === "boolean" ? verdict.grammar_correct : !!verdict.correct);
 
     const wordLines = currentItem.words.map((w, i)=>{
@@ -28210,18 +28399,7 @@ function finalizeAnswer(correct, message){
   currentCorrect = correct;
   recordHistory("word");
   recordResult(currentItem.en, correct);
-  let lessonNote = "";
-  if(activeLesson && activeLesson.words && activeLesson.words.length){
-    lessonSessionDone++;
-    if(lessonSessionDone >= activeLesson.targetExercises){
-      markLessonComplete(activeLesson.id);
-      lessonNote = `<br><br>🎉 <b>Lesson complete: ${activeLesson.title}!</b> The next lesson is now unlocked.`;
-      activeLesson = null;
-      lessonSessionDone = 0;
-    } else {
-      lessonNote = `<br><br><span class="muted">Lesson progress: ${lessonSessionDone}/${activeLesson.targetExercises}</span>`;
-    }
-  }
+  const lessonNote = advanceLessonSession();
   const checkupNote = checkupNoteAfterAnswer(correct);
   showFeedback(correct ? "correct" : "wrong", message + lessonNote + checkupNote);
   el("post-actions").classList.remove("hidden");
@@ -28545,12 +28723,23 @@ function renderCourseTab(){
     const status = completed ? "✅" : (unlocked ? "▶️" : "🔒");
     const hasPractice = l.grammarTopics.length > 0 || (l.words && l.words.length > 0);
     const sub = completed ? "Completed" : (unlocked ? (hasPractice ? "Tap to open" : "Tap to read") : "Locked — finish the previous lesson first");
+    // proficiency-cijfer (0-10): voor grammaticalessen het (afgeronde) gemiddelde niveau van de gekoppelde onderwerpen
+    let profBadge = "";
+    if(l.grammarTopics.length){
+      const avg = l.grammarTopics.reduce((s,k)=>s+getGrammarProgress(k).level, 0) / l.grammarTopics.length;
+      const rounded = Math.round(avg*10)/10;
+      const color = rounded<=3 ? "#e0333f" : rounded<=6 ? "#e0a733" : "#2fae6a";
+      profBadge = `<span class="muted" style="font-size:.72rem;color:${color};font-weight:700;">${rounded}/10</span>`;
+    }
     return `<div class="word-row" style="cursor:${unlocked?"pointer":"default"};opacity:${unlocked?1:.5};" data-idx="${idx}">
       <div>
         <div class="word-row-tr">${l.icon} ${l.title}</div>
         <div class="word-row-trans">${sub}</div>
       </div>
-      <div style="font-size:1.2rem;">${status}</div>
+      <div style="text-align:right;">
+        <div style="font-size:1.2rem;">${status}</div>
+        ${profBadge}
+      </div>
     </div>`;
   }).join("");
   el("lesson-list").querySelectorAll("[data-idx]").forEach(row=>{
@@ -28566,14 +28755,19 @@ function openLessonModal(idx){
   el("lesson-modal-explanation").innerHTML = l.explanation;
   const completed = isLessonCompleted(l.id);
   const needsPractice = l.grammarTopics.length > 0 || (l.words && l.words.length > 0);
+  let profLine = "";
+  if(l.grammarTopics.length){
+    const avg = l.grammarTopics.reduce((s,k)=>s+getGrammarProgress(k).level, 0) / l.grammarTopics.length;
+    profLine = `<div class="muted" style="margin-top:6px;">Current proficiency: <b>${(Math.round(avg*10)/10)}/10</b></div>`;
+  }
   if(completed){
-    el("lesson-modal-progress").textContent = "✅ You've completed this lesson.";
+    el("lesson-modal-progress").innerHTML = "✅ You've completed this lesson." + profLine;
     el("btn-lesson-action").textContent = needsPractice ? "Practise again" : "Close";
   } else if(needsPractice){
-    el("lesson-modal-progress").textContent = `Complete ${l.targetExercises} practice exercises to unlock the next lesson.`;
+    el("lesson-modal-progress").innerHTML = `Complete ${l.targetExercises} practice exercises to unlock the next lesson.` + profLine;
     el("btn-lesson-action").textContent = "Start practice";
   } else {
-    el("lesson-modal-progress").textContent = "";
+    el("lesson-modal-progress").innerHTML = "";
     el("btn-lesson-action").textContent = "Got it — mark as read";
   }
   el("modal-lesson").classList.remove("hidden");
@@ -28595,6 +28789,7 @@ function startLessonAction(){
   }
   activeLesson = l;
   lessonSessionDone = 0;
+  persistLessonState();
   el("modal-lesson").classList.add("hidden");
   currentItem = null; // forceert een nieuwe, les-gerichte oefening
   switchTab("practice");
@@ -28745,25 +28940,22 @@ document.addEventListener("DOMContentLoaded", ()=>{
     if(currentItem.type === "sentence" || currentItem.type === "question"){
       recordHistory(currentItem.type);
       for(const w of currentItem.words) recordResult(w.en, false);
-      if(activeLesson){
-        lessonSessionDone++;
-        if(lessonSessionDone >= activeLesson.targetExercises){
-          markLessonComplete(activeLesson.id);
-          activeLesson = null; lessonSessionDone = 0;
-        }
-      }
-      checkupNoteAfterAnswer(false);
     } else {
       recordHistory("word");
       recordResult(currentItem.en, false);
-      if(activeLesson && activeLesson.words && activeLesson.words.length){
-        lessonSessionDone++;
-        if(lessonSessionDone >= activeLesson.targetExercises){
-          markLessonComplete(activeLesson.id);
-          activeLesson = null; lessonSessionDone = 0;
-        }
-      }
-      checkupNoteAfterAnswer(false);
+    }
+    const lessonNote = advanceLessonSession();
+    const checkupNote = checkupNoteAfterAnswer(false);
+    if(lessonNote.includes("Lesson complete") || checkupNote.includes("Knowledge check complete")){
+      // een les/kennischeck rondde net af door dit overslaan -> niet stilletjes doorgaan, eerst tonen
+      currentAnswered = true;
+      showFeedback("wrong", "⏭️ Skipped." + lessonNote + checkupNote);
+      el("post-actions").classList.remove("hidden");
+      el("btn-next").classList.remove("hidden");
+      el("btn-dispute").classList.add("hidden");
+      el("btn-check").disabled = true;
+      el("answer-input").disabled = true;
+      return;
     }
     renderPractice();
   });
@@ -28864,6 +29056,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   });
 
   initSettingsUI();
+  restoreActiveSessions();
   if(syncConfigured()){
     syncPullNow(false).then(renderPractice);
   } else {
