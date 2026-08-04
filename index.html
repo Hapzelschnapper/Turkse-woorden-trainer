@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 11:40</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 12:50</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -156,7 +156,7 @@
         <span class="muted" style="font-weight:700;">Structured course</span>
         <span class="muted" id="course-progress-count"></span>
       </div>
-      <div class="muted" style="margin-top:6px;">A step-by-step path through Turkish grammar, from the absolute basics onward. Complete a lesson to unlock the next.</div>
+      <div class="muted" style="margin-top:6px;">A step-by-step path through Turkish vocabulary and grammar, from A1 to C1. Regular practice on the Practice tab automatically works through this course in order — this tab is for reading lesson explanations and checking your progress.</div>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">📋 Knowledge check</h3>
@@ -267,7 +267,7 @@
         <span class="muted" id="cefr-label">A2 mid</span>
       </div>
       <input type="range" id="cefr-slider" min="0" max="17" step="1" value="4" style="width:100%;">
-      <div class="muted" style="margin-top:8px;">Determines the sentence length, grammatical complexity and word rarity of generated sentences, AND which not-yet-seen words are introduced first (words clearly above your level are held back for now).</div>
+      <div class="muted" style="margin-top:8px;">Determines the sentence length, grammatical complexity and word rarity <i>style</i> of generated sentences. Which words/grammar you actually practise is driven by your current position in the Course tab, not by this slider.</div>
       <div class="muted" id="cefr-unlocked-info" style="margin-top:6px;"></div>
       <button class="btn-secondary" id="btn-start-test" style="width:100%;margin-top:12px;">📝 Take a placement test to determine your level</button>
       <div class="muted" id="test-result" style="margin-top:8px;"></div>
@@ -311,7 +311,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 11:40</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 12:50</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -26521,8 +26521,6 @@ let newWords = loadJSON(LS_NEWWORDS, {});
 let grammar = loadJSON(LS_GRAMMAR, {});
 let trCache = loadJSON(LS_TRCACHE, {});
 let lessonProgress = loadJSON(LS_LESSONS, {});
-let activeLesson = null;   // les die momenteel actief geoefend wordt (of null)
-let lessonSessionDone = 0; // aantal binnen deze lessessie afgeronde oefeningen
 let activeCheckup = null;  // { queue:[{type,en/key,cefr}], index, results:[] } — actieve kennischeck
 let adaptiveWindow = loadJSON(LS_ADAPTIVE_WINDOW, []); // laatste N (correct/fout) van reguliere oefeningen
 let costUsage = loadJSON(LS_COST, {byModel:{}});
@@ -27039,8 +27037,15 @@ function pickLessonGrammarTopic(){
     const q = activeCheckup.queue[activeCheckup.index];
     if(q && q.type === "grammar") return grammarTopicByKey(q.key);
   }
-  if(!activeLesson || !activeLesson.grammarTopics.length) return pickWeakestGrammarTopic();
-  const topics = GRAMMAR_TOPICS.filter(t => activeLesson.grammarTopics.includes(t.key));
+  const cur = LESSONS[currentLessonIndex()];
+  // voorkeur: het grammaticale onderwerp van de HUIDIGE les, zolang dat nog niet volledig beheerst is
+  if(cur && cur.grammarTopics && cur.grammarTopics.length){
+    const topic = grammarTopicByKey(cur.grammarTopics[0]);
+    if(topic && getGrammarProgress(topic.key).level < 10) return topic;
+  }
+  // anders: herhaling — zwakste onderwerp binnen alles wat al ontgrendeld is
+  const unlockedKeys = [...unlockedGrammarTopicSet()];
+  const topics = (unlockedKeys.length ? unlockedKeys : GRAMMAR_TOPICS.map(t=>t.key)).map(grammarTopicByKey);
   const minLevel = Math.min(...topics.map(t=>getGrammarProgress(t.key).level));
   const pool = topics.filter(t=>getGrammarProgress(t.key).level === minLevel);
   return pool[Math.floor(Math.random()*pool.length)];
@@ -27062,20 +27067,26 @@ function stratifiedSample(items, getLevel, n){
 }
 
 function buildCheckupQueue(){
-  const words = allWords().filter(w => getProgress(w.en).reps > 0);
-  const topics = GRAMMAR_TOPICS.filter(t => getGrammarProgress(t.key).reps > 0);
-  const wordItems = stratifiedSample(words, w=>getProgress(w.en).level, 6).map(w=>({type:"word", en:w.en, cefr:w.cefr}));
-  const grammarItems = stratifiedSample(topics, t=>getGrammarProgress(t.key).level, 6).map(t=>({type:"grammar", key:t.key}));
+  const completedLessons = LESSONS.filter(l => isLessonCompleted(l.id) && ((l.words && l.words.length) || (l.grammarTopics && l.grammarTopics.length)));
+  const wordCandidates = [];
+  const topicCandidates = [];
+  for(const l of completedLessons){
+    if(l.words) for(const en of l.words) wordCandidates.push({en, lessonId:l.id});
+    if(l.grammarTopics) for(const k of l.grammarTopics) topicCandidates.push({key:k, lessonId:l.id});
+  }
+  const wordItems = stratifiedSample(wordCandidates, c=>getProgress(c.en).level, 6)
+    .map(c => ({type:"word", en:c.en, cefr:(EN_WORDS_DATA.find(w=>w.en===c.en)||{}).cefr, lessonId:c.lessonId}));
+  const grammarItems = stratifiedSample(topicCandidates, c=>getGrammarProgress(c.key).level, 6)
+    .map(c => ({type:"grammar", key:c.key, lessonId:c.lessonId}));
   const queue = [...wordItems, ...grammarItems];
   for(let i=queue.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [queue[i],queue[j]]=[queue[j],queue[i]]; }
   return queue;
 }
 
 function startCheckup(){
-  if(activeLesson){ alert("Finish or exit your current lesson first before starting a knowledge check."); return; }
   if(!settings.apiKey){ alert("A DeepSeek API key is needed for the knowledge check (Settings)."); return; }
   const queue = buildCheckupQueue();
-  if(queue.length < 4){ alert("Practice a bit more first — there isn't enough already-practiced material yet for a meaningful check."); return; }
+  if(queue.length < 4){ alert("Complete a few more lessons first — there aren't enough completed lessons yet for a meaningful check."); return; }
   activeCheckup = {queue, index:0, results:[]};
   persistCheckupState();
   currentItem = null;
@@ -27087,23 +27098,12 @@ function startCheckup(){
    en levert een stukje feedback-HTML op om aan het bestaande feedbackbericht te plakken. */
 /* Tussentijdse opslag van een actieve les/kennischeck-sessie, zodat deze een tabwissel,
    het minimaliseren van de app, of zelfs een herladen van de pagina overleeft. */
-function persistLessonState(){
-  if(activeLesson) localStorage.setItem(LS_ACTIVE_LESSON, JSON.stringify({lessonId: activeLesson.id, sessionDone: lessonSessionDone}));
-  else localStorage.removeItem(LS_ACTIVE_LESSON);
-}
 function persistCheckupState(){
   if(activeCheckup) localStorage.setItem(LS_ACTIVE_CHECKUP, JSON.stringify(activeCheckup));
   else localStorage.removeItem(LS_ACTIVE_CHECKUP);
 }
 function restoreActiveSessions(){
-  try{
-    const raw = localStorage.getItem(LS_ACTIVE_LESSON);
-    if(raw){
-      const parsed = JSON.parse(raw);
-      const lesson = LESSONS.find(l=>l.id===parsed.lessonId);
-      if(lesson){ activeLesson = lesson; lessonSessionDone = parsed.sessionDone || 0; }
-    }
-  }catch(e){ activeLesson = null; lessonSessionDone = 0; }
+  localStorage.removeItem(LS_ACTIVE_LESSON); // legacy sleutel, niet meer gebruikt sinds lessen automatisch voortgaan
   try{
     const raw = localStorage.getItem(LS_ACTIVE_CHECKUP);
     if(raw) activeCheckup = JSON.parse(raw);
@@ -27112,20 +27112,39 @@ function restoreActiveSessions(){
 
 /* Centrale plek voor lesvoortgang bijwerken na een oefening (correct, fout, overgeslagen of leeg) —
    hergebruikt door alle antwoordpaden zodat er geen losse, uiteenlopende kopieën meer bestaan. */
+const LESSON_ACCURACY_THRESHOLD = 60; // % — woorden/onderwerp moeten dit gemiddelde niveau (als %) halen, niet alleen "geprobeerd" zijn
+
 function advanceLessonSession(){
-  if(!activeLesson) return "";
-  lessonSessionDone++;
-  let note;
-  if(lessonSessionDone >= activeLesson.targetExercises){
-    markLessonComplete(activeLesson.id);
-    note = `<br><br>🎉 <b>Lesson complete: ${activeLesson.title}!</b> The next lesson is now unlocked.`;
-    activeLesson = null;
-    lessonSessionDone = 0;
+  const idx = currentLessonIndex();
+  const l = LESSONS[idx];
+  if(!l || isLessonCompleted(l.id)) return "";
+  let done = false;
+  let progressTxt = "";
+  if(l.words && l.words.length){
+    const attempted = l.words.filter(en => getProgress(en).reps > 0);
+    const allAttempted = attempted.length >= l.words.length;
+    const avgPct = attempted.length ? Math.round(100 * attempted.reduce((s,en)=>s+getProgress(en).level, 0) / (attempted.length*10)) : 0;
+    done = allAttempted && avgPct >= LESSON_ACCURACY_THRESHOLD;
+    progressTxt = `Lesson progress: ${attempted.length}/${l.words.length} words introduced, ${avgPct}% average accuracy (need ${LESSON_ACCURACY_THRESHOLD}%)`;
+  } else if(l.grammarTopics && l.grammarTopics.length){
+    const topic = grammarTopicByKey(l.grammarTopics[0]);
+    const p = getGrammarProgress(topic.key);
+    const enoughReps = p.reps >= l.targetExercises;
+    const pct = Math.round(p.level / 10 * 100);
+    done = enoughReps && pct >= LESSON_ACCURACY_THRESHOLD;
+    progressTxt = `Lesson progress: ${Math.min(p.reps, l.targetExercises)}/${l.targetExercises} exercises on "${topic.label}", ${pct}% accuracy (need ${LESSON_ACCURACY_THRESHOLD}%)`;
   } else {
-    note = `<br><br><span class="muted">Lesson progress: ${lessonSessionDone}/${activeLesson.targetExercises}</span>`;
+    return ""; // pure leesles: wordt alleen via de Course-tab zelf afgevinkt, niet automatisch
   }
-  persistLessonState();
-  return note;
+  if(done){
+    markLessonComplete(l.id);
+    const next = LESSONS[idx+1];
+    return `<br><br>🎉 <b>Lesson complete: ${l.title}!</b> ` +
+      (next ? `You've unlocked the next lesson: <b>${next.icon} ${next.title}</b>.` : `You've reached the end of the course!`);
+  }
+  // niet-behaalde nauwkeurigheid: de woorden/het onderwerp met een laag niveau komen vanzelf sneller
+  // weer "due" terug (kortere herhalingsintervallen), dus dit lost zichzelf op via gewoon dooroefenen
+  return `<br><br><span class="muted">${progressTxt}</span>`;
 }
 
 /* ===================== ADAPTIEVE MOEILIJKHEIDSGRAAD ===================== */
@@ -27139,7 +27158,7 @@ const ADAPTIVE_HYSTERESIS = 10; // procentpunten boven/onder de streefwaarde voo
 
 function recordAdaptiveResult(correct){
   if(!settings.adaptiveEnabled) return "";
-  if(activeLesson || activeCheckup) return ""; // alleen reguliere oefeningen tellen mee voor dit signaal
+  if(activeCheckup) return ""; // alleen reguliere oefeningen tellen mee voor dit signaal
   adaptiveWindow.push(!!correct);
   if(adaptiveWindow.length > ADAPTIVE_WINDOW_SIZE) adaptiveWindow.shift();
   saveJSON(LS_ADAPTIVE_WINDOW, adaptiveWindow);
@@ -27184,20 +27203,35 @@ function checkupNoteAfterAnswer(correct){
     progress[q.en] = p;
     saveJSON(LS_PROGRESS, progress);
   }
+  let reopened = null;
+  if(!correct && q.lessonId && isLessonCompleted(q.lessonId)){
+    // je vulde dit fout in, terwijl de bijbehorende les als voltooid gold -> heropen 'm.
+    // Doordat lessen sequentieel ontgrendelen, sluit dit automatisch ook alles ná deze les weer af
+    // totdat die opnieuw is afgerond.
+    lessonProgress[q.lessonId] = {completed:false, done:0};
+    saveJSON(LS_LESSONS, lessonProgress);
+    reopened = LESSONS.find(l=>l.id===q.lessonId);
+  }
   activeCheckup.index++;
   if(activeCheckup.index >= activeCheckup.queue.length){
     const total = activeCheckup.results.length;
     const correctCount = activeCheckup.results.filter(r=>r.correct).length;
     const weak = activeCheckup.results.filter(r=>!r.correct)
       .map(r => r.type === "grammar" ? grammarTopicByKey(r.key).label : r.en);
+    const reopenedLessons = [...new Set(activeCheckup.results.filter(r=>!r.correct).map(r=>r.lessonId))]
+      .map(id => LESSONS.find(l=>l.id===id))
+      .filter(Boolean)
+      .sort((a,b)=> LESSONS.indexOf(a) - LESSONS.indexOf(b));
     const note = `<br><br>📋 <b>Knowledge check complete: ${correctCount}/${total} correct.</b>` +
-      (weak.length ? `<br>Needs more work: ${weak.join(", ")}` : `<br>Nice — everything checked out solid!`);
+      (weak.length ? `<br>Needs more work: ${weak.join(", ")}` : `<br>Nice — everything checked out solid!`) +
+      (reopenedLessons.length ? `<br>⚠️ Re-opened for review: ${reopenedLessons.map(l=>l.title).join(", ")} — you'll need to redo ${reopenedLessons.length===1?"it":"these"} before later lessons unlock again.` : "");
     activeCheckup = null;
     persistCheckupState();
     return note;
   }
   persistCheckupState();
-  return `<br><br><span class="muted">Knowledge check: ${activeCheckup.index}/${activeCheckup.queue.length}</span>`;
+  return `<br><br><span class="muted">Knowledge check: ${activeCheckup.index}/${activeCheckup.queue.length}</span>` +
+    (reopened ? `<br><span class="muted">⚠️ "${reopened.title}" has been re-opened for review.</span>` : "");
 }
 
 
@@ -27221,21 +27255,6 @@ function recordGrammarResult(key, correct){
   grammar[key] = p;
   saveJSON(LS_GRAMMAR, grammar);
 }
-function pickWeakestGrammarTopic(){
-  const userLevel = settings.cefrLevel ?? 4;
-  let gate = userLevel + 1; // lichte marge, net als bij woorden
-  let eligible = GRAMMAR_TOPICS.filter(t => t.minCefr <= gate);
-  while(!eligible.length && gate < 17){
-    gate += 2;
-    eligible = GRAMMAR_TOPICS.filter(t => t.minCefr <= gate);
-  }
-  if(!eligible.length) eligible = GRAMMAR_TOPICS; // veiligheidsnet
-  const minLevel = Math.min(...eligible.map(t=>getGrammarProgress(t.key).level));
-  const pool = eligible.filter(t=>getGrammarProgress(t.key).level === minLevel);
-  return pool[Math.floor(Math.random()*pool.length)];
-}
-
-
 /* ===================== CLOUD-SYNCHRONISATIE (GitHub Gist) ===================== */
 // Slaat progress/custom/newWords op in een privé GitHub Gist zodat je voortgang niet vastzit
 // aan één apparaat/browser. Werkt alleen als syncGistId + syncApiKey (GitHub token) zijn ingesteld.
@@ -27425,19 +27444,39 @@ function allWords(){
 // Levert alleen nog-nooit-getoonde woorden op die "binnen bereik" liggen van het ingestelde
 // CEFR-niveau (met een kleine uitdagingsmarge), zodat nieuwe stof gedoseerd wordt geïntroduceerd
 // i.p.v. willekeurig uit alle ~5000 Oxford-woorden — de kern van een echte niveau-opbouw.
+/* ===================== ÉÉN GEÏNTEGREERD SYSTEEM: oefenen = altijd binnen wat de cursus ontgrendeld heeft ===================== */
+function currentLessonIndex(){
+  const idx = nextIncompleteLessonIndex();
+  return idx === -1 ? LESSONS.length - 1 : idx; // alles voltooid -> hele cursus geldt als "ontgrendeld"
+}
+function unlockedLessonsList(){
+  return LESSONS.slice(0, currentLessonIndex() + 1);
+}
+function unlockedWordSet(){
+  const set = new Set();
+  for(const l of unlockedLessonsList()) if(l.words) for(const w of l.words) set.add(w);
+  return set;
+}
+function unlockedGrammarTopicSet(){
+  const set = new Set();
+  for(const l of unlockedLessonsList()) if(l.grammarTopics) for(const k of l.grammarTopics) set.add(k);
+  return set;
+}
+
 function getIntroducibleWords(){
   const words = baseWordList();
-  const neverShown = words.filter(w => getProgress(w.en).reps === 0);
-  if(!neverShown.length) return [];
-  const userLevel = settings.cefrLevel ?? 4;
-  let gate = userLevel + 2; // sta iets boven je huidige niveau toe (lichte uitdaging)
-  let pool = neverShown.filter(w => (w.cefr ?? userLevel) <= gate);
-  while(!pool.length && gate < 17){
-    gate += 3;
-    pool = neverShown.filter(w => (w.cefr ?? userLevel) <= gate);
+  const cur = LESSONS[currentLessonIndex()];
+  // voorkeur: nog-nooit-getoonde woorden uit de HUIDIGE les (dat is precies waar de cursus nu staat)
+  if(cur && cur.words && cur.words.length){
+    const pool = cur.words
+      .map(en => words.find(w=>w.en===en))
+      .filter(Boolean)
+      .filter(w => getProgress(w.en).reps === 0);
+    if(pool.length) return pool;
   }
-  if(!pool.length) pool = neverShown; // veiligheidsnet: nooit een lege pool teruggeven zolang er iets is
-  return pool;
+  // val terug op eventuele nog niet geïntroduceerde woorden uit eerder al ontgrendelde lessen
+  const unlocked = unlockedWordSet();
+  return words.filter(w => unlocked.has(w.en) && getProgress(w.en).reps === 0);
 }
 
 /* Voegt een nieuw Engels woord toe aan de lijst (ontdekt via een zin), tenzij het al bestaat. */
@@ -27503,25 +27542,16 @@ function pickNextItem(){
     const direction = settings.apiKey && Math.random() < 0.5 ? "tr-en" : "en-tr";
     return {en:q.en, cefr:q.cefr, type:"word", direction};
   }
-  if(activeLesson && activeLesson.words && activeLesson.words.length){
-    // vocabulaire-les: het volgende nog niet geoefende woord uit deze specifieke lesbatch
-    const en = activeLesson.words[lessonSessionDone % activeLesson.words.length];
-    const wordData = EN_WORDS_DATA.find(w=>w.en===en) || {en, cefr: activeLesson.cefr ?? 4};
-    const direction = settings.apiKey && Math.random() < 0.5 ? "tr-en" : "en-tr";
-    return {en: wordData.en, cefr: wordData.cefr, type:"word", direction};
-  }
-  if(activeLesson && activeLesson.grammarTopics.length){
-    // tijdens een grammatica-les altijd een zinsoefening rond het lesonderwerp, ongeacht de normale schuifjes
-    return {needsGeneration:true, kind:"sentence"};
-  }
-  const words = allWords();
+  const unlockedEns = unlockedWordSet();
+  const words = allWords().filter(w => unlockedEns.has(w.en));
   const now = Date.now();
 
-  // due-voor-herhaling (al eerder getoond) blijft ongefilterd; nog-nooit-getoonde woorden worden
-  // eerst gefilterd op CEFR-bereik, zodat nieuwe stof gedoseerd binnenkomt i.p.v. willekeurig
+  // due-voor-herhaling (al eerder getoond) blijft ongefilterd binnen wat ontgrendeld is; nog-nooit-getoonde
+  // woorden komen alleen uit de huidige/ontgrendelde les(sen) (zie getIntroducibleWords) — dit ÍS de cursus nu,
+  // er is geen los "vrij oefenen" meer los van de lessenstructuur.
   const reviewDue = words.filter(it => { const p = getProgress(it.en); return p.reps > 0 && p.due <= now; });
   const introducibleEns = new Set(getIntroducibleWords().map(w=>w.en));
-  const introducibleAsWords = words.filter(it => introducibleEns.has(it.en));
+  const introducibleAsWords = allWords().filter(it => introducibleEns.has(it.en));
   const dueWords = [...reviewDue, ...introducibleAsWords];
 
   // Bepaal of we een zin of TR-vraag willen (streef-verhoudingen), alleen mogelijk met API-sleutel
@@ -27628,12 +27658,12 @@ function pickEnglishWordForSentence(){
   // altijd maar 1 doelwoord. Twee woorden verplicht samenpersen leidt tot onlogische
   // zinnen (bv. een vraagwoord + een concreet antwoord die elkaar tegenspreken),
   // ook als het model expliciet de instructie kreeg dat te vermijden.
-  const words = baseWordList().map(it=>it.en);
+  const words = [...unlockedWordSet()];
   const now = Date.now();
   const wantNew = Math.random() * 100 < (settings.newWordPercent ?? 50);
 
   if(wantNew){
-    const introducible = getIntroducibleWords(); // al gefilterd op CEFR-bereik
+    const introducible = getIntroducibleWords(); // al gescoped op de huidige/ontgrendelde les(sen)
     if(introducible.length) return introducible[Math.floor(Math.random()*introducible.length)].en;
   }
 
@@ -27646,6 +27676,7 @@ function pickEnglishWordForSentence(){
   }
 
   // niets is due (of "nieuwe woorden" gewenst maar geen meer over) -> val terug op absoluut laagste niveau
+  if(!words.length) return null;
   const minLevel = Math.min(...words.map(en=>getProgress(en).level));
   const pool = words.filter(en=>getProgress(en).level === minLevel);
   return pool.length ? pool[Math.floor(Math.random()*pool.length)] : null;
@@ -28143,20 +28174,20 @@ async function renderPractice(){
   el("answer-input").disabled = true;
   el("btn-check").disabled = true;
 
-  if(activeLesson){
-    el("lesson-banner").classList.remove("hidden");
-    el("lesson-banner").innerHTML = `🎓 <b>${activeLesson.title}</b> — exercise ${lessonSessionDone+1}/${activeLesson.targetExercises}
-      &nbsp; <button class="toplink" id="btn-exit-lesson">exit lesson</button>`;
-    const exitBtn = el("btn-exit-lesson");
-    if(exitBtn) exitBtn.addEventListener("click", ()=>{ activeLesson = null; lessonSessionDone = 0; persistLessonState(); renderPractice(); });
-  } else if(activeCheckup){
+  if(activeCheckup){
     el("lesson-banner").classList.remove("hidden");
     el("lesson-banner").innerHTML = `📋 <b>Knowledge check</b> — item ${activeCheckup.index+1}/${activeCheckup.queue.length}
       &nbsp; <button class="toplink" id="btn-exit-lesson">exit check</button>`;
     const exitBtn = el("btn-exit-lesson");
     if(exitBtn) exitBtn.addEventListener("click", ()=>{ activeCheckup = null; persistCheckupState(); renderPractice(); });
   } else {
-    el("lesson-banner").classList.add("hidden");
+    const curLesson = LESSONS[currentLessonIndex()];
+    if(curLesson){
+      el("lesson-banner").classList.remove("hidden");
+      el("lesson-banner").innerHTML = `📍 <b>Current lesson:</b> ${curLesson.icon} ${curLesson.title}`;
+    } else {
+      el("lesson-banner").classList.add("hidden");
+    }
   }
   el("btn-skip").disabled = true;
 
@@ -28697,14 +28728,13 @@ function renderStats(){
 function renderGrammarList(){
   const list = el("grammar-list");
   if(!list) return;
-  const userLevel = settings.cefrLevel ?? 4;
-  const gate = userLevel + 1;
-  const rows = GRAMMAR_TOPICS.map(t=>({t, p: getGrammarProgress(t.key), locked: t.minCefr > gate}))
+  const unlockedKeys = unlockedGrammarTopicSet();
+  const rows = GRAMMAR_TOPICS.map(t=>({t, p: getGrammarProgress(t.key), locked: !unlockedKeys.has(t.key)}))
     .sort((a,b)=> (a.locked - b.locked) || (a.p.level - b.p.level)); // bereikbare eerst, daarbinnen zwakste eerst
   list.innerHTML = rows.map(({t,p,locked})=>{
     const pct = p.level*10;
     const color = locked ? "#3a4356" : (p.reps===0 ? "#4a5568" : (p.level<=3 ? "#e0333f" : p.level<=6 ? "#e0a733" : "#2fae6a"));
-    const statusTxt = locked ? `🔒 from ${cefrLabel(t.minCefr)}` : (p.reps===0 ? "not practised yet" : `level ${p.level}/10 · practised ${p.reps}x`);
+    const statusTxt = locked ? `🔒 not unlocked yet` : (p.reps===0 ? "not practised yet" : `level ${p.level}/10 · practised ${p.reps}x`);
     return `<div style="margin-bottom:10px;${locked?'opacity:.55;':''}">
       <div class="row space-between" style="font-size:.85rem;margin-bottom:3px;">
         <span title="${t.hint}">${t.label}</span>
@@ -28818,6 +28848,7 @@ function openLessonModal(idx){
   el("lesson-modal-title").textContent = `${l.icon} ${l.title}`;
   el("lesson-modal-explanation").innerHTML = l.explanation;
   const completed = isLessonCompleted(l.id);
+  const isCurrent = idx === currentLessonIndex();
   const needsPractice = l.grammarTopics.length > 0 || (l.words && l.words.length > 0);
   let profLine = "";
   if(l.grammarTopics.length){
@@ -28826,10 +28857,13 @@ function openLessonModal(idx){
   }
   if(completed){
     el("lesson-modal-progress").innerHTML = "✅ You've completed this lesson." + profLine;
-    el("btn-lesson-action").textContent = needsPractice ? "Practise again" : "Close";
+    el("btn-lesson-action").textContent = "Close";
+  } else if(needsPractice && isCurrent){
+    el("lesson-modal-progress").innerHTML = `This is your current lesson — regular practice automatically focuses on it. It unlocks the next lesson once everything's been tried AND your average accuracy on it reaches ${LESSON_ACCURACY_THRESHOLD}%.` + profLine;
+    el("btn-lesson-action").textContent = "Go to practice";
   } else if(needsPractice){
-    el("lesson-modal-progress").innerHTML = `Complete ${l.targetExercises} practice exercises to unlock the next lesson.` + profLine;
-    el("btn-lesson-action").textContent = "Start practice";
+    el("lesson-modal-progress").innerHTML = ""; // niet-huidige, nog niet voltooide les kan (per ontwerp) niet voorkomen bij een lineair pad
+    el("btn-lesson-action").textContent = "Close";
   } else {
     el("lesson-modal-progress").innerHTML = "";
     el("btn-lesson-action").textContent = "Got it — mark as read";
@@ -28840,6 +28874,10 @@ function openLessonModal(idx){
 function startLessonAction(){
   const l = LESSONS[openLessonIdx];
   if(!l) return;
+  if(isLessonCompleted(l.id)){
+    el("modal-lesson").classList.add("hidden");
+    return;
+  }
   if(!l.grammarTopics.length && !(l.words && l.words.length)){
     // pure leesles: meteen afronden, geen oefensessie nodig
     markLessonComplete(l.id);
@@ -28847,15 +28885,9 @@ function startLessonAction(){
     renderCourseTab();
     return;
   }
-  if(!settings.apiKey){
-    alert("A DeepSeek API key is needed to practise lessons (Settings).");
-    return;
-  }
-  activeLesson = l;
-  lessonSessionDone = 0;
-  persistLessonState();
+  // gewone les: gewoon naar Oefenen — die pakt automatisch de HUIDIGE (eerst niet-voltooide) les op,
+  // er is geen aparte "sessie" meer nodig om te starten
   el("modal-lesson").classList.add("hidden");
-  currentItem = null; // forceert een nieuwe, les-gerichte oefening
   switchTab("practice");
 }
 
@@ -28914,6 +28946,22 @@ function showTestQuestion(){
   setTimeout(()=> el("test-answer-input").focus(), 50);
 }
 
+/* Markeert alle lessen tot en met het punt dat bij het gegeven CEFR-niveau hoort als voltooid —
+   gebruikt door de taaltoets om je meteen op het juiste punt in de cursus te zetten i.p.v. dat je
+   alles vanaf A1 begin opnieuw moet doorlopen. Tussenliggende leeslessen worden op positie meegenomen. */
+function skipLessonsToLevel(cefrIdx){
+  let lastIdx = -1;
+  for(let i=0;i<LESSONS.length;i++){
+    const l = LESSONS[i];
+    let lvl = null;
+    if(typeof l.cefr === "number") lvl = l.cefr; // vocabulaire-les
+    else if(l.grammarTopics && l.grammarTopics.length) lvl = Math.max(...l.grammarTopics.map(k=>grammarTopicByKey(k).minCefr));
+    if(lvl !== null && lvl <= cefrIdx) lastIdx = i;
+  }
+  for(let i=0;i<=lastIdx;i++) markLessonComplete(LESSONS[i].id);
+  return lastIdx;
+}
+
 async function handleTestNext(){
   testAnswers[testIndex] = el("test-answer-input").value.trim();
   if(testIndex < testItems.length - 1){
@@ -28929,8 +28977,10 @@ async function handleTestNext(){
     settings.cefrLevel = result.niveau_index;
     saveJSON(LS_SETTINGS, settings);
     initSettingsUI();
+    const skippedIdx = skipLessonsToLevel(result.niveau_index);
     el("test-progress").textContent = "";
-    el("test-result-text").innerHTML = `<b>Estimated level: ${cefrLabel(result.niveau_index)}</b><br><br>${result.toelichting||""}`;
+    el("test-result-text").innerHTML = `<b>Estimated level: ${cefrLabel(result.niveau_index)}</b><br><br>${result.toelichting||""}` +
+      (skippedIdx >= 0 ? `<br><br>📚 Unlocked the first ${skippedIdx+1} lessons of the course to match this level.` : "");
     el("test-result-box").classList.remove("hidden");
     el("test-result").textContent = "Last determined level: " + cefrLabel(result.niveau_index);
   }catch(e){
@@ -28949,7 +28999,7 @@ function updateCefrUnlockedInfo(){
   const words = baseWordList();
   const neverShown = words.filter(w => getProgress(w.en).reps === 0);
   const reachable = getIntroducibleWords().length;
-  elI.textContent = `${reachable} of ${neverShown.length} not-yet-seen words are currently within reach.`;
+  elI.textContent = `${reachable} new word(s) available to introduce from your current lesson.`;
 }
 
 function updateAdaptiveLabels(){
