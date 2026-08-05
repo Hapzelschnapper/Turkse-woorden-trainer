@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-05 09:15</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-05 10:20</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -256,6 +256,16 @@
       <div class="muted" id="anthropic-key-status" style="margin-top:8px;"></div>
     </div>
     <div class="card">
+      <h3 style="margin-top:0;">📖 One-time full dictionary pass</h3>
+      <div class="muted" style="margin-bottom:10px;">Has Claude look at all ~4932 words once, adding a reviewed Turkish translation plus a register tag (neutral / formal / informal / colloquial / caution). Once a word has this, exercises use it directly — no more per-word AI call, and feedback can note "this sounds a bit formal" without judging that live. Runs in batches, saves progress as it goes — safe to close and resume later. Uses your Claude key; a full pass is roughly 200 batched calls.</div>
+      <div class="muted" id="bulk-translate-status" style="margin-bottom:8px;"></div>
+      <div style="height:8px;border-radius:4px;background:#0d1720;overflow:hidden;margin-bottom:10px;">
+        <div id="bulk-translate-bar" style="height:100%;width:0%;background:#2fae6a;transition:width .3s;"></div>
+      </div>
+      <button class="btn-secondary" id="btn-bulk-translate" style="width:100%;">▶️ Start / resume full pass</button>
+      <button class="btn-ghost hidden" id="btn-bulk-translate-cancel" style="width:100%;margin-top:8px;">⏸️ Pause</button>
+    </div>
+    <div class="card">
       <h3 style="margin-top:0;">Practice settings</h3>
       <div class="row space-between" style="margin-bottom:4px;">
         <span>Share of sentences</span>
@@ -329,7 +339,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-05 09:15</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-05 10:20</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -26523,6 +26533,7 @@ const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", la
 const LS_NEWWORDS  = "turks_newwords_v1";      // { [en]: {cefr} } — via zinnen ontdekte Engelse woorden, niet in de Oxford-lijst
 const LS_GRAMMAR   = "turks_grammar_v1";       // { [topicKey]: {level, due, reps} } — per grammaticaal onderwerp, zelfde SRS-mechaniek als woorden
 const LS_TRCACHE   = "turks_trcache_v1";       // { [en]: {tr:[...], fetchedAt} } — op-aanvraag gegenereerde Turkse vertaling, 1x per woord
+const LS_CURATED_TR = "turks_curated_tr_v1";   // { [en]: {tr:[...], register, note} } — eenmalige, grondige AI-doorloop van de hele woordenlijst incl. registermetadata; heeft voorrang boven trCache
 const LS_LESSONS   = "turks_lessons_v1";       // { [lessonId]: {completed:bool, done:n} } — voortgang door het gestructureerde lespad
 const LS_ACTIVE_LESSON  = "turks_active_lesson_v1";   // { lessonId, sessionDone } — tussentijdse les-sessie, overleeft tabwissel/minimaliseren
 const LS_ACTIVE_CHECKUP = "turks_active_checkup_v1";  // volledige activeCheckup-state — tussentijdse kennischeck-sessie
@@ -26557,6 +26568,7 @@ let history  = loadJSON(LS_HISTORY, []);
 let newWords = loadJSON(LS_NEWWORDS, {});
 let grammar = loadJSON(LS_GRAMMAR, {});
 let trCache = loadJSON(LS_TRCACHE, {});
+let curatedTr = loadJSON(LS_CURATED_TR, {}); // { [en]: {tr:[...], register, note} } — voorrang boven trCache
 let lessonProgress = loadJSON(LS_LESSONS, {});
 let checkupState = null;  // state machine van de nieuwe adaptieve trapsgewijze kennischeck (of null)
 let skillPracticeState = null; // { lesson, results:[] } — gerichte oefensessie op precies 1 les (of null)
@@ -28073,7 +28085,7 @@ async function syncPushNow(){
     localStorage.setItem(LS_COST_PENDING, JSON.stringify(costPending));
     updateCostDisplay();
 
-    const payload = { progress, custom, newWords, grammar, cost: costUsage, updatedAt: Date.now() };
+    const payload = { progress, custom, newWords, grammar, cost: costUsage, curatedTr, updatedAt: Date.now() };
     const res = await fetch(`https://api.github.com/gists/${settings.syncBinId}`, {
       method: "PATCH",
       headers: {
@@ -28115,11 +28127,13 @@ async function syncPullNow(showAlertOnEmpty){
       newWords = remote.newWords || {};
       grammar = remote.grammar || {};
       costUsage = remote.cost ? maxCostUsage(costUsage, remote.cost) : costUsage; // laat lokaal costPending ongemoeid, dat wordt bij de volgende push meegeteld
+      if(remote.curatedTr) curatedTr = {...remote.curatedTr, ...curatedTr}; // lokaal-al-aanwezige entries nooit laten verdwijnen, alleen aanvullen
       localStorage.setItem(LS_PROGRESS, JSON.stringify(progress));
       localStorage.setItem(LS_CUSTOM, JSON.stringify(custom));
       localStorage.setItem(LS_NEWWORDS, JSON.stringify(newWords));
       localStorage.setItem(LS_GRAMMAR, JSON.stringify(grammar));
       localStorage.setItem(LS_COST, JSON.stringify(costUsage));
+      localStorage.setItem(LS_CURATED_TR, JSON.stringify(curatedTr));
       updateCostDisplay();
       setSyncStatus("✅ Opgehaald van server (laatst bijgewerkt: " + new Date(remote.updatedAt).toLocaleString() + ")");
     } else if(showAlertOnEmpty){
@@ -28242,11 +28256,65 @@ function ensureWordExists(en, cefr){
 // alle ~5000 woorden. Eenmaal opgehaald wordt het resultaat lokaal gecached (en gesynct),
 // zodat elk woord maar 1x per apparaat-cluster vertaald hoeft te worden.
 function cachedTranslation(en){
-  const c = trCache[en];
+  const curated = curatedTr[en];
+  const c = curated || trCache[en];
   const extra = custom[en];
   if(!c) return null;
   const tr = extra && extra.tr ? [...new Set([...c.tr, ...extra.tr])] : c.tr;
   return tr;
+}
+// Registermetadata (formeel/informeel/etc.) van een woord, indien de gecureerde doorloop al gebeurd is.
+function translationRegisterInfo(en){
+  const curated = curatedTr[en];
+  if(!curated || !curated.register || curated.register === "neutral") return null;
+  return {register: curated.register, note: curated.note || ""};
+}
+
+/* ===================== EENMALIGE, GRONDIGE VERTAALDOORLOOP (heel Oxford 3000/5000, incl. register) =====================
+   In tegenstelling tot getOrFetchTranslation() (die 1 los woord vertaalt zodra het voor het eerst nodig is)
+   doorloopt dit de HELE woordenlijst in batches, via Claude (kwaliteit + registerbeoordeling), en slaat het
+   resultaat blijvend op in curatedTr — dat heeft daarna altijd voorrang, dus geen dubbel werk en geen losse
+   AI-call meer nodig tijdens het oefenen zelf. Voortgang wordt na elke batch opgeslagen, dus onderbreken en
+   later hervatten is geen probleem (de al-gedane woorden worden vanzelf overgeslagen). */
+const BULK_TRANSLATE_BATCH_SIZE = 25;
+let bulkTranslateRunning = false;
+let bulkTranslateCancelled = false;
+
+async function runBulkTranslate(onProgress){
+  if(!settings.anthropicApiKey) throw new Error("An Anthropic (Claude) API key is needed for this (Settings).");
+  const remaining = EN_WORDS_DATA.filter(w => !curatedTr[w.en]);
+  const totalToDo = remaining.length;
+  const alreadyDone = EN_WORDS_DATA.length - totalToDo;
+  bulkTranslateRunning = true;
+  bulkTranslateCancelled = false;
+  let doneThisRun = 0;
+  for(let i=0;i<remaining.length;i+=BULK_TRANSLATE_BATCH_SIZE){
+    if(bulkTranslateCancelled) break;
+    const batch = remaining.slice(i, i+BULK_TRANSLATE_BATCH_SIZE);
+    const sys = `Je bent een ervaren Engels-Turks vertaler en taalkundige, gespecialiseerd in natuurlijkheid en spreektaal-register.
+Voor elk gegeven Engels woord geef je:
+- de 1-2 meest gangbare Turkse vertaling(en), in de basisvorm (infinitief bij werkwoorden, bv. "gitmek" niet "gider")
+- een registerclassificatie: "neutral" (standaard, in vrijwel elke context bruikbaar/correct), "formal" (formeel, ongebruikelijk in casual spraak), "informal" (informeel/spreektaal, prima onder vrienden maar niet formeel/schriftelijk), "colloquial" (heel informeel/straattaal/jargon), of "caution" (verouderd, zeldzaam, dialectisch, of makkelijk verward met een ander woord)
+- ALLEEN als het register NIET "neutral" is: een korte toelichting in het Engels (max 8 woorden), gericht aan een taalstudent (bv. "more formal than everyday 'gitmek'")
+Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"words": [{"en": "...", "tr": ["..."], "register": "neutral|formal|informal|colloquial|caution", "note": ""}]}
+De volgorde en het aantal items in "words" moet EXACT overeenkomen met de gegeven lijst, in dezelfde volgorde.`;
+    const userMsg = "Woorden: " + batch.map(w=>w.en).join(", ");
+    try{
+      const raw = await callClaude(sys, userMsg, 1800, 0.2);
+      const parsed = JSON.parse(raw);
+      for(const item of (parsed.words || [])){
+        if(item.en && Array.isArray(item.tr) && item.tr.length){
+          curatedTr[item.en] = {tr:item.tr, register:item.register||"neutral", note:item.note||""};
+        }
+      }
+      saveJSON(LS_CURATED_TR, curatedTr);
+    }catch(e){
+      // deze batch overslaan; de woorden erin blijven ontbreken en worden bij een volgende run alsnog opgepakt
+    }
+    doneThisRun += batch.length;
+    if(onProgress) onProgress(alreadyDone + doneThisRun, EN_WORDS_DATA.length);
+  }
+  bulkTranslateRunning = false;
 }
 
 async function getOrFetchTranslation(en){
@@ -28960,7 +29028,7 @@ function showFeedback(kind, html){
 }
 
 // Short, clearly coloured line: "wrong answer: X" (red) and/or "correct answer: Y" (green)
-function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning){
+function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning, registerInfo){
   const wrongPart = (!wasCorrect && userAnswer)
     ? (wrongMeaning
         ? `Wrong: <span style="color:var(--accent);font-weight:600;">${escapeHtml(userAnswer)}</span> means <span style="color:var(--accent);font-weight:600;">${escapeHtml(wrongMeaning)}</span>.`
@@ -28969,7 +29037,10 @@ function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning){
   const goodPart = correctAnswer
     ? `${wasCorrect ? "correct answer" : "Correct answer is"}: <span style="color:var(--accent2);font-weight:600;">${escapeHtml(correctAnswer)}</span>`
     : "";
-  return [wrongPart, goodPart].filter(Boolean).join("<br>");
+  const registerPart = (wasCorrect && registerInfo)
+    ? `<br><span class="muted">ℹ️ Heads up: this is a bit ${registerInfo.register}${registerInfo.note ? " — " + escapeHtml(registerInfo.note) : ""}.</span>`
+    : "";
+  return [wrongPart, goodPart].filter(Boolean).join("<br>") + registerPart;
 }
 
 async function handleCheck(){
@@ -28985,10 +29056,9 @@ async function handleCheck(){
       recordHistory(currentItem.type);
       for(const w of currentItem.words) recordResult(w.en, false);
       const lessonNote = advanceLessonSession();
-      const checkupNote = checkupNoteAfterAnswer(false);
       const adaptiveNote = recordAdaptiveResult(false);
       const wordTranslations = currentItem.words.map(w=> `${w.tr} = ${w.en}`).join(" &nbsp;·&nbsp; ");
-      showFeedback("wrong", "❌<br><br><b>Translations:</b><br>" + wordTranslations + lessonNote + checkupNote + adaptiveNote);
+      showFeedback("wrong", "❌<br><br><b>Translations:</b><br>" + wordTranslations + lessonNote + adaptiveNote);
       el("post-actions").classList.remove("hidden");
       el("btn-next").classList.remove("hidden");
       el("btn-dispute").classList.add("hidden");
@@ -29014,7 +29084,8 @@ async function handleCheck(){
   const staticMatch = checkStaticMatch(currentItem, answer);
 
   if(staticMatch){
-    finalizeAnswer(true, "✅");
+    const regInfo = currentItem.direction === "en-tr" ? translationRegisterInfo(currentItem.en) : null;
+    finalizeAnswer(true, "✅" + (regInfo ? `<br><span class="muted">ℹ️ Heads up: this is a bit ${regInfo.register}${regInfo.note ? " — " + escapeHtml(regInfo.note) : ""}.</span>` : ""));
     return;
   }
 
@@ -29029,9 +29100,10 @@ async function handleCheck(){
   try{
     const verdict = await askDeepSeekJudge(currentItem, answer);
     setExplanation(verdict.uitleg);
+    const regInfo = (verdict.correct && currentItem.direction === "en-tr") ? translationRegisterInfo(currentItem.en) : null;
     finalizeAnswer(!!verdict.correct,
       (verdict.correct ? "✅" : "❌") +
-      (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, !!verdict.correct, verdict.betekenis_antwoord) : ""));
+      (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, !!verdict.correct, verdict.betekenis_antwoord, regInfo) : ""));
     if(verdict.correct && currentItem.direction === "en-tr"){
       el("post-actions").querySelector("#btn-add-answer")?.remove();
       const addBtn = document.createElement("button");
@@ -29072,7 +29144,6 @@ async function handleCheckSentence(answer){
     }
 
     const lessonNote = advanceLessonSession();
-    const checkupNote = checkupNoteAfterAnswer(typeof verdict.grammar_correct === "boolean" ? verdict.grammar_correct : !!verdict.correct);
     const adaptiveNote = recordAdaptiveResult(!!verdict.correct);
 
     const wordLines = currentItem.words.map((w, i)=>{
@@ -29083,7 +29154,7 @@ async function handleCheckSentence(answer){
     showFeedback(verdict.correct ? "correct" : "wrong",
       (verdict.correct ? "✅" : "❌") +
       (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct) : "") +
-      "<br><br><b>Word scores:</b><br>" + wordLines + lessonNote + checkupNote + adaptiveNote);
+      "<br><br><b>Word scores:</b><br>" + wordLines + lessonNote + adaptiveNote);
 
     el("post-actions").classList.remove("hidden");
     el("btn-next").classList.remove("hidden");
@@ -29156,9 +29227,8 @@ function finalizeAnswer(correct, message){
   recordHistory("word");
   recordResult(currentItem.en, correct);
   const lessonNote = advanceLessonSession();
-  const checkupNote = checkupNoteAfterAnswer(correct);
   const adaptiveNote = recordAdaptiveResult(correct);
-  showFeedback(correct ? "correct" : "wrong", message + lessonNote + checkupNote + adaptiveNote);
+  showFeedback(correct ? "correct" : "wrong", message + lessonNote + adaptiveNote);
   el("post-actions").classList.remove("hidden");
   el("btn-next").classList.remove("hidden");
   el("btn-dispute").classList.toggle("hidden", !!correct);
@@ -29705,6 +29775,19 @@ function closeTestModal(){
   el("modal-test").classList.add("hidden");
 }
 
+function updateBulkTranslateStatus(){
+  const statusEl = el("bulk-translate-status");
+  const barEl = el("bulk-translate-bar");
+  if(!statusEl || !barEl) return;
+  const total = EN_WORDS_DATA.length;
+  const done = EN_WORDS_DATA.filter(w=>curatedTr[w.en]).length;
+  const pct = total ? Math.round(100*done/total) : 0;
+  statusEl.textContent = bulkTranslateRunning
+    ? `Running… ${done}/${total} words done (${pct}%)`
+    : (done >= total ? `✅ Complete — all ${total} words reviewed.` : `${done}/${total} words done (${pct}%).`);
+  barEl.style.width = pct + "%";
+}
+
 function updateCefrUnlockedInfo(){
   const elI = el("cefr-unlocked-info");
   if(!elI) return;
@@ -29752,6 +29835,7 @@ function initSettingsUI(){
   updateAdaptiveLabels();
   el("key-status").textContent = settings.apiKey ? "✅ Key is set." : "No key set yet.";
   el("anthropic-key-status").textContent = settings.anthropicApiKey ? "✅ Key is set." : "No key set yet.";
+  updateBulkTranslateStatus();
   const bal = loadJSON(LS_BALANCE, null);
   if(bal){
     const sym = bal.currency === "CNY" ? "¥" : "$";
@@ -29796,13 +29880,12 @@ document.addEventListener("DOMContentLoaded", ()=>{
       recordResult(currentItem.en, false);
     }
     const lessonNote = advanceLessonSession();
-    const checkupNote = checkupNoteAfterAnswer(false);
     const adaptiveNote = recordAdaptiveResult(false);
-    if(lessonNote.includes("Lesson complete") || checkupNote.includes("Knowledge check complete") || adaptiveNote){
-      // een les/kennischeck rondde net af, of de moeilijkheidsgraad paste net aan, door dit overslaan
+    if(lessonNote.includes("Lesson complete") || adaptiveNote){
+      // een les rondde net af, of de moeilijkheidsgraad paste net aan, door dit overslaan
       // -> niet stilletjes doorgaan, eerst tonen
       currentAnswered = true;
-      showFeedback("wrong", "⏭️ Skipped." + lessonNote + checkupNote + adaptiveNote);
+      showFeedback("wrong", "⏭️ Skipped." + lessonNote + adaptiveNote);
       el("post-actions").classList.remove("hidden");
       el("btn-next").classList.remove("hidden");
       el("btn-dispute").classList.add("hidden");
@@ -29836,6 +29919,27 @@ document.addEventListener("DOMContentLoaded", ()=>{
     settings.anthropicApiKey = el("anthropic-key-input").value.trim();
     saveJSON(LS_SETTINGS, settings);
     initSettingsUI();
+  });
+  el("btn-bulk-translate").addEventListener("click", async ()=>{
+    if(!settings.anthropicApiKey){ alert("Set an Anthropic (Claude) API key first (above)."); return; }
+    el("btn-bulk-translate").disabled = true;
+    el("btn-bulk-translate-cancel").classList.remove("hidden");
+    try{
+      await runBulkTranslate((done, total)=>{
+        el("bulk-translate-status").textContent = `Running… ${done}/${total} words done (${Math.round(100*done/total)}%)`;
+        el("bulk-translate-bar").style.width = Math.round(100*done/total) + "%";
+      });
+    }catch(e){
+      alert("Bulk pass stopped: " + e.message);
+    }
+    el("btn-bulk-translate").disabled = false;
+    el("btn-bulk-translate-cancel").classList.add("hidden");
+    updateBulkTranslateStatus();
+    syncMaybePush();
+  });
+  el("btn-bulk-translate-cancel").addEventListener("click", ()=>{
+    bulkTranslateCancelled = true;
+    el("btn-bulk-translate-cancel").classList.add("hidden");
   });
   el("btn-fetch-balance").addEventListener("click", fetchDeepSeekBalance);
   el("sentence-percent").addEventListener("input", ()=>{
