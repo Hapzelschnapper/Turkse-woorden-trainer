@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 14:45</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 16:15</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -206,20 +206,29 @@
 
   <section id="screen-stats" class="hidden">
     <div class="card">
-      <h3 style="margin-top:0;">Progress</h3>
+      <h3 style="margin-top:0;">📖 Vocabulary Progress</h3>
       <div class="kpi">
-        <div class="box"><div class="num" id="kpi-total">0</div><div class="lbl">total items</div></div>
+        <div class="box"><div class="num" id="kpi-total">0</div><div class="lbl">total words</div></div>
         <div class="box"><div class="num" id="kpi-never">0</div><div class="lbl">not shown yet</div></div>
         <div class="box"><div class="num" id="kpi-mastered">0</div><div class="lbl">level 10 (mastered)</div></div>
         <div class="box" title="Number of PREVIOUSLY shown words whose spaced-repetition review time has passed — i.e. 'due again'. Never-shown words (level 0) are not included here."><div class="num" id="kpi-due">0</div><div class="lbl">ready to practise now</div></div>
         <div class="box"><div class="num" id="kpi-avg">0</div><div class="lbl">average level (1-10)</div></div>
       </div>
-      <div class="muted">Progress per CEFR sub-level (words + grammar combined, average mastery as %)</div>
-      <div id="cefr-progress" style="margin-top:10px;"></div>
+      <div class="muted">Vocabulary mastery per CEFR sub-level (as %)</div>
+      <div id="cefr-progress-vocab" style="margin-top:10px;"></div>
     </div>
     <div class="card">
-      <h3 style="margin-top:0;">Grammar topics</h3>
-      <div class="muted" style="margin-bottom:10px;">The app automatically picks the weakest topic below for each sentence/question. Red/low = little practice or often wrong; green/high = well mastered.</div>
+      <h3 style="margin-top:0;">🔤 Grammar Progress</h3>
+      <div class="kpi">
+        <div class="box"><div class="num" id="kpi-gram-total">0</div><div class="lbl">total topics</div></div>
+        <div class="box"><div class="num" id="kpi-gram-unlocked">0</div><div class="lbl">unlocked</div></div>
+        <div class="box"><div class="num" id="kpi-gram-mastered">0</div><div class="lbl">level 10 (mastered)</div></div>
+        <div class="box" title="Number of unlocked topics whose spaced-repetition review time has passed."><div class="num" id="kpi-gram-due">0</div><div class="lbl">ready to practise now</div></div>
+        <div class="box"><div class="num" id="kpi-gram-avg">0</div><div class="lbl">average level (1-10)</div></div>
+      </div>
+      <div class="muted">Grammar mastery per CEFR sub-level (as %) — greyed out bars are topics not unlocked yet</div>
+      <div id="cefr-progress-grammar" style="margin-top:10px;"></div>
+      <div class="muted" style="margin-top:14px;margin-bottom:8px;">Individual topics, weakest first. The app automatically favours weaker topics in sentence/question practice.</div>
       <div id="grammar-list"></div>
     </div>
     <div class="card">
@@ -307,11 +316,13 @@
     <div class="card">
       <h3 style="margin-top:0;">Data</h3>
       <button class="btn-ghost" style="width:100%;margin-bottom:8px;" id="btn-reset-progress">Reset progress (everything back to level 0)</button>
+      <button class="btn-ghost" style="width:100%;margin-bottom:8px;" id="btn-clear-trcache">Clear cached Turkish translations</button>
+      <div class="muted" style="margin-bottom:8px;">If you spot a wrong cached translation (e.g. a word that clearly doesn't mean what's shown), use this to force every word to be re-translated from scratch next time it comes up. Doesn't affect your level/progress.</div>
       <button class="btn-ghost" style="width:100%;" id="btn-add-to-home">📱 How do I add this to my home screen?</button>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 14:45</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 16:15</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -26664,27 +26675,34 @@ const GRAMMAR_TOPICS = [
   {key:"ayrilma_hali",    label:"Ablative (-den/-dan)",              hint:"origin/from, e.g. \"okuldan geldim\" (I came from school)", minCefr:2},
   {key:"belirtme_hali",   label:"Accusative (-i/-ı/-u/-ü)",          hint:"marks a definite direct object, e.g. \"kitabı okudum\" (I read the book)", minCefr:2},
   {key:"gecmis_copula",   label:"Past copula -ydi",                  hint:"e.g. \"öğrenciydim\" (I was a student)", minCefr:3},
+  {key:"yeterlik_kipi",   label:"Ability -ebilmek (can)",            hint:"e.g. \"gidebilirim\" (I can go), \"yüzebilir misin?\" (can you swim?)", minCefr:3},
   {key:"gecmis_di",       label:"Past tense -di (witnessed/certain)", hint:"e.g. \"geldim\" (I came)", minCefr:3},
   {key:"tamlayan_hali",   label:"Genitive (-in/-ın/-un/-ün)",        hint:"possession/compounds, e.g. \"annemin evi\" (my mother's house)", minCefr:3},
   {key:"isim_tamlamasi",  label:"Noun compounds (isim tamlaması)",   hint:"e.g. \"araba anahtarı\" (car key), \"okulun bahçesi\" (the school's garden)", minCefr:4},
+  {key:"hitap_bicimleri", label:"Address Forms & Politeness",        hint:"e.g. \"Ahmet Bey\" (Mr. Ahmet), \"anneciğim\" (mommy), sen vs. siz register", minCefr:4},
   {key:"edatlar",         label:"Postpositions (için, ile, göre, rağmen)", hint:"e.g. \"senin için\" (for you), \"buna rağmen\" (despite this)", minCefr:4},
   {key:"gelecek_zaman",   label:"Future tense -ecek",                hint:"e.g. \"geleceğim\" (I will come)", minCefr:4},
   {key:"karsilastirma",   label:"Comparison (daha, en, kadar, gibi)", hint:"e.g. \"ondan daha büyük\" (bigger than that)", minCefr:5},
   {key:"genis_zaman",     label:"Aorist (general truth) -ir",        hint:"habits/facts, e.g. \"her gün koşarım\" (I run every day)", minCefr:5},
   {key:"baglaclar",       label:"Conjunctions (ki, hem...hem, ya...ya)", hint:"e.g. \"hem yorgunum hem açım\" (I'm both tired and hungry)", minCefr:6},
+  {key:"vurgu_partikelleri", label:"Emphasis Particles (de/da, bile, üstelik, hatta)", hint:"e.g. \"ben de geliyorum\" (I'm coming too), \"bunu bile bilmiyor\" (he doesn't even know this)", minCefr:6},
   {key:"gereklilik_kipi", label:"Necessitative -meli",               hint:"must/have to, e.g. \"gitmeliyim\" (I must go)", minCefr:6},
   {key:"gecmis_mis",      label:"Past tense -miş (hearsay/inferred)", hint:"e.g. \"gelmiş\" (apparently came)", minCefr:6},
   {key:"gecmis_devam",    label:"Past continuous -iyordu",           hint:"e.g. \"geliyordum\" (I was coming)", minCefr:7},
   {key:"sart_kipi",       label:"Conditional -se",                   hint:"if/should, e.g. \"gelirse\" (if he comes)", minCefr:7},
   {key:"istek_kipi",      label:"Optative (wish) -e",                hint:"e.g. \"gideyim\" (let me go)", minCefr:8},
   {key:"ki_eki",          label:"The suffix -ki (relative/possessive)", hint:"e.g. \"benimki\" (mine), \"masadaki kitap\" (the book on the table)", minCefr:8},
+  {key:"madan_once",      label:"Converb -madan/-meden (without/before doing)", hint:"e.g. \"yemeden gitti\" (he left without eating), \"gitmeden önce\" (before going)", minCefr:8},
   {key:"gelecek_gecmis",  label:"Future-in-the-past -ecekti",        hint:"e.g. \"gelecekti\" (he was going to come)", minCefr:9},
   {key:"isim_fiil",       label:"Verbal nouns (-me/-iş)",            hint:"e.g. \"gitme\" (the going), \"gidiş\" (the departure)", minCefr:9},
+  {key:"diginde",         label:"Converb -diğinde (when/at the time that)", hint:"e.g. \"eve geldiğinde\" (when he arrived home)", minCefr:9},
+  {key:"inca",            label:"Converb -ınca (as soon as/when)",   hint:"e.g. \"okula varınca\" (as soon as he got to school)", minCefr:9},
   {key:"kucultme_eki",    label:"Diminutive -cik",                   hint:"e.g. \"azıcık\" (just a little bit)", minCefr:9},
   {key:"ortac",           label:"Participles (-en/-dik/-ecek)",      hint:"used as adjectives, e.g. \"gelen adam\" (the man who came), \"okuduğum kitap\" (the book I read)", minCefr:9},
   {key:"birlesik_gecmis", label:"Compound past combinations -mişti", hint:"e.g. \"gitmişti\" (he had apparently gone)", minCefr:10},
   {key:"dolayli_anlatim", label:"Direct/indirect speech",            hint:"e.g. \"'geliyorum' dedi\" (he said 'I'm coming') vs \"geleceğini söyledi\" (he said he'd come)", minCefr:10},
-  {key:"zarf_fiil",       label:"Converbs (-erek, -ken, -meden önce)", hint:"e.g. \"koşarak geldi\" (he came running), \"gelirken\" (while coming)", minCefr:10},
+  {key:"dikce",           label:"Converb -dıkça (the more.../every time)", hint:"e.g. \"okudukça öğrenirsin\" (the more you read, the more you learn)", minCefr:11},
+  {key:"zarf_fiil",       label:"Converbs (-erek, -ken)",             hint:"e.g. \"koşarak geldi\" (he came running), \"gelirken\" (while coming)", minCefr:10},
   {key:"edilgen_cati",    label:"Passive voice (-il/-in)",            hint:"e.g. \"kapı kapatıldı\" (the door was closed)", minCefr:11},
   {key:"islik_cati",      label:"Reciprocal voice -iş",               hint:"e.g. \"görüşmek\" (to see each other)", minCefr:11},
   {key:"ettirgen_cati",   label:"Causative (make/have done, -dir/-t)", hint:"e.g. \"yaptırdım\" (I had it made)", minCefr:12},
@@ -26833,11 +26851,21 @@ const GRAMMAR_LESSONS = [
 <p>This is a genuinely useful distinction English doesn't mark on the noun at all (it uses "a" vs "the" instead) — so pay attention to when it appears.</p>`
   },
   {
-    id:"loc_dat", title:"Case: Locative & Dative", icon:"📍", grammarTopics:["bulunma_hali","yonelme_hali"], targetExercises:10,
-    explanation:`<p>Two more case suffixes that replace English prepositions:</p>
-<p><b>Locative -de/-da</b> = "at/in/on" (a fixed location): <b>evde</b> = at home, <b>okulda</b> = at school.</p>
-<p><b>Dative -e/-a</b> = "to/towards" (movement or direction): <b>eve</b> = to home, <b>okula</b> = to school.</p>
-<p>Notice the pattern: same root, different single-letter case suffix, completely different meaning — this is agglutination doing real work for you.</p>`
+    id:"locative", title:"Case: Locative", icon:"📍", grammarTopics:["bulunma_hali"], targetExercises:8,
+    explanation:`<p>The locative case suffix <b>-de/-da</b> replaces the English prepositions "at/in/on" for a fixed location:</p>
+<ul>
+<li><b>evde</b> — at home</li>
+<li><b>okulda</b> — at school</li>
+</ul>`
+  },
+  {
+    id:"dative", title:"Case: Dative", icon:"📍", grammarTopics:["yonelme_hali"], targetExercises:8,
+    explanation:`<p>The dative case suffix <b>-e/-a</b> replaces the English preposition "to/towards" — movement or direction:</p>
+<ul>
+<li><b>eve</b> — to home</li>
+<li><b>okula</b> — to school</li>
+</ul>
+<p>Compare with the locative from the previous lesson: same root, different single-letter case suffix, completely different meaning — this is agglutination doing real work for you.</p>`
   },
   {
     id:"past_tense", title:"Past Tense", icon:"⏳", grammarTopics:["gecmis_di"], targetExercises:10,
@@ -26885,6 +26913,22 @@ const GRAMMAR_LESSONS = [
 <p>This attaches to the same personal-ending pattern you already learned for the present copula — just with -ydi- inserted before it.</p>`
   },
   {
+    id:"ability", title:"Ability: \"Can\"", icon:"💪", grammarTopics:["yeterlik_kipi"], targetExercises:8,
+    explanation:`<p>"Can/be able to" is expressed with the suffix <b>-ebil-/-abil-</b>, inserted right into the verb before the tense ending:</p>
+<ul>
+<li><b>gidebilirim</b> — I can go (git + ebil + ir + im)</li>
+<li><b>yüzebilir misin?</b> — can you swim?</li>
+</ul>
+<p>The negative ("can't") uses a slightly different pattern — <b>-eme-/-ama-</b> — instead of just adding "değil" or "-me-": <b>gidemem</b> — I can't go. This is one of the most frequently used constructions in everyday Turkish, so it's worth getting comfortable with early.</p>`
+  },
+  {
+    id:"address_forms", title:"Address Forms & Politeness", icon:"🎩", grammarTopics:["hitap_bicimleri"], targetExercises:8,
+    explanation:`<p>Turkish has a few distinctive ways of addressing people directly:</p>
+<p><b>Titles after first names:</b> <b>Ahmet Bey</b> (Mr. Ahmet), <b>Ayşe Hanım</b> (Ms. Ayşe) — much more common than using a surname with "Mr./Mrs.".</p>
+<p><b>Affectionate/vocative address:</b> adding <b>-cığım/-ciğim</b> or similar softens a term of address: <b>anneciğim</b> (mommy/dear mother), <b>canım</b> (dear/darling, very commonly used).</p>
+<p><b>Register:</b> you already know <b>sen</b> (informal) vs. <b>siz</b> (formal/plural) — remember that siz also takes the plural-style verb ending, even for one formally-addressed person: <b>Nasılsınız?</b> (How are you? — formal) vs. <b>Nasılsın?</b> (informal).</p>`
+  },
+  {
     id:"noun_compounds", title:"Noun Compounds", icon:"🧷", grammarTopics:["isim_tamlamasi"], targetExercises:8,
     explanation:`<p>Turkish links two nouns together ("noun compounds") in two ways:</p>
 <p><b>Indefinite compound</b> (a general category, no specific owner): <b>araba anahtarı</b> — a car key.</p>
@@ -26912,6 +26956,17 @@ const GRAMMAR_LESSONS = [
 </ul>`
   },
   {
+    id:"emphasis_particles", title:"Emphasis Particles", icon:"❗", grammarTopics:["vurgu_partikelleri"], targetExercises:8,
+    explanation:`<p>A handful of small words add emphasis or nuance without changing the core sentence:</p>
+<ul>
+<li><b>de/da</b> ("also/too", written as a separate word, vowel-harmony only — never confuse with the locative -de suffix): <i>ben de geliyorum</i> (I'm coming too)</li>
+<li><b>bile</b> ("even"): <i>bunu bile bilmiyor</i> (he doesn't even know this)</li>
+<li><b>üstelik</b> ("moreover/what's more"): adds an extra, often surprising point</li>
+<li><b>hatta</b> ("in fact/even"): strengthens or extends the previous statement</li>
+</ul>
+<p>These are subtle but extremely common in natural spoken and written Turkish — they're part of what makes a sentence sound native rather than textbook-stiff.</p>`
+  },
+  {
     id:"past_continuous", title:"Past Continuous", icon:"⏱️", grammarTopics:["gecmis_devam"], targetExercises:8,
     explanation:`<p>Combine the present-continuous marker <b>-iyor</b> with the past copula <b>-du</b> to describe an ongoing action in the past:</p>
 <ul>
@@ -26936,6 +26991,14 @@ const GRAMMAR_LESSONS = [
 <p><b>Relative/locational:</b> <b>masadaki kitap</b> — the book [that is] on the table (attaches to a locative form to make it modify a noun, like an adjective).</p>`
   },
   {
+    id:"madan_once", title:"Converb: Without/Before Doing", icon:"⏮️", grammarTopics:["madan_once"], targetExercises:8,
+    explanation:`<p>The suffix <b>-madan/-meden</b> attached directly to a verb stem means "without doing X":</p>
+<ul>
+<li><b>Yemeden gitti.</b> — He left without eating.</li>
+</ul>
+<p>Add <b>önce</b> ("before") after it for "before doing X": <b>gitmeden önce</b> — before going. Note this is the SAME suffix as the negative marker -me/-ma, but here it's doing a completely different, converb job — context makes clear which is meant.</p>`
+  },
+  {
     id:"future_in_past", title:"Future-in-the-Past", icon:"↩️", grammarTopics:["gelecek_gecmis"], targetExercises:8,
     explanation:`<p>Combine the future marker <b>-ecek</b> with the past copula to talk about something that WAS going to happen (regardless of whether it actually did):</p>
 <ul>
@@ -26951,6 +27014,22 @@ const GRAMMAR_LESSONS = [
 <li><b>gidiş</b> — the departure (more concrete, often lexicalised as its own word)</li>
 </ul>
 <p>You'll often see these as the subject or object of a sentence, where English would use a gerund.</p>`
+  },
+  {
+    id:"diginde", title:"Converb: \"When\" (-diğinde)", icon:"⏰", grammarTopics:["diginde"], targetExercises:8,
+    explanation:`<p>The suffix <b>-diğinde</b> (a possessive-based construction, works across all tenses) means "when X happens/happened":</p>
+<ul>
+<li><b>Eve geldiğinde...</b> — when he arrives/arrived home...</li>
+</ul>
+<p>It replaces an entire English "when..." clause with a single suffixed verb form — no separate word for "when" needed inside the sentence.</p>`
+  },
+  {
+    id:"inca", title:"Converb: \"As Soon As\" (-ınca)", icon:"⏰", grammarTopics:["inca"], targetExercises:8,
+    explanation:`<p>The suffix <b>-ınca</b> is a simpler, more neutral way to say "as soon as/when X happens":</p>
+<ul>
+<li><b>Okula varınca...</b> — as soon as he got to school...</li>
+</ul>
+<p>Compared to -diğinde from the previous lesson, -ınca leans more toward "as soon as" (immediate sequence), while -diğinde is more neutral about timing — the difference is subtle and both are very common.</p>`
   },
   {
     id:"diminutive", title:"The Diminutive -cik", icon:"🤏", grammarTopics:["kucultme_eki"], targetExercises:8,
@@ -26993,6 +27072,14 @@ const GRAMMAR_LESSONS = [
 <li><b>Görüşürüz!</b> — See you! (lit. "we'll see each other")</li>
 </ul>
 <p>You've actually already used this suffix without realising it, in the common goodbye "görüşürüz".</p>`
+  },
+  {
+    id:"dikce", title:"Converb: \"The More...\" (-dıkça)", icon:"📈", grammarTopics:["dikce"], targetExercises:8,
+    explanation:`<p>The suffix <b>-dıkça</b> (vowel-harmony variants -dikçe/-dukça/-dükçe) expresses "the more X.../every time X...":</p>
+<ul>
+<li><b>Okudukça öğrenirsin.</b> — The more you read, the more you learn.</li>
+</ul>
+<p>It conveys a sense of ongoing, proportional or repeated action — genuinely useful for expressing nuanced relationships between two events without needing a separate comparison structure.</p>`
   },
 ];
 
@@ -27115,9 +27202,38 @@ async function startCheckup(){
 
 /* Geïsoleerde grammatica-oefening: puur de transformatie, met een gegarandeerd bekend basiswoord,
    zodat een verkeerd antwoord nooit te wijten kan zijn aan een toevallig onbekend woord. */
+/* Verzamelt Turkse basiswoorden voor de geïsoleerde grammatica-oefening: bij voorkeur woorden die de
+   student zelf al goed beheerst (A1-begin, hoge nauwkeurigheid) — dat voorkomt twee problemen:
+   1) met een vaste, kleine voorbeeldwoordenlijst (zoals voorheen) leert een testkandidaat het patroon
+      simpelweg door herhaling binnen de toets zelf, zonder echte grammaticale kennis nodig te hebben;
+   2) een woord waarvan de student de betekenis niet kent, zou de vraag alsnog onbedoeld laten testen
+      op woordenschat i.p.v. puur grammatica.
+   Heeft de student nog niets geoefend, dan valt dit terug op de ruwe A1-begin-Oxford-pool. */
+async function pickGrammarDrillBaseWords(){
+  const a1 = EN_WORDS_DATA.filter(w => w.cefr === 0);
+  const mastered = a1.filter(w=>{
+    const p = getProgress(w.en);
+    return p.reps > 0 && (100 * (p.correct||0) / p.reps) >= 70;
+  });
+  const pool = mastered.length >= 8 ? mastered : a1;
+  const shuffled = [...pool];
+  for(let i=shuffled.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]; }
+  const picks = shuffled.slice(0, 12);
+  const pairs = [];
+  for(const w of picks){
+    try{
+      const tr = await getOrFetchTranslation(w.en);
+      pairs.push(`${tr[0]} (${w.en})`);
+    }catch(e){ /* deze overslaan als vertalen mislukt */ }
+  }
+  return pairs;
+}
+
 async function generateGrammarDrill(topic){
+  const baseWords = await pickGrammarDrillBaseWords();
+  const wordList = baseWords.length ? baseWords.join(", ") : CHECKUP_DRILL_BASE_WORDS;
   const sys = `Je maakt een GEÏSOLEERDE grammatica-oefening voor het Turkse onderwerp "${topic.label}" (${topic.hint}).
-BELANGRIJK: gebruik uitsluitend één van deze gegarandeerd bekende, zeer basale Turkse woorden als basis: ${CHECKUP_DRILL_BASE_WORDS}. Kies er willekeurig één die goed past bij dit onderwerp.
+BELANGRIJK: gebruik uitsluitend één van deze woorden als basis, die de student zelf al goed beheerst: ${wordList}. Kies er willekeurig één die goed past bij dit onderwerp (een werkwoord voor werkwoordsvervoegingen, een zelfstandig naamwoord voor naamvallen, enz. — kies zelf wat grammaticaal het beste past).
 Geef een KORTE, in het Engels geschreven instructie die vraagt om dat woord grammaticaal te transformeren volgens dit onderwerp — GEEN volledige zin, puur de kale transformatie-opdracht. Bijvoorbeeld: "Put \\"ev\\" (house) in the dative case (to/towards)." of "Make \\"gitmek\\" (to go) negative in the present continuous, for \\"I\\"."
 Geef ook het correcte, getransformeerde Turkse antwoord.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"prompt": "instructie in het Engels", "correct": "het juiste getransformeerde Turkse woord", "baseWord": "het gekozen basiswoord"}`;
@@ -27916,10 +28032,51 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"natuurlijk": true of
   }catch(e){ return true; }
 }
 
-async function generateSentence(){
+/* Een goed beheerst (niveau >=7) woord binnen wat ontgrendeld is — gebruikt als "veilige" tegenpool
+   wanneer een oefening juist gericht is op een zwak grammatica-onderwerp, zodat niet twee onbekende
+   dingen tegelijk getest worden. */
+function pickWellKnownWord(){
+  const words = [...unlockedWordSet()].filter(en => { const p = getProgress(en); return p.reps > 0 && p.level >= 7; });
+  if(!words.length) return null;
+  return words[Math.floor(Math.random()*words.length)];
+}
+/* Zelfde idee, maar dan een goed beheerst grammatica-onderwerp — gebruikt als "veilige" grammatica
+   wanneer een oefening juist gericht is op een nog niet goed gekend woord. */
+function pickWellKnownGrammarTopic(){
+  const unlockedKeys = [...unlockedGrammarTopicSet()];
+  const keys = unlockedKeys.length ? unlockedKeys : GRAMMAR_TOPICS.map(t=>t.key);
+  const topics = keys.map(grammarTopicByKey);
+  const known = topics.filter(t => getGrammarProgress(t.key).level >= 7);
+  return known.length ? known[Math.floor(Math.random()*known.length)] : null;
+}
+
+/* Combineert de vocabulaire- en grammaticastand tot ÉÉN keuze per oefening: ofwel een zwak
+   grammatica-onderwerp (met een woord dat al goed beheerst wordt erbij), ofwel een nog niet goed
+   gekend woord (met een grammatica-onderwerp dat al goed beheerst wordt erbij) — nooit allebei
+   tegelijk onbekend, en zwakkere grammatica-onderdelen komen zo vanzelf vaker aan de beurt. */
+async function pickSentenceFocus(){
+  const grammarTopic = pickLessonGrammarTopic(); // bestaande logica: huidige-les-onderwerp, anders zwakste ontgrendelde
+  const weakGrammar = getGrammarProgress(grammarTopic.key).level < 7;
+
+  if(weakGrammar){
+    const knownWord = pickWellKnownWord();
+    if(knownWord){
+      const tr = await getOrFetchTranslation(knownWord);
+      return {target: {en:knownWord, tr:tr[0]}, grammarTopic};
+    }
+    // nog geen enkel woord goed beheerst: val terug op de normale woordselectie
+    return {target: await pickTurkishTargetForSentence(), grammarTopic};
+  }
+
+  // grammatica-onderwerp is hier al goed beheerst -> ruimte om juist op een zwak/nieuw woord te focussen
   const target = await pickTurkishTargetForSentence();
+  const safeGrammarTopic = pickWellKnownGrammarTopic() || grammarTopic;
+  return {target, grammarTopic: safeGrammarTopic};
+}
+
+async function generateSentence(){
+  const {target, grammarTopic} = await pickSentenceFocus();
   const targetWord = target ? target.tr : "ev"; // veiligheidsnet, zou niet moeten voorkomen
-  const grammarTopic = pickLessonGrammarTopic();
 
   let parsed = await generateSentenceCandidate(targetWord, grammarTopic);
   try{
@@ -27936,11 +28093,17 @@ async function generateSentence(){
   for(const w of wordList){
     if(!w.tr || !w.en) continue;
     const en = w.en.toLowerCase().trim();
-    if(!EN_WORDS_DATA.some(x=>x.en===en)){
+    const isOfficialWord = EN_WORDS_DATA.some(x=>x.en===en);
+    if(!isOfficialWord){
       ensureWordExists(en, w.cefr); // voegt alleen toe als het nog niet bestaat
     }
-    if(!cachedTranslation(en)){
-      trCache[en] = {tr: [w.tr], fetchedAt: Date.now()}; // meteen cachen, scheelt een latere aparte AI-call
+    // Alleen voor woorden die NIET in de officiele Oxford-lijst zitten cachen we de vertaling meteen
+    // (die hebben anders geen andere weg naar een vertaling). Officiele woorden krijgen hun vertaling
+    // altijd via de aparte, betrouwbaardere getOrFetchTranslation()-aanroep zodra ze als losse
+    // woordoefening aan de beurt komen -- de losse koppeling die de AI hier binnen een hele zin
+    // teruggeeft is minder betrouwbaar (bron van eerder gemelde foute vertalingen zoals weather->acaba).
+    if(!isOfficialWord && !cachedTranslation(en)){
+      trCache[en] = {tr: [w.tr], fetchedAt: Date.now()};
       saveJSON(LS_TRCACHE, trCache);
     }
     items.push({en, tr: w.tr});
@@ -28004,9 +28167,8 @@ function looksLikeQuestion(tr){
 }
 
 async function generateQuestion(){
-  const target = await pickTurkishTargetForSentence(); // zelfde selectielogica als bij zinnen (nieuw-woord% / due-herhaling)
+  const {target, grammarTopic} = await pickSentenceFocus(); // zelfde gecombineerde vocab/grammatica-logica als bij zinnen
   const targetWord = target ? target.tr : "ev";
-  const grammarTopic = pickLessonGrammarTopic();
 
   let parsed = await generateQuestionCandidate(targetWord, grammarTopic);
   if(!looksLikeQuestion(parsed.tr)){
@@ -28030,10 +28192,11 @@ async function generateQuestion(){
   for(const w of wordList){
     if(!w.tr || !w.en) continue;
     const en = w.en.toLowerCase().trim();
-    if(!EN_WORDS_DATA.some(x=>x.en===en)){
+    const isOfficialWord = EN_WORDS_DATA.some(x=>x.en===en);
+    if(!isOfficialWord){
       ensureWordExists(en, w.cefr);
     }
-    if(!cachedTranslation(en)){
+    if(!isOfficialWord && !cachedTranslation(en)){
       trCache[en] = {tr: [w.tr], fetchedAt: Date.now()};
       saveJSON(LS_TRCACHE, trCache);
     }
@@ -28805,20 +28968,6 @@ function escapeHtml(s){
 }
 
 /* ===================== STATISTIEKEN ===================== */
-// Gemiddelde beheersing (0-100%) van alle items (woorden + grammatica) die bij CEFR-subniveau idx (0-17) horen.
-// null als er geen enkel item in die bucket zit.
-function cefrBucketProgress(idx){
-  const words = allWords().filter(w => (w.cefr ?? null) === idx);
-  const topics = GRAMMAR_TOPICS.filter(t => t.minCefr === idx);
-  const levels = [
-    ...words.map(w => getProgress(w.en).level),
-    ...topics.map(t => getGrammarProgress(t.key).level),
-  ];
-  if(!levels.length) return null;
-  const avg = levels.reduce((a,b)=>a+b, 0) / levels.length;
-  return Math.round(avg / 10 * 100);
-}
-
 function cefrBarColor(pct){
   if(pct === null) return "#2a3547";
   if(pct < 34) return "#e0333f";
@@ -28826,8 +28975,23 @@ function cefrBarColor(pct){
   return "#2fae6a";
 }
 
-function renderCefrProgress(){
-  const container = el("cefr-progress");
+function cefrWordProgress(idx){
+  const words = allWords().filter(w => (w.cefr ?? null) === idx);
+  if(!words.length) return null;
+  const avg = words.reduce((a,w)=>a+getProgress(w.en).level, 0) / words.length;
+  return Math.round(avg / 10 * 100);
+}
+function cefrGrammarProgress(idx){
+  const topics = GRAMMAR_TOPICS.filter(t => t.minCefr === idx);
+  if(!topics.length) return {pct:null, locked:false};
+  const unlockedKeys = unlockedGrammarTopicSet();
+  const locked = !topics.some(t => unlockedKeys.has(t.key));
+  const avg = topics.reduce((a,t)=>a+getGrammarProgress(t.key).level, 0) / topics.length;
+  return {pct: Math.round(avg / 10 * 100), locked};
+}
+
+function renderCefrProgress(containerId, getPct){
+  const container = el(containerId);
   if(!container) return;
   const macros = [
     {title:"A (A1 – A2)", subs:[0,1,2,3,4,5]},
@@ -28836,13 +29000,16 @@ function renderCefrProgress(){
   ];
   container.innerHTML = macros.map(m=>{
     const bars = m.subs.map(idx=>{
-      const pct = cefrBucketProgress(idx);
+      const result = getPct(idx);
+      const pct = typeof result === "object" ? result.pct : result;
+      const locked = typeof result === "object" && result.locked;
       const h = pct === null ? 0 : pct;
-      const color = cefrBarColor(pct);
+      const color = locked ? "#3a4356" : cefrBarColor(pct);
       const label = cefrLabel(idx).replace(/^(A1|A2|B1|B2|C1|C2) /, "");
-      return `<div class="cefr-bar" title="${cefrLabel(idx)}: ${pct===null?'no items yet':pct+'%'}">
-        <div class="cefr-track"><div class="cefr-fill" style="height:${h}%;background:${color};"></div></div>
-        <div class="cefr-pct">${pct===null?"–":pct+"%"}</div>
+      const tooltip = locked ? `${cefrLabel(idx)}: not unlocked yet` : `${cefrLabel(idx)}: ${pct===null?'no items':pct+'%'}`;
+      return `<div class="cefr-bar" title="${tooltip}">
+        <div class="cefr-track"><div class="cefr-fill" style="height:${locked?100:h}%;background:${color};"></div></div>
+        <div class="cefr-pct">${locked ? "🔒" : (pct===null?"–":pct+"%")}</div>
         <div class="cefr-lbl">${label}</div>
       </div>`;
     }).join("");
@@ -28855,7 +29022,6 @@ function renderCefrProgress(){
 
 function renderStats(){
   const words = allWords();
-  const counts = Array.from({length:11}, ()=>0); // index 0 = nog nooit getoond (apart, niet in de grafiek)
   let total=0, mastered=0, due=0, neverShown=0;
   let shownTotal=0, shownLevelSum=0; // voor het gemiddelde: alléén al-getoonde woorden, niveau 0 telt niet mee
   const now = Date.now();
@@ -28870,7 +29036,6 @@ function renderStats(){
       shownLevelSum += p.level;
     }
     if(p.due <= now && p.level > 0) due++; // nog niet getoonde woorden tellen niet mee als "klaar om te oefenen" in deze teller
-    counts[p.level]++;
   }
   el("kpi-total").textContent = total;
   el("kpi-mastered").textContent = mastered;
@@ -28879,9 +29044,25 @@ function renderStats(){
   const neverEl = el("kpi-never");
   if(neverEl) neverEl.textContent = neverShown;
 
-  renderCefrProgress();
+  // Grammatica-KPI's: zelfde soort tellingen, maar dan voor de 46 grammatica-onderwerpen
+  const unlockedKeys = unlockedGrammarTopicSet();
+  let gTotal=0, gUnlocked=0, gMastered=0, gDue=0, gShownTotal=0, gShownLevelSum=0;
+  for(const t of GRAMMAR_TOPICS){
+    const p = getGrammarProgress(t.key);
+    gTotal++;
+    if(unlockedKeys.has(t.key)) gUnlocked++;
+    if(p.level === 10) gMastered++;
+    if(p.reps > 0){ gShownTotal++; gShownLevelSum += p.level; }
+    if(p.due <= now && p.reps > 0) gDue++;
+  }
+  el("kpi-gram-total").textContent = gTotal;
+  el("kpi-gram-unlocked").textContent = gUnlocked;
+  el("kpi-gram-mastered").textContent = gMastered;
+  el("kpi-gram-due").textContent = gDue;
+  el("kpi-gram-avg").textContent = gShownTotal ? (gShownLevelSum/gShownTotal).toFixed(1) : "—";
 
-
+  renderCefrProgress("cefr-progress-vocab", cefrWordProgress);
+  renderCefrProgress("cefr-progress-grammar", cefrGrammarProgress);
   renderGrammarList();
 }
 
@@ -29351,6 +29532,12 @@ document.addEventListener("DOMContentLoaded", ()=>{
       grammar = {}; saveJSON(LS_GRAMMAR, grammar);
       history = []; saveJSON(LS_HISTORY, history);
       renderPractice();
+    }
+  });
+  el("btn-clear-trcache").addEventListener("click", ()=>{
+    if(confirm("Clear all cached Turkish translations? Every word will be re-translated (using tokens) the next time it comes up. Your progress/levels stay untouched.")){
+      trCache = {}; saveJSON(LS_TRCACHE, trCache);
+      alert("Translation cache cleared.");
     }
   });
   el("btn-add-to-home").addEventListener("click", ()=> el("modal-home").classList.remove("hidden"));
