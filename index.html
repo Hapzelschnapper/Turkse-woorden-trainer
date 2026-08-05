@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 20:55</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 21:25</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -322,7 +322,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 20:55</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 21:25</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -27441,6 +27441,35 @@ const FRAMEWORK_INSTRUCTIONS = {
     instr: (w1,w2) => `Build one short, natural phrase or sentence that relates EXACTLY these two nouns using the grammar point: "${w1.tr}" (${w1.en}) and "${w2.tr}" (${w2.en}). Keep it SHORT and use no other nouns besides the two given.`},
 };
 
+/* Voor de "Prepositions"-vocabulairelessen: verpakt een specifiek voorzetsel-woord in een kort,
+   natuurlijk zinnetje met een willekeurig, al beheerst zelfstandig naamwoord — in plaats van het
+   woord kaal te tonen. Hergebruikt dezelfde poolgebaseerde aanpak als de grammatica-frameworks. */
+async function generatePrepositionVocabDrill(en){
+  const tr = await getOrFetchTranslation(en);
+  const helperPicks = await pickMasteredPoolWords("Nouns", 1);
+  const helper = helperPicks[0] || {en:"cat", tr:"kedi"};
+  const sys = `You create a SHORT, natural example sentence that clearly demonstrates the Turkish preposition/postposition "${tr[0]}" (English: "${en}").
+Build one short sentence using this noun as the subject or reference point: "${helper.tr}" (${helper.en}). Keep it SHORT (3-6 words) and natural.
+Randomly choose the test direction: en-tr (show the English sentence, ask for the Turkish translation) or tr-en (show the Turkish sentence, ask for the English translation).
+Write everything in English and Turkish ONLY — never any other language.
+Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the sentence shown to the user, in the language matching direction", "correct": "the correct translation in the other language"}`;
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
+    body: JSON.stringify({
+      model: "deepseek-v4-pro", max_tokens: 150, temperature: 0.5,
+      messages: [{role:"system", content:sys}, {role:"user", content:`Preposition: ${tr[0]} (${en})`}],
+      thinking: {"type":"disabled"}
+    })
+  });
+  if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
+  const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
+  let raw = data.choices?.[0]?.message?.content || "";
+  raw = raw.replace(/```json|```/g,"").trim();
+  return JSON.parse(raw);
+}
+
 async function generateFrameworkDrillCandidate(topic, framework, correctionNote){
   const cfg = FRAMEWORK_INSTRUCTIONS[framework];
   const words = [];
@@ -27532,6 +27561,16 @@ async function nextCheckupQuestion(){
   el("checkup-answer-input").disabled = true;
   el("btn-checkup-next").disabled = true;
 
+let _prepositionWordSet = null;
+function prepositionWordSet(){
+  if(_prepositionWordSet) return _prepositionWordSet;
+  _prepositionWordSet = new Set();
+  for(const v of VOCAB_LESSON_DATA){
+    if(v.title.startsWith("Prepositions")) for(const w of v.words) _prepositionWordSet.add(w);
+  }
+  return _prepositionWordSet;
+}
+
   if(checkupState.phase === "vocab"){
     el("checkup-modal-title").textContent = "📋 Knowledge Check — Vocabulary";
     const lvl = Math.min(17, checkupState.vocabLevel);
@@ -27539,6 +27578,20 @@ async function nextCheckupQuestion(){
     el("checkup-word").textContent = "🤖 …";
     const pool = EN_WORDS_DATA.filter(w=>w.cefr===lvl);
     const word = pool.length ? pool[Math.floor(Math.random()*pool.length)] : EN_WORDS_DATA[Math.floor(Math.random()*EN_WORDS_DATA.length)];
+    if(prepositionWordSet().has(word.en)){
+      try{
+        const drill = await generatePrepositionVocabDrill(word.en);
+        checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: null, direction: drill.direction, sentenceDrill: drill};
+        el("checkup-word").textContent = drill.prompt;
+        el("checkup-word").className = "tr-word sentence";
+        el("checkup-answer-input").placeholder = drill.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
+        persistCheckupState();
+        el("checkup-answer-input").disabled = false;
+        el("btn-checkup-next").disabled = false;
+        el("checkup-answer-input").focus();
+        return;
+      }catch(e){ /* generatie mislukt: val terug op de gewone, kale woordoefening hieronder */ }
+    }
     let tr = null;
     try{ tr = await getOrFetchTranslation(word.en); }catch(e){ /* val terug op en-tr hieronder */ }
     const direction = tr ? (Math.random()<0.5 ? "tr-en" : "en-tr") : "en-tr";
@@ -27582,14 +27635,23 @@ async function submitCheckupAnswer(){
   let correctAnswerTxt = "";
 
   if(cur.type === "word"){
-    correctAnswerTxt = cur.direction === "tr-en" ? cur.en : (cur.tr || "");
-    if(answer && normalize(answer) === normalize(correctAnswerTxt)){
-      correct = true;
-    } else if(answer){
-      try{
-        const verdict = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction}, answer, false);
-        correct = !!verdict.correct;
-      }catch(e){ correct = false; }
+    if(cur.sentenceDrill){
+      correctAnswerTxt = cur.sentenceDrill.correct;
+      if(answer && normalize(answer) === normalize(correctAnswerTxt)){
+        correct = true;
+      } else if(answer){
+        try{ correct = !!(await gradeGrammarDrillAnswer(cur.sentenceDrill, answer)).correct; }catch(e){ correct = false; }
+      }
+    } else {
+      correctAnswerTxt = cur.direction === "tr-en" ? cur.en : (cur.tr || "");
+      if(answer && normalize(answer) === normalize(correctAnswerTxt)){
+        correct = true;
+      } else if(answer){
+        try{
+          const verdict = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction}, answer, false);
+          correct = !!verdict.correct;
+        }catch(e){ correct = false; }
+      }
     }
     recordResult(cur.en, correct); // telt gewoon mee voor je normale voortgang op dat woord
     checkupState.vocabLevelResults.push(correct);
@@ -27725,6 +27787,22 @@ async function nextSkillPracticeQuestion(){
 
   if(lesson.words && lesson.words.length){
     const en = lesson.words[Math.floor(Math.random()*lesson.words.length)];
+    if(lesson.title.startsWith("Prepositions")){
+      // voorzetsel-vocabulaire is inherent relationeel (bv. "under" = "altında", zelf al een naamval-
+      // constructie) -- als kaal woordpaar getoetst herhaalt dat precies het "geïsoleerd, niet in gebruik"
+      // probleem, nu op vocabulaire-niveau. Dus: verpak 'm in een kort zinnetje, net als bij de grammatica-frameworks.
+      try{
+        const drill = await generatePrepositionVocabDrill(en);
+        skillPracticeState.current = {type:"word", en, tr: null, direction: drill.direction, sentenceDrill: drill};
+        el("checkup-word").textContent = drill.prompt;
+        el("checkup-word").className = "tr-word sentence";
+        el("checkup-answer-input").placeholder = drill.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
+        el("checkup-answer-input").disabled = false;
+        el("btn-checkup-next").disabled = false;
+        el("checkup-answer-input").focus();
+        return;
+      }catch(e){ /* generatie mislukt: val terug op de gewone, kale woordoefening hieronder */ }
+    }
     let tr = null;
     try{ tr = await getOrFetchTranslation(en); }catch(e){ /* val terug op en-tr */ }
     const direction = tr ? (Math.random()<0.5 ? "tr-en" : "en-tr") : "en-tr";
@@ -27760,11 +27838,20 @@ async function submitSkillPracticeAnswer(){
   let correctAnswerTxt = "";
 
   if(cur.type === "word"){
-    correctAnswerTxt = cur.direction === "tr-en" ? cur.en : (cur.tr || "");
-    if(answer && normalize(answer) === normalize(correctAnswerTxt)){
-      correct = true;
-    } else if(answer){
-      try{ correct = !!(await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction}, answer, false)).correct; }catch(e){ correct = false; }
+    if(cur.sentenceDrill){
+      correctAnswerTxt = cur.sentenceDrill.correct;
+      if(answer && normalize(answer) === normalize(correctAnswerTxt)){
+        correct = true;
+      } else if(answer){
+        try{ correct = !!(await gradeGrammarDrillAnswer(cur.sentenceDrill, answer)).correct; }catch(e){ correct = false; }
+      }
+    } else {
+      correctAnswerTxt = cur.direction === "tr-en" ? cur.en : (cur.tr || "");
+      if(answer && normalize(answer) === normalize(correctAnswerTxt)){
+        correct = true;
+      } else if(answer){
+        try{ correct = !!(await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction}, answer, false)).correct; }catch(e){ correct = false; }
+      }
     }
     recordResult(cur.en, correct);
   } else {
