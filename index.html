@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 16:15</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 18:00</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -190,12 +190,12 @@
       <div class="row" style="gap:6px;margin-top:6px;">
         <select id="words-cefr-filter" class="select-input" style="flex:1;">
           <option value="all">All CEFR levels</option>
-          <option value="A1">A1</option>
-          <option value="A2">A2</option>
-          <option value="B1">B1</option>
-          <option value="B2">B2</option>
-          <option value="C1">C1</option>
-          <option value="C2">C2</option>
+          <option value="A1">A1 and below</option>
+          <option value="A2">A2 and below</option>
+          <option value="B1">B1 and below</option>
+          <option value="B2">B2 and below</option>
+          <option value="C1">C1 and below</option>
+          <option value="C2">C2 and below</option>
         </select>
       </div>
     </div>
@@ -322,7 +322,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 16:15</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 18:00</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -388,6 +388,7 @@
     <div id="lesson-modal-explanation" style="line-height:1.6;"></div>
     <div class="muted" id="lesson-modal-progress" style="margin-top:12px;"></div>
     <button class="btn-primary" id="btn-lesson-action" style="width:100%;margin-top:12px;"></button>
+    <button class="btn-secondary hidden" id="btn-practice-skill" style="width:100%;margin-top:8px;">🎯 Practice this skill</button>
     <button class="btn-ghost" id="btn-lesson-close" style="width:100%;margin-top:8px;">Close</button>
   </div>
 </div>
@@ -26550,6 +26551,7 @@ let grammar = loadJSON(LS_GRAMMAR, {});
 let trCache = loadJSON(LS_TRCACHE, {});
 let lessonProgress = loadJSON(LS_LESSONS, {});
 let checkupState = null;  // state machine van de nieuwe adaptieve trapsgewijze kennischeck (of null)
+let skillPracticeState = null; // { lesson, results:[] } — gerichte oefensessie op precies 1 les (of null)
 let adaptiveWindow = loadJSON(LS_ADAPTIVE_WINDOW, []); // laatste N (correct/fout) van reguliere oefeningen
 let costUsage = loadJSON(LS_COST, {byModel:{}});
 let costPending = loadJSON(LS_COST_PENDING, {byModel:{}});
@@ -27086,6 +27088,61 @@ const GRAMMAR_LESSONS = [
 /* Bouwt de volledige cursus: de 238 auto-gegenereerde vocabulaire-lessen (28-woordbatches per
    niveau+woordsoort) geïnterleaved met de 11 grammaticale oefenlessen (de eerste 2, pure leesstof,
    blijven vooraan staan). Zo wissel je doorlopend korte vocabulaire-blokjes af met grammatica-checkpoints. */
+/* Uitleg per woordsoort-categorie, hergebruikt over alle vocabulaire-lessen van diezelfde categorie
+   (238 losse lessen, maar slechts een handvol echt verschillende categorieën qua grammatica). De
+   categorie "Prepositions" krijgt een grondige, lettergreep-voor-lettergreep behandeling inclusief
+   klinkerharmonie en bufferletters, omdat dat verreweg de grammaticaal rijkste categorie is; de rest
+   krijgt een korter maar inhoudelijk gefundeerd kader. */
+const VOCAB_CATEGORY_EXPLANATIONS = {
+  "Prepositions": `<p><b>Before this list:</b> Turkish "prepositions" come in two very different flavours — worth understanding before you dive in.</p>
+<p><b>1. True postpositions</b> — separate words placed AFTER the noun, with little extra marking: <b>ile</b> (with), <b>gibi</b> (like), <b>kadar</b> (until/as much as), <b>için</b> (for), <b>göre</b> (according to). Essentially a mirror image of English prepositions.</p>
+<p><b>2. "Relational noun" prepositions</b> — words like <b>üstünde</b> (on top of), <b>altında</b> (under), <b>önünde</b> (in front of), <b>arkasında</b> (behind) are NOT simple words at all. They're built from an ordinary Turkish noun (üst="top", alt="bottom", ön="front", arka="back") plus a chain of <b>three</b> grammatical suffixes. Let's take one apart completely.</p>
+<p><b>Worked example: "on the table" → <i>masanın üstünde</i></b></p>
+<p style="line-height:2;"><code>masa</code> + <code>nın</code> + <code>üst</code> + <code>ü</code> + <code>nde</code></p>
+<ul>
+<li><b>masa</b> — "table" (the noun itself).</li>
+<li><b>+nın</b> — the GENITIVE suffix ("of the table"). It's needed because "üstü" further down literally means "its top" — and "its" needs an owner (compare English "the table's top"). <i>Vowel harmony:</i> masa's last vowel is <b>a</b> (back, unrounded) → suffix must match: <b>-ın</b> → <b>-nın</b>. <i>Buffer letter:</i> masa ends in a vowel and the suffix starts with one (ın) — two vowels can't sit together in Turkish, so a buffer <b>-n-</b> is inserted: masa+<b>n</b>+ın = <b>masanın</b>.</li>
+<li><b>üst</b> — "top/upper part": an ordinary noun. Turkish reuses spatial nouns like this for what English does with prepositions.</li>
+<li><b>+ü</b> — 3rd-person POSSESSIVE ("its"): üst→üstü = "its top". <i>Vowel harmony:</i> üst's vowel is <b>ü</b> (front, rounded) → suffix <b>-ü</b>.</li>
+<li><b>+nde</b> — LOCATIVE case ("at/in/on"): üstü→üstünde = "at its top". <i>Vowel harmony:</i> üstü ends in <b>ü</b> → suffix <b>-nde</b>. <i>No buffer needed</i> here — üstü ends in a vowel, but the locative suffix starts with a CONSONANT (d); buffer letters only bridge vowel-vowel, never vowel-consonant.</li>
+</ul>
+<p>Together: <b>masanın üstünde</b> = literally "at the table's top" = "on the table".</p>
+<p><b>Second example, different vowel set: "under the book" → <i>kitabın altında</i></b></p>
+<ul>
+<li><b>kitap</b> ("book") + genitive. <i>Vowel harmony:</i> back vowel <b>a</b> → suffix -ın. <i>Extra twist:</i> Turkish softens a word-final <b>p</b> to <b>b</b> before a vowel-starting suffix: <b>kitabın</b>, not "kitapın" (the same pattern shows up as ç→c, t→d, k→ğ on other words — common, not a one-off).</li>
+<li><b>alt</b> ("underside") + possessive. <i>Vowel harmony:</i> back vowel <b>a</b> → suffix -ı → <b>altı</b> ("its underside").</li>
+<li>+ locative: altı ends in <b>ı</b> (back, unrounded) → suffix -nda → <b>altında</b>. No buffer needed (vowel+consonant again).</li>
+</ul>
+<p>Together: <b>kitabın altında</b> = "at the book's underside" = "under the book".</p>
+<p>Notice the two examples used entirely different suffix vowels (-nın/-ü/-nde vs. -ın/-ı/-nda) for the exact same grammatical job — vowel harmony doing its work automatically, driven purely by the vowel already present. As you meet more relational-noun prepositions below, try building them the same way yourself: [noun]+genitive, +[relational noun]+possessive, +locative.</p>`,
+
+  "Nouns": `<p>Turkish nouns have no grammatical gender and no words for "a/an/the" — context tells you which is meant. Below, every noun is in its bare dictionary form: no suffixes attached yet. Once you reach the relevant grammar lessons, you'll start adding suffixes onto these same nouns for plural (-ler/-lar), possession ("my/your..."), and case (to/from/at/etc.) — for now, just build the bare word↔meaning link solidly, since everything later attaches onto this base.</p>`,
+
+  "Verbs": `<p>Every Turkish verb's dictionary/citation form ends in <b>-mek</b> or <b>-mak</b> — vowel harmony decides which: a stem with front vowels (e,i,ö,ü) takes <b>-mek</b> (e.g. <b>gitmek</b>, to go — "git" has the front vowel i), a stem with back vowels (a,ı,o,u) takes <b>-mak</b> (e.g. <b>bakmak</b>, to look — "bak" has the back vowel a). This citation form isn't really how you'd say things in conversation (similar to how "to go" isn't how you'd naturally answer "where are you going?") — it's the form you'll always find a verb listed under, and the form these lessons show you. The grammar lessons scattered through the course teach you how to strip off -mek/-mak and attach the real tense/person endings (geliyorum, geldim, gelecek...) — this lesson is purely about locking in the base meaning first.</p>`,
+
+  "Adjectives": `<p>Turkish adjectives are refreshingly simple: they go directly <b>before</b> the noun they describe, exactly like English, and — unlike many European languages — they <b>never change form</b>. No agreement for gender or number: <b>büyük ev</b> (big house) and <b>büyük evler</b> (big houses) both use the exact same "büyük". Any adjective can also stand alone as a description of something else, using the copula suffix from the grammar lessons: "Ev büyük." = "The house is big."</p>`,
+
+  "Adverbs": `<p>Adverbs modify a verb, adjective, or other adverb, and typically sit directly before the word they modify — most often right before the verb, near the end of the sentence (remember Turkish is Subject-Object-Verb). A handful of adverbs below are historically built from other words using their own suffix patterns, but for this lesson just learn each one as a standalone vocabulary item; you'll naturally absorb the position rules through the example sentences you'll practise with.</p>`,
+
+  "Pronouns": `<p>This lesson covers pronouns in their base form. Remember from the very first course lesson: because Turkish verb endings already show who's doing the action, personal pronouns (ben, sen, o...) are very often dropped entirely in real speech — they're mainly used for emphasis. Some pronouns you'll meet elsewhere in the course take case suffixes just like regular nouns do (e.g. ben → bana "to me", ben → beni "me" as an object) — here, focus on locking in the plain base forms first.</p>`,
+
+  "Determiners": `<p>Determiners (words like "this/that/some/every") work grammatically just like adjectives in Turkish: they're placed directly before the noun they specify, and never change form regardless of number or the noun's case.</p>`,
+
+  "Conjunctions": `<p>Linking words such as "and/but/because" mostly sit exactly where you'd expect from English, joining two words or clauses. A few — especially the borrowed word <b>ki</b> ("that/so that") and paired forms like <b>hem...hem</b> ("both...and") — behave a bit differently and get their own dedicated grammar lesson later in the course; here, just learn the plain vocabulary meanings.</p>`,
+
+  "Numbers": `<p>Cardinal numbers in their base form. One quirk worth knowing early: after a number, Turkish nouns stay <b>singular</b> — <b>üç kitap</b> ("three book", not "three books") — the plural suffix is only used when quantity isn't already specified by a number. Ordinals (first, second, third...) are covered in their own grammar lesson later on.</p>`,
+
+  "Modal verbs": `<p>A small set of helper words that combine with a main verb to add meaning like ability, necessity, or probability. Most of these (like "can" via -ebilmek, or "must" via -meli) are properly explained, suffix by suffix, in their own dedicated grammar lessons elsewhere in the course — this vocabulary lesson simply introduces the base words themselves.</p>`,
+
+  "Auxiliary verbs": `<p>Helper verbs that combine with other words to build compound meanings (e.g. forms of "to be" or "to become" used alongside a main verb or noun). You've already met the most important one — the copula — as a suffix rather than a separate word; here you're learning a few more of these supporting verbs as standalone vocabulary.</p>`,
+
+  "Exclamations": `<p>Interjections and fixed expressions used on their own — things like "hey!", "wow!", "ouch!". These don't follow regular grammar rules; they're essentially fixed vocabulary items to memorise as whole units, exactly as you would in English.</p>`,
+};
+function vocabCategoryExplanation(title){
+  const category = title.split(" — ")[0];
+  return VOCAB_CATEGORY_EXPLANATIONS[category] || "";
+}
+
 function buildFullLessonList(){
   const introLessons = GRAMMAR_LESSONS.slice(0, 2);   // welcome, pronouns — puur leesstof, altijd eerst
   const restGrammar = GRAMMAR_LESSONS.slice(2);        // de 11 oefenlessen
@@ -27097,7 +27154,8 @@ function buildFullLessonList(){
     grammarTopics: [],
     words: v.words,
     targetExercises: v.words.length,
-    explanation: `<p>This lesson introduces ${v.words.length} words at level <b>${cefrLabel(v.cefr)}</b>:</p>
+    explanation: vocabCategoryExplanation(v.title) +
+`<p>This lesson introduces ${v.words.length} words at level <b>${cefrLabel(v.cefr)}</b>:</p>
 <p class="vocab-word-list" style="line-height:1.8;">${v.words.map(w=>`<code>${w}</code>`).join(" · ")}</p>
 <p>You'll be asked to translate each one — sometimes English→Turkish, sometimes Turkish→English — so start the practice session below whenever you're ready.</p>`
   }));
@@ -27152,12 +27210,13 @@ function pickLessonGrammarTopic(){
 }
 
 /* ===================== KENNISCHECK (adaptieve trapsgewijze toets) ===================== */
-// Twee gescheiden onderdelen: vocabulaire (begint laag, wordt moeilijker zolang het gemiddelde over
-// de laatste 10 vragen >=60% blijft) en grammatica (geïsoleerde oefeningen met gegarandeerd bekende
-// basiswoorden, zodat een onbekend woord nooit de reden is dat een grammatica-vraag fout gaat).
-const CHECKUP_WINDOW = 10;
-const CHECKUP_THRESHOLD = 60;
-const CHECKUP_MAX_VOCAB_QUESTIONS = 30;
+// Twee gescheiden onderdelen: vocabulaire (begint laag, per niveau een BATCH vragen — niet 1 losse
+// vraag — zodat een conclusie als "B2" ook echt voldoende onderbouwd is) en grammatica (geïsoleerde
+// oefeningen met gegarandeerd bekende basiswoorden, zodat een onbekend woord nooit de reden is dat
+// een grammatica-vraag fout gaat).
+const CHECKUP_QUESTIONS_PER_VOCAB_LEVEL = 5;   // per CEFR-subniveau minstens dit aantal vragen vóór een oordeel
+const CHECKUP_QUESTIONS_PER_GRAMMAR_TOPIC = 3; // idem per grammatica-onderwerp
+const CHECKUP_LEVEL_PASS_THRESHOLD = 60;       // % nodig binnen zo'n batch om door te gaan naar het volgende niveau
 const CHECKUP_DRILL_BASE_WORDS = "ev (house), kitap (book), su (water), ekmek (bread), okul (school), gün (day), adam (man), kadın (woman), çocuk (child), gitmek (to go), gelmek (to come), görmek (to see), yemek (to eat), içmek (to drink)";
 
 function sortedGrammarTopicsByLevel(){
@@ -27191,8 +27250,8 @@ async function startCheckup(){
   if(!settings.apiKey){ alert("A DeepSeek API key is needed for the knowledge check (Settings)."); return; }
   checkupState = {
     phase: "vocab",
-    vocabIdx: 0, vocabWindow: [], vocabCeiling: -1,
-    grammarIdx: 0, grammarWindow: [], grammarCeiling: -1,
+    vocabLevel: 0, vocabLevelResults: [], vocabCeiling: -1,
+    grammarTopicIdx: 0, grammarTopicResults: [], grammarCeiling: -1,
     current: null,
   };
   persistCheckupState();
@@ -27282,8 +27341,8 @@ async function nextCheckupQuestion(){
 
   if(checkupState.phase === "vocab"){
     el("checkup-modal-title").textContent = "📋 Knowledge Check — Vocabulary";
-    const lvl = Math.min(17, checkupState.vocabIdx);
-    el("checkup-progress").textContent = `Question ${checkupState.vocabIdx+1} · level ${cefrLabel(lvl)}`;
+    const lvl = Math.min(17, checkupState.vocabLevel);
+    el("checkup-progress").textContent = `Level ${cefrLabel(lvl)} · question ${checkupState.vocabLevelResults.length+1}/${CHECKUP_QUESTIONS_PER_VOCAB_LEVEL}`;
     el("checkup-word").textContent = "🤖 …";
     const pool = EN_WORDS_DATA.filter(w=>w.cefr===lvl);
     const word = pool.length ? pool[Math.floor(Math.random()*pool.length)] : EN_WORDS_DATA[Math.floor(Math.random()*EN_WORDS_DATA.length)];
@@ -27292,12 +27351,13 @@ async function nextCheckupQuestion(){
     const direction = tr ? (Math.random()<0.5 ? "tr-en" : "en-tr") : "en-tr";
     checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: tr ? tr[0] : null, direction};
     el("checkup-word").textContent = direction === "tr-en" ? checkupState.current.tr : checkupState.current.en;
+    el("checkup-word").className = "tr-word";
     el("checkup-answer-input").placeholder = direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
     const topics = sortedGrammarTopicsByLevel();
-    const topic = topics[Math.min(topics.length-1, checkupState.grammarIdx)];
+    const topic = topics[Math.min(topics.length-1, checkupState.grammarTopicIdx)];
     el("checkup-modal-title").textContent = "📋 Knowledge Check — Grammar";
-    el("checkup-progress").textContent = `Question ${checkupState.grammarIdx+1} · ${topic.label}`;
+    el("checkup-progress").textContent = `${topic.label} · question ${checkupState.grammarTopicResults.length+1}/${CHECKUP_QUESTIONS_PER_GRAMMAR_TOPIC}`;
     el("checkup-word").textContent = "🤖 …";
     try{
       const drill = await generateGrammarDrill(topic);
@@ -27305,8 +27365,9 @@ async function nextCheckupQuestion(){
       el("checkup-word").textContent = drill.prompt;
       el("checkup-word").className = "tr-word sentence";
     }catch(e){
-      // generatie mislukt: sla deze vraag over zonder 'm mee te tellen
-      checkupState.grammarIdx++;
+      // generatie mislukt: sla dit hele onderwerp over zonder het mee te tellen (voorkomt vastlopen)
+      checkupState.grammarTopicIdx++;
+      checkupState.grammarTopicResults = [];
       persistCheckupState();
       await nextCheckupQuestion();
       return;
@@ -27338,8 +27399,7 @@ async function submitCheckupAnswer(){
       }catch(e){ correct = false; }
     }
     recordResult(cur.en, correct); // telt gewoon mee voor je normale voortgang op dat woord
-    checkupState.vocabWindow.push(correct);
-    if(checkupState.vocabWindow.length > CHECKUP_WINDOW) checkupState.vocabWindow.shift();
+    checkupState.vocabLevelResults.push(correct);
   } else {
     correctAnswerTxt = cur.drill.correct;
     if(answer && normalize(answer) === normalize(correctAnswerTxt)){
@@ -27351,8 +27411,7 @@ async function submitCheckupAnswer(){
       }catch(e){ correct = false; }
     }
     recordGrammarResult(cur.topic.key, correct);
-    checkupState.grammarWindow.push(correct);
-    if(checkupState.grammarWindow.length > CHECKUP_WINDOW) checkupState.grammarWindow.shift();
+    checkupState.grammarTopicResults.push(correct);
   }
 
   el("checkup-question-box").classList.add("hidden");
@@ -27365,40 +27424,36 @@ async function submitCheckupAnswer(){
   el("btn-checkup-close").textContent = checkupState.phase === "done" ? "See results" : "Continue";
 }
 
-/* Bepaalt of de trap omhoog gaat, van vocabulaire naar grammatica overschakelt, of helemaal stopt —
-   puur state-berekening, toont zelf nog geen nieuwe vraag (dat gebeurt pas na de klik op "Continue"). */
+/* Bepaalt of het huidige niveau/onderwerp-batch compleet is, en zo ja: of de trap omhoog gaat (batch
+   geslaagd, ≥60%), van vocabulaire naar grammatica overschakelt, of helemaal stopt (batch gezakt).
+   Puur state-berekening, toont zelf nog geen nieuwe vraag (dat gebeurt pas na de klik op "Continue"). */
 function advanceCheckupStaircase(){
   const cur = checkupState.current;
   if(cur.type === "word"){
-    checkupState.vocabIdx++;
-    if(checkupState.vocabWindow.length >= CHECKUP_WINDOW){
-      const pct = 100 * checkupState.vocabWindow.filter(Boolean).length / checkupState.vocabWindow.length;
-      if(pct >= CHECKUP_THRESHOLD){
-        checkupState.vocabCeiling = Math.min(17, checkupState.vocabIdx - 1);
+    if(checkupState.vocabLevelResults.length >= CHECKUP_QUESTIONS_PER_VOCAB_LEVEL){
+      const pct = 100 * checkupState.vocabLevelResults.filter(Boolean).length / checkupState.vocabLevelResults.length;
+      if(pct >= CHECKUP_LEVEL_PASS_THRESHOLD){
+        checkupState.vocabCeiling = Math.min(17, checkupState.vocabLevel); // dit niveau is nu met genoeg vragen bevestigd
+        checkupState.vocabLevel++;
+        checkupState.vocabLevelResults = [];
+        if(checkupState.vocabLevel > 17) checkupState.phase = "grammar";
       } else {
-        if(checkupState.vocabCeiling === -1) checkupState.vocabCeiling = Math.max(0, checkupState.vocabIdx - CHECKUP_WINDOW);
-        checkupState.phase = "grammar";
+        checkupState.phase = "grammar"; // dit niveau-batch gezakt -> sectie stopt; ceiling blijft het laatst BEVESTIGDE niveau (kan -1 zijn)
       }
-    }
-    if(checkupState.phase === "vocab" && (checkupState.vocabIdx >= CHECKUP_MAX_VOCAB_QUESTIONS || checkupState.vocabIdx > 17)){
-      if(checkupState.vocabCeiling === -1) checkupState.vocabCeiling = 17;
-      checkupState.phase = "grammar";
     }
   } else {
-    checkupState.grammarIdx++;
     const topics = sortedGrammarTopicsByLevel();
-    if(checkupState.grammarWindow.length >= CHECKUP_WINDOW){
-      const pct = 100 * checkupState.grammarWindow.filter(Boolean).length / checkupState.grammarWindow.length;
-      if(pct >= CHECKUP_THRESHOLD){
-        checkupState.grammarCeiling = topics[Math.min(topics.length-1, checkupState.grammarIdx-1)].minCefr;
+    if(checkupState.grammarTopicResults.length >= CHECKUP_QUESTIONS_PER_GRAMMAR_TOPIC){
+      const pct = 100 * checkupState.grammarTopicResults.filter(Boolean).length / checkupState.grammarTopicResults.length;
+      const topic = topics[Math.min(topics.length-1, checkupState.grammarTopicIdx)];
+      if(pct >= CHECKUP_LEVEL_PASS_THRESHOLD){
+        checkupState.grammarCeiling = topic.minCefr; // dit onderwerp is nu met genoeg vragen bevestigd
+        checkupState.grammarTopicIdx++;
+        checkupState.grammarTopicResults = [];
+        if(checkupState.grammarTopicIdx >= topics.length) checkupState.phase = "done";
       } else {
-        if(checkupState.grammarCeiling === -1) checkupState.grammarCeiling = topics[Math.max(0, checkupState.grammarIdx-CHECKUP_WINDOW)].minCefr;
-        checkupState.phase = "done";
+        checkupState.phase = "done"; // dit onderwerp-batch gezakt -> hele check stopt; ceiling blijft het laatst BEVESTIGDE onderwerp
       }
-    }
-    if(checkupState.phase === "grammar" && checkupState.grammarIdx >= topics.length){
-      if(checkupState.grammarCeiling === -1) checkupState.grammarCeiling = topics[topics.length-1].minCefr;
-      checkupState.phase = "done";
     }
   }
 }
@@ -27429,6 +27484,11 @@ function finishCheckup(){
   el("btn-checkup-close").textContent = "Close";
   checkupState = null;
   persistCheckupState();
+  // De rest van de interface expliciet verversen: zonder dit bleef bv. de Course-tab (als die al open
+  // stond vóór de check) de oude, verouderde vergrendel-status tonen, ook al was de data zelf al bijgewerkt.
+  renderCourseTab();
+  currentItem = null; // forceert dat de eerstvolgende oefening het nieuw ontgrendelde bereik gebruikt
+  syncMaybePush(); // meteen (gedebouncet) naar de cloud, i.p.v. te wachten tot de volgende willekeurige save
 }
 
 function cancelCheckup(){
@@ -27436,6 +27496,110 @@ function cancelCheckup(){
   checkupState = null;
   persistCheckupState();
   el("modal-checkup").classList.add("hidden");
+}
+
+/* ===================== "PRACTICE THIS SKILL" (gerichte sessie op precies 1 les) =====================
+   Hergebruikt dezelfde modal en dezelfde onderliggende oefen-generatie als de kennischeck, maar:
+   - blijft op ÉÉN vaste les/onderwerp (geen trap door opeenvolgende niveaus)
+   - hanteert een strengere drempel (80% i.p.v. 60%) voordat het als "goed onder de knie" geldt
+   - heeft geen effect op lessen ontgrendelen — puur extra herhaling op verzoek */
+const SKILL_PRACTICE_BATCH = 5;
+const SKILL_PRACTICE_THRESHOLD = 80;
+
+async function startSkillPractice(lesson){
+  if(!settings.apiKey){ alert("A DeepSeek API key is needed to practise (Settings)."); return; }
+  skillPracticeState = {lesson, results: [], current: null};
+  el("modal-lesson").classList.add("hidden");
+  el("modal-checkup").classList.remove("hidden");
+  await nextSkillPracticeQuestion();
+}
+
+async function nextSkillPracticeQuestion(){
+  el("checkup-question-box").classList.remove("hidden");
+  el("checkup-result-box").classList.add("hidden");
+  el("checkup-answer-input").value = "";
+  el("checkup-answer-input").disabled = true;
+  el("btn-checkup-next").disabled = true;
+  const lesson = skillPracticeState.lesson;
+  const correctSoFar = skillPracticeState.results.filter(Boolean).length;
+  const pctSoFar = skillPracticeState.results.length ? Math.round(100*correctSoFar/skillPracticeState.results.length) : null;
+
+  el("checkup-modal-title").textContent = `🎯 Practice: ${lesson.title}`;
+  el("checkup-progress").textContent = `Question ${skillPracticeState.results.length+1}` +
+    (pctSoFar!==null ? ` · ${correctSoFar}/${skillPracticeState.results.length} correct so far (${pctSoFar}%, target ${SKILL_PRACTICE_THRESHOLD}%)` : "");
+  el("checkup-word").textContent = "🤖 …";
+
+  if(lesson.words && lesson.words.length){
+    const en = lesson.words[Math.floor(Math.random()*lesson.words.length)];
+    let tr = null;
+    try{ tr = await getOrFetchTranslation(en); }catch(e){ /* val terug op en-tr */ }
+    const direction = tr ? (Math.random()<0.5 ? "tr-en" : "en-tr") : "en-tr";
+    skillPracticeState.current = {type:"word", en, tr: tr ? tr[0] : null, direction};
+    el("checkup-word").textContent = direction === "tr-en" ? skillPracticeState.current.tr : en;
+    el("checkup-word").className = "tr-word";
+    el("checkup-answer-input").placeholder = direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
+  } else {
+    const topic = grammarTopicByKey(lesson.grammarTopics[0]);
+    try{
+      const drill = await generateGrammarDrill(topic);
+      skillPracticeState.current = {type:"grammar", topic, drill};
+      el("checkup-word").textContent = drill.prompt;
+      el("checkup-word").className = "tr-word sentence";
+    }catch(e){
+      el("checkup-word").textContent = "⚠️ Could not generate an exercise: " + e.message;
+      el("btn-checkup-next").disabled = true;
+      return;
+    }
+    el("checkup-answer-input").placeholder = "Type the transformed Turkish word…";
+  }
+  el("checkup-answer-input").disabled = false;
+  el("btn-checkup-next").disabled = false;
+  el("checkup-answer-input").focus();
+}
+
+async function submitSkillPracticeAnswer(){
+  const answer = el("checkup-answer-input").value.trim();
+  el("btn-checkup-next").disabled = true;
+  el("checkup-answer-input").disabled = true;
+  const cur = skillPracticeState.current;
+  let correct = false;
+  let correctAnswerTxt = "";
+
+  if(cur.type === "word"){
+    correctAnswerTxt = cur.direction === "tr-en" ? cur.en : (cur.tr || "");
+    if(answer && normalize(answer) === normalize(correctAnswerTxt)){
+      correct = true;
+    } else if(answer){
+      try{ correct = !!(await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction}, answer, false)).correct; }catch(e){ correct = false; }
+    }
+    recordResult(cur.en, correct);
+  } else {
+    correctAnswerTxt = cur.drill.correct;
+    if(answer && normalize(answer) === normalize(correctAnswerTxt)){
+      correct = true;
+    } else if(answer){
+      try{ correct = !!(await gradeGrammarDrillAnswer(cur.drill, answer)).correct; }catch(e){ correct = false; }
+    }
+    recordGrammarResult(cur.topic.key, correct);
+  }
+  skillPracticeState.results.push(correct);
+
+  el("checkup-question-box").classList.add("hidden");
+  el("checkup-result-box").classList.remove("hidden");
+  el("checkup-result-text").className = "feedback " + (correct ? "correct" : "wrong");
+  const n = skillPracticeState.results.length;
+  const lastBatch = skillPracticeState.results.slice(-SKILL_PRACTICE_BATCH);
+  const batchPct = Math.round(100*lastBatch.filter(Boolean).length/lastBatch.length);
+  let extra = "";
+  if(n >= SKILL_PRACTICE_BATCH && batchPct >= SKILL_PRACTICE_THRESHOLD){
+    extra = `<br><br>🎉 <b>Solid!</b> ${batchPct}% correct over your last ${SKILL_PRACTICE_BATCH} — this skill looks well in hand. Keep going for more practice, or close whenever you like.`;
+  }
+  el("checkup-result-text").innerHTML = (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
+  el("btn-checkup-close").textContent = "Continue";
+}
+
+function skillPracticeContinueOrClose(){
+  nextSkillPracticeQuestion();
 }
 
 /* Centrale plek voor lesvoortgang bijwerken na een oefening (correct, fout, overgeslagen of leeg) —
@@ -29112,7 +29276,10 @@ function renderWordsTab(){
   if(filter === "introduced") words = words.filter(w => w.reps > 0);
 
   if(cefrFilter !== "all"){
-    words = words.filter(w => CEFR_MAJOR[w.cefr] === cefrFilter);
+    // Cumulatief: "B1" selecteren toont B1 ÉN alles daarvoor (A1, A2) — niet uitsluitend B1 zelf.
+    const MAJOR_ORDER = ["A1","A2","B1","B2","C1","C2"];
+    const selectedIdx = MAJOR_ORDER.indexOf(cefrFilter);
+    words = words.filter(w => MAJOR_ORDER.indexOf(CEFR_MAJOR[w.cefr]) <= selectedIdx);
   }
 
   if(search){
@@ -29198,17 +29365,21 @@ async function openLessonModal(idx){
   }
   if(completed){
     el("lesson-modal-progress").innerHTML = "✅ You've completed this lesson." + profLine;
-    el("btn-lesson-action").textContent = "Close";
+    el("btn-lesson-action").classList.add("hidden"); // "Close" staat al als losse, vaste knop -> geen dubbele
   } else if(needsPractice && isCurrent){
     el("lesson-modal-progress").innerHTML = `This is your current lesson — regular practice automatically focuses on it. It unlocks the next lesson once everything's been tried AND your average accuracy on it reaches ${LESSON_ACCURACY_THRESHOLD}%.` + profLine;
     el("btn-lesson-action").textContent = "Go to practice";
+    el("btn-lesson-action").classList.remove("hidden");
   } else if(needsPractice){
     el("lesson-modal-progress").innerHTML = ""; // niet-huidige, nog niet voltooide les kan (per ontwerp) niet voorkomen bij een lineair pad
-    el("btn-lesson-action").textContent = "Close";
+    el("btn-lesson-action").classList.add("hidden");
   } else {
     el("lesson-modal-progress").innerHTML = "";
     el("btn-lesson-action").textContent = "Got it — mark as read";
+    el("btn-lesson-action").classList.remove("hidden");
   }
+  // "Practice this skill" -> altijd beschikbaar zodra er iets te oefenen valt, los van voortgangsstatus
+  el("btn-practice-skill").classList.toggle("hidden", !needsPractice);
   el("modal-lesson").classList.remove("hidden");
 
   if(l.words && l.words.length){
@@ -29568,17 +29739,22 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-home-close").addEventListener("click", ()=> el("modal-home").classList.add("hidden"));
   el("btn-lesson-action").addEventListener("click", startLessonAction);
   el("btn-lesson-close").addEventListener("click", ()=> el("modal-lesson").classList.add("hidden"));
+  el("btn-practice-skill").addEventListener("click", ()=> startSkillPractice(LESSONS[openLessonIdx]));
   el("btn-start-test").addEventListener("click", startPlacementTest);
   el("btn-start-checkup").addEventListener("click", startCheckup);
-  el("btn-checkup-next").addEventListener("click", submitCheckupAnswer);
+  el("btn-checkup-next").addEventListener("click", ()=> skillPracticeState ? submitSkillPracticeAnswer() : submitCheckupAnswer());
   el("checkup-answer-input").addEventListener("keydown", e=>{
-    if(e.key === "Enter"){ e.preventDefault(); if(!el("btn-checkup-next").disabled) submitCheckupAnswer(); }
+    if(e.key === "Enter"){ e.preventDefault(); if(!el("btn-checkup-next").disabled) el("btn-checkup-next").click(); }
   });
   el("btn-checkup-close").addEventListener("click", ()=>{
+    if(skillPracticeState){ skillPracticeContinueOrClose(); return; }
     if(!checkupState){ el("modal-checkup").classList.add("hidden"); }
     else checkupContinue();
   });
-  el("btn-checkup-cancel").addEventListener("click", cancelCheckup);
+  el("btn-checkup-cancel").addEventListener("click", ()=>{
+    if(skillPracticeState){ skillPracticeState = null; el("modal-checkup").classList.add("hidden"); return; }
+    cancelCheckup();
+  });
   el("btn-test-next").addEventListener("click", handleTestNext);
   el("btn-test-cancel").addEventListener("click", closeTestModal);
   el("btn-test-close").addEventListener("click", closeTestModal);
