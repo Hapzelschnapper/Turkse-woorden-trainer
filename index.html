@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 13:10</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 14:45</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -311,7 +311,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 13:10</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 14:45</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -351,6 +351,23 @@
     </ol>
     <div class="muted">Tip: host the file on e.g. GitHub Pages for the smoothest experience, or open it directly from your Files app.</div>
     <button class="btn-primary" id="btn-home-close" style="width:100%;margin-top:10px;">Close</button>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="modal-checkup">
+  <div class="modal">
+    <h3 id="checkup-modal-title" style="margin-top:0;">📋 Knowledge Check</h3>
+    <div id="checkup-progress" class="muted" style="margin-bottom:8px;"></div>
+    <div id="checkup-question-box">
+      <div class="tr-word" id="checkup-word">…</div>
+      <input type="text" id="checkup-answer-input" placeholder="Type your answer…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-top:10px;">
+      <button class="btn-primary" id="btn-checkup-next" style="width:100%;margin-top:10px;">Check</button>
+    </div>
+    <div id="checkup-result-box" class="hidden">
+      <div class="feedback correct" id="checkup-result-text"></div>
+      <button class="btn-primary" id="btn-checkup-close" style="width:100%;margin-top:12px;">Continue</button>
+    </div>
+    <button class="btn-ghost" id="btn-checkup-cancel" style="width:100%;margin-top:10px;">Cancel</button>
   </div>
 </div>
 
@@ -26521,7 +26538,7 @@ let newWords = loadJSON(LS_NEWWORDS, {});
 let grammar = loadJSON(LS_GRAMMAR, {});
 let trCache = loadJSON(LS_TRCACHE, {});
 let lessonProgress = loadJSON(LS_LESSONS, {});
-let activeCheckup = null;  // { queue:[{type,en/key,cefr}], index, results:[] } — actieve kennischeck
+let checkupState = null;  // state machine van de nieuwe adaptieve trapsgewijze kennischeck (of null)
 let adaptiveWindow = loadJSON(LS_ADAPTIVE_WINDOW, []); // laatste N (correct/fout) van reguliere oefeningen
 let costUsage = loadJSON(LS_COST, {byModel:{}});
 let costPending = loadJSON(LS_COST_PENDING, {byModel:{}});
@@ -26994,7 +27011,7 @@ function buildFullLessonList(){
     words: v.words,
     targetExercises: v.words.length,
     explanation: `<p>This lesson introduces ${v.words.length} words at level <b>${cefrLabel(v.cefr)}</b>:</p>
-<p style="line-height:1.8;">${v.words.map(w=>`<code>${w}</code>`).join(" · ")}</p>
+<p class="vocab-word-list" style="line-height:1.8;">${v.words.map(w=>`<code>${w}</code>`).join(" · ")}</p>
 <p>You'll be asked to translate each one — sometimes English→Turkish, sometimes Turkish→English — so start the practice session below whenever you're ready.</p>`
   }));
 
@@ -27033,10 +27050,6 @@ function nextIncompleteLessonIndex(){
 
 /* Grammatica-onderwerp kiezen binnen een actieve les (of het normale gedrag als er geen les actief is) */
 function pickLessonGrammarTopic(){
-  if(activeCheckup){
-    const q = activeCheckup.queue[activeCheckup.index];
-    if(q && q.type === "grammar") return grammarTopicByKey(q.key);
-  }
   const cur = LESSONS[currentLessonIndex()];
   // voorkeur: het grammaticale onderwerp van de HUIDIGE les, zolang dat nog niet volledig beheerst is
   if(cur && cur.grammarTopics && cur.grammarTopics.length){
@@ -27051,63 +27064,262 @@ function pickLessonGrammarTopic(){
   return pool[Math.floor(Math.random()*pool.length)];
 }
 
-/* ===================== KENNISCHECK (tussentijdse toets, peilt of stof echt beheerst wordt) ===================== */
-// Steekproef uit AL GEOEFENDE woorden/grammatica, gespreid over lage/midden/hoge niveaus, zodat
-// vermeende beheersing (hoog niveau via losse herhalingen) ook echt getoetst wordt, niet alleen aangenomen.
-function stratifiedSample(items, getLevel, n){
-  const bands = [[0,3],[4,7],[8,10]];
-  const perBand = Math.ceil(n / bands.length);
-  const picked = [];
-  for(const [lo,hi] of bands){
-    const inBand = items.filter(it => { const l = getLevel(it); return l >= lo && l <= hi; });
-    for(let i=inBand.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [inBand[i],inBand[j]]=[inBand[j],inBand[i]]; }
-    picked.push(...inBand.slice(0, perBand));
-  }
-  return picked.slice(0, n);
+/* ===================== KENNISCHECK (adaptieve trapsgewijze toets) ===================== */
+// Twee gescheiden onderdelen: vocabulaire (begint laag, wordt moeilijker zolang het gemiddelde over
+// de laatste 10 vragen >=60% blijft) en grammatica (geïsoleerde oefeningen met gegarandeerd bekende
+// basiswoorden, zodat een onbekend woord nooit de reden is dat een grammatica-vraag fout gaat).
+const CHECKUP_WINDOW = 10;
+const CHECKUP_THRESHOLD = 60;
+const CHECKUP_MAX_VOCAB_QUESTIONS = 30;
+const CHECKUP_DRILL_BASE_WORDS = "ev (house), kitap (book), su (water), ekmek (bread), okul (school), gün (day), adam (man), kadın (woman), çocuk (child), gitmek (to go), gelmek (to come), görmek (to see), yemek (to eat), içmek (to drink)";
+
+function sortedGrammarTopicsByLevel(){
+  return [...GRAMMAR_TOPICS].sort((a,b)=>a.minCefr-b.minCefr);
 }
 
-function buildCheckupQueue(){
-  const completedLessons = LESSONS.filter(l => isLessonCompleted(l.id) && ((l.words && l.words.length) || (l.grammarTopics && l.grammarTopics.length)));
-  const wordCandidates = [];
-  const topicCandidates = [];
-  for(const l of completedLessons){
-    if(l.words) for(const en of l.words) wordCandidates.push({en, lessonId:l.id});
-    if(l.grammarTopics) for(const k of l.grammarTopics) topicCandidates.push({key:k, lessonId:l.id});
-  }
-  const wordItems = stratifiedSample(wordCandidates, c=>getProgress(c.en).level, 6)
-    .map(c => ({type:"word", en:c.en, cefr:(EN_WORDS_DATA.find(w=>w.en===c.en)||{}).cefr, lessonId:c.lessonId}));
-  const grammarItems = stratifiedSample(topicCandidates, c=>getGrammarProgress(c.key).level, 6)
-    .map(c => ({type:"grammar", key:c.key, lessonId:c.lessonId}));
-  const queue = [...wordItems, ...grammarItems];
-  for(let i=queue.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [queue[i],queue[j]]=[queue[j],queue[i]]; }
-  return queue;
-}
-
-function startCheckup(){
-  if(!settings.apiKey){ alert("A DeepSeek API key is needed for the knowledge check (Settings)."); return; }
-  const queue = buildCheckupQueue();
-  if(queue.length < 4){ alert("Complete a few more lessons first — there aren't enough completed lessons yet for a meaningful check."); return; }
-  activeCheckup = {queue, index:0, results:[]};
-  persistCheckupState();
-  currentItem = null;
-  switchTab("practice");
-}
-
-/* Wordt aangeroepen direct na het verwerken van een antwoord op een kennischeck-item.
-   Herijkt het niveau STERKER dan de normale +1/-1-stap (dit is een bewuste toets, geen losse herhaling),
-   en levert een stukje feedback-HTML op om aan het bestaande feedbackbericht te plakken. */
-/* Tussentijdse opslag van een actieve les/kennischeck-sessie, zodat deze een tabwissel,
-   het minimaliseren van de app, of zelfs een herladen van de pagina overleeft. */
 function persistCheckupState(){
-  if(activeCheckup) localStorage.setItem(LS_ACTIVE_CHECKUP, JSON.stringify(activeCheckup));
+  if(checkupState) localStorage.setItem(LS_ACTIVE_CHECKUP, JSON.stringify(checkupState));
   else localStorage.removeItem(LS_ACTIVE_CHECKUP);
 }
 function restoreActiveSessions(){
   localStorage.removeItem(LS_ACTIVE_LESSON); // legacy sleutel, niet meer gebruikt sinds lessen automatisch voortgaan
   try{
     const raw = localStorage.getItem(LS_ACTIVE_CHECKUP);
-    if(raw) activeCheckup = JSON.parse(raw);
-  }catch(e){ activeCheckup = null; }
+    if(raw){
+      checkupState = JSON.parse(raw);
+      el("modal-checkup").classList.remove("hidden");
+      showCheckupResumeNotice();
+    }
+  }catch(e){ checkupState = null; }
+}
+function showCheckupResumeNotice(){
+  el("checkup-question-box").classList.add("hidden");
+  el("checkup-result-box").classList.remove("hidden");
+  el("checkup-result-text").className = "feedback correct";
+  el("checkup-result-text").innerHTML = "Resuming your knowledge check where you left off.";
+  el("btn-checkup-close").textContent = "Continue";
+}
+
+async function startCheckup(){
+  if(!settings.apiKey){ alert("A DeepSeek API key is needed for the knowledge check (Settings)."); return; }
+  checkupState = {
+    phase: "vocab",
+    vocabIdx: 0, vocabWindow: [], vocabCeiling: -1,
+    grammarIdx: 0, grammarWindow: [], grammarCeiling: -1,
+    current: null,
+  };
+  persistCheckupState();
+  el("modal-checkup").classList.remove("hidden");
+  await nextCheckupQuestion();
+}
+
+/* Geïsoleerde grammatica-oefening: puur de transformatie, met een gegarandeerd bekend basiswoord,
+   zodat een verkeerd antwoord nooit te wijten kan zijn aan een toevallig onbekend woord. */
+async function generateGrammarDrill(topic){
+  const sys = `Je maakt een GEÏSOLEERDE grammatica-oefening voor het Turkse onderwerp "${topic.label}" (${topic.hint}).
+BELANGRIJK: gebruik uitsluitend één van deze gegarandeerd bekende, zeer basale Turkse woorden als basis: ${CHECKUP_DRILL_BASE_WORDS}. Kies er willekeurig één die goed past bij dit onderwerp.
+Geef een KORTE, in het Engels geschreven instructie die vraagt om dat woord grammaticaal te transformeren volgens dit onderwerp — GEEN volledige zin, puur de kale transformatie-opdracht. Bijvoorbeeld: "Put \\"ev\\" (house) in the dative case (to/towards)." of "Make \\"gitmek\\" (to go) negative in the present continuous, for \\"I\\"."
+Geef ook het correcte, getransformeerde Turkse antwoord.
+Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"prompt": "instructie in het Engels", "correct": "het juiste getransformeerde Turkse woord", "baseWord": "het gekozen basiswoord"}`;
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
+    body: JSON.stringify({
+      model: "deepseek-v4-pro", max_tokens: 200, temperature: 0.4,
+      messages: [{role:"system", content:sys}, {role:"user", content:`Onderwerp: ${topic.label}`}],
+      thinking: {"type":"disabled"}
+    })
+  });
+  if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
+  const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
+  let raw = data.choices?.[0]?.message?.content || "";
+  raw = raw.replace(/```json|```/g,"").trim();
+  return JSON.parse(raw);
+}
+
+async function gradeGrammarDrillAnswer(drill, answer){
+  const sys = `Je beoordeelt of het Turkse antwoord van een gebruiker een correcte grammaticale transformatie is voor de opdracht "${drill.prompt}". Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen bestaan. NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en kleine tikfouten met een ondubbelzinnige bedoeling. Antwoord ALLEEN met geldige JSON: {"correct": true of false}`;
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
+    body: JSON.stringify({
+      model: "deepseek-v4-pro", max_tokens: 50, temperature: 0,
+      messages: [{role:"system", content:sys}, {role:"user", content:`Antwoord van gebruiker: "${answer}"`}],
+      thinking: {"type":"disabled"}
+    })
+  });
+  if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
+  const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
+  let raw = data.choices?.[0]?.message?.content || "";
+  raw = raw.replace(/```json|```/g,"").trim();
+  return JSON.parse(raw);
+}
+
+async function nextCheckupQuestion(){
+  el("checkup-question-box").classList.remove("hidden");
+  el("checkup-result-box").classList.add("hidden");
+  el("checkup-answer-input").value = "";
+  el("checkup-answer-input").disabled = true;
+  el("btn-checkup-next").disabled = true;
+
+  if(checkupState.phase === "vocab"){
+    el("checkup-modal-title").textContent = "📋 Knowledge Check — Vocabulary";
+    const lvl = Math.min(17, checkupState.vocabIdx);
+    el("checkup-progress").textContent = `Question ${checkupState.vocabIdx+1} · level ${cefrLabel(lvl)}`;
+    el("checkup-word").textContent = "🤖 …";
+    const pool = EN_WORDS_DATA.filter(w=>w.cefr===lvl);
+    const word = pool.length ? pool[Math.floor(Math.random()*pool.length)] : EN_WORDS_DATA[Math.floor(Math.random()*EN_WORDS_DATA.length)];
+    let tr = null;
+    try{ tr = await getOrFetchTranslation(word.en); }catch(e){ /* val terug op en-tr hieronder */ }
+    const direction = tr ? (Math.random()<0.5 ? "tr-en" : "en-tr") : "en-tr";
+    checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: tr ? tr[0] : null, direction};
+    el("checkup-word").textContent = direction === "tr-en" ? checkupState.current.tr : checkupState.current.en;
+    el("checkup-answer-input").placeholder = direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
+  } else {
+    const topics = sortedGrammarTopicsByLevel();
+    const topic = topics[Math.min(topics.length-1, checkupState.grammarIdx)];
+    el("checkup-modal-title").textContent = "📋 Knowledge Check — Grammar";
+    el("checkup-progress").textContent = `Question ${checkupState.grammarIdx+1} · ${topic.label}`;
+    el("checkup-word").textContent = "🤖 …";
+    try{
+      const drill = await generateGrammarDrill(topic);
+      checkupState.current = {type:"grammar", topic, drill};
+      el("checkup-word").textContent = drill.prompt;
+      el("checkup-word").className = "tr-word sentence";
+    }catch(e){
+      // generatie mislukt: sla deze vraag over zonder 'm mee te tellen
+      checkupState.grammarIdx++;
+      persistCheckupState();
+      await nextCheckupQuestion();
+      return;
+    }
+    el("checkup-answer-input").placeholder = "Type the transformed Turkish word…";
+  }
+  persistCheckupState();
+  el("checkup-answer-input").disabled = false;
+  el("btn-checkup-next").disabled = false;
+  el("checkup-answer-input").focus();
+}
+
+async function submitCheckupAnswer(){
+  const answer = el("checkup-answer-input").value.trim();
+  el("btn-checkup-next").disabled = true;
+  el("checkup-answer-input").disabled = true;
+  const cur = checkupState.current;
+  let correct = false;
+  let correctAnswerTxt = "";
+
+  if(cur.type === "word"){
+    correctAnswerTxt = cur.direction === "tr-en" ? cur.en : (cur.tr || "");
+    if(answer && normalize(answer) === normalize(correctAnswerTxt)){
+      correct = true;
+    } else if(answer){
+      try{
+        const verdict = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction}, answer, false);
+        correct = !!verdict.correct;
+      }catch(e){ correct = false; }
+    }
+    recordResult(cur.en, correct); // telt gewoon mee voor je normale voortgang op dat woord
+    checkupState.vocabWindow.push(correct);
+    if(checkupState.vocabWindow.length > CHECKUP_WINDOW) checkupState.vocabWindow.shift();
+  } else {
+    correctAnswerTxt = cur.drill.correct;
+    if(answer && normalize(answer) === normalize(correctAnswerTxt)){
+      correct = true;
+    } else if(answer){
+      try{
+        const verdict = await gradeGrammarDrillAnswer(cur.drill, answer);
+        correct = !!verdict.correct;
+      }catch(e){ correct = false; }
+    }
+    recordGrammarResult(cur.topic.key, correct);
+    checkupState.grammarWindow.push(correct);
+    if(checkupState.grammarWindow.length > CHECKUP_WINDOW) checkupState.grammarWindow.shift();
+  }
+
+  el("checkup-question-box").classList.add("hidden");
+  el("checkup-result-box").classList.remove("hidden");
+  el("checkup-result-text").className = "feedback " + (correct ? "correct" : "wrong");
+  el("checkup-result-text").innerHTML = (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`);
+
+  advanceCheckupStaircase();
+  persistCheckupState();
+  el("btn-checkup-close").textContent = checkupState.phase === "done" ? "See results" : "Continue";
+}
+
+/* Bepaalt of de trap omhoog gaat, van vocabulaire naar grammatica overschakelt, of helemaal stopt —
+   puur state-berekening, toont zelf nog geen nieuwe vraag (dat gebeurt pas na de klik op "Continue"). */
+function advanceCheckupStaircase(){
+  const cur = checkupState.current;
+  if(cur.type === "word"){
+    checkupState.vocabIdx++;
+    if(checkupState.vocabWindow.length >= CHECKUP_WINDOW){
+      const pct = 100 * checkupState.vocabWindow.filter(Boolean).length / checkupState.vocabWindow.length;
+      if(pct >= CHECKUP_THRESHOLD){
+        checkupState.vocabCeiling = Math.min(17, checkupState.vocabIdx - 1);
+      } else {
+        if(checkupState.vocabCeiling === -1) checkupState.vocabCeiling = Math.max(0, checkupState.vocabIdx - CHECKUP_WINDOW);
+        checkupState.phase = "grammar";
+      }
+    }
+    if(checkupState.phase === "vocab" && (checkupState.vocabIdx >= CHECKUP_MAX_VOCAB_QUESTIONS || checkupState.vocabIdx > 17)){
+      if(checkupState.vocabCeiling === -1) checkupState.vocabCeiling = 17;
+      checkupState.phase = "grammar";
+    }
+  } else {
+    checkupState.grammarIdx++;
+    const topics = sortedGrammarTopicsByLevel();
+    if(checkupState.grammarWindow.length >= CHECKUP_WINDOW){
+      const pct = 100 * checkupState.grammarWindow.filter(Boolean).length / checkupState.grammarWindow.length;
+      if(pct >= CHECKUP_THRESHOLD){
+        checkupState.grammarCeiling = topics[Math.min(topics.length-1, checkupState.grammarIdx-1)].minCefr;
+      } else {
+        if(checkupState.grammarCeiling === -1) checkupState.grammarCeiling = topics[Math.max(0, checkupState.grammarIdx-CHECKUP_WINDOW)].minCefr;
+        checkupState.phase = "done";
+      }
+    }
+    if(checkupState.phase === "grammar" && checkupState.grammarIdx >= topics.length){
+      if(checkupState.grammarCeiling === -1) checkupState.grammarCeiling = topics[topics.length-1].minCefr;
+      checkupState.phase = "done";
+    }
+  }
+}
+
+async function checkupContinue(){
+  if(!checkupState) return;
+  if(checkupState.phase === "done"){
+    finishCheckup();
+  } else {
+    await nextCheckupQuestion();
+  }
+}
+
+function finishCheckup(){
+  const vc = checkupState.vocabCeiling >= 0 ? checkupState.vocabCeiling : 17;
+  const gc = checkupState.grammarCeiling >= 0 ? checkupState.grammarCeiling : 17;
+  const finalCeiling = Math.min(vc, gc); // de zwakste van de twee is bepalend, geen les overslaan waar je nog niet klaar voor bent
+  const skippedIdx = skipLessonsToLevel(finalCeiling);
+  el("checkup-question-box").classList.add("hidden");
+  el("checkup-result-box").classList.remove("hidden");
+  el("checkup-result-text").className = "feedback correct";
+  el("checkup-result-text").innerHTML = `<b>Knowledge check complete!</b><br>` +
+    `Vocabulary ceiling: <b>${cefrLabel(vc)}</b><br>` +
+    `Grammar ceiling: <b>${cefrLabel(gc)}</b><br><br>` +
+    (skippedIdx >= 0
+      ? `📚 Unlocked the course up to and including: <b>${LESSONS[skippedIdx].title}</b>.`
+      : `📚 Your course position wasn't changed — the tested level didn't clear the very first lesson yet.`);
+  el("btn-checkup-close").textContent = "Close";
+  checkupState = null;
+  persistCheckupState();
+}
+
+function cancelCheckup(){
+  if(checkupState && !confirm("Cancel this knowledge check? Your progress on individual questions so far is already saved, but no course-unlock decision will be made.")) return;
+  checkupState = null;
+  persistCheckupState();
+  el("modal-checkup").classList.add("hidden");
 }
 
 /* Centrale plek voor lesvoortgang bijwerken na een oefening (correct, fout, overgeslagen of leeg) —
@@ -27163,7 +27375,7 @@ const ADAPTIVE_HYSTERESIS = 10; // procentpunten boven/onder de streefwaarde voo
 
 function recordAdaptiveResult(correct){
   if(!settings.adaptiveEnabled) return "";
-  if(activeCheckup) return ""; // alleen reguliere oefeningen tellen mee voor dit signaal
+  // (de kennischeck loopt tegenwoordig in een eigen modal, dus hoeft hier niet meer uitgesloten te worden)
   adaptiveWindow.push(!!correct);
   if(adaptiveWindow.length > ADAPTIVE_WINDOW_SIZE) adaptiveWindow.shift();
   saveJSON(LS_ADAPTIVE_WINDOW, adaptiveWindow);
@@ -27192,52 +27404,8 @@ function recordAdaptiveResult(correct){
   return ""; // binnen de hysteresemarge -> geen verandering
 }
 
-function checkupNoteAfterAnswer(correct){
-  if(!activeCheckup) return "";
-  const q = activeCheckup.queue[activeCheckup.index];
-  if(!q) return "";
-  activeCheckup.results.push({...q, correct});
-  if(q.type === "grammar"){
-    const p = getGrammarProgress(q.key);
-    p.level = correct ? Math.max(p.level, 7) : Math.max(1, p.level - 3);
-    grammar[q.key] = p;
-    saveJSON(LS_GRAMMAR, grammar);
-  } else {
-    const p = getProgress(q.en);
-    p.level = correct ? Math.max(p.level, 7) : Math.max(1, p.level - 3);
-    progress[q.en] = p;
-    saveJSON(LS_PROGRESS, progress);
-  }
-  let reopened = null;
-  if(!correct && q.lessonId && isLessonCompleted(q.lessonId)){
-    // je vulde dit fout in, terwijl de bijbehorende les als voltooid gold -> heropen 'm.
-    // Doordat lessen sequentieel ontgrendelen, sluit dit automatisch ook alles ná deze les weer af
-    // totdat die opnieuw is afgerond.
-    lessonProgress[q.lessonId] = {completed:false, done:0};
-    saveJSON(LS_LESSONS, lessonProgress);
-    reopened = LESSONS.find(l=>l.id===q.lessonId);
-  }
-  activeCheckup.index++;
-  if(activeCheckup.index >= activeCheckup.queue.length){
-    const total = activeCheckup.results.length;
-    const correctCount = activeCheckup.results.filter(r=>r.correct).length;
-    const weak = activeCheckup.results.filter(r=>!r.correct)
-      .map(r => r.type === "grammar" ? grammarTopicByKey(r.key).label : r.en);
-    const reopenedLessons = [...new Set(activeCheckup.results.filter(r=>!r.correct).map(r=>r.lessonId))]
-      .map(id => LESSONS.find(l=>l.id===id))
-      .filter(Boolean)
-      .sort((a,b)=> LESSONS.indexOf(a) - LESSONS.indexOf(b));
-    const note = `<br><br>📋 <b>Knowledge check complete: ${correctCount}/${total} correct.</b>` +
-      (weak.length ? `<br>Needs more work: ${weak.join(", ")}` : `<br>Nice — everything checked out solid!`) +
-      (reopenedLessons.length ? `<br>⚠️ Re-opened for review: ${reopenedLessons.map(l=>l.title).join(", ")} — you'll need to redo ${reopenedLessons.length===1?"it":"these"} before later lessons unlock again.` : "");
-    activeCheckup = null;
-    persistCheckupState();
-    return note;
-  }
-  persistCheckupState();
-  return `<br><br><span class="muted">Knowledge check: ${activeCheckup.index}/${activeCheckup.queue.length}</span>` +
-    (reopened ? `<br><span class="muted">⚠️ "${reopened.title}" has been re-opened for review.</span>` : "");
-}
+/* checkupNoteAfterAnswer() is vervangen door de nieuwe, zelfstandige modal-gedreven kennischeck-flow
+   (zie startCheckup / nextCheckupQuestion / submitCheckupAnswer verderop). */
 
 
 
@@ -27527,7 +27695,7 @@ Geef 1-3 veelgebruikte Turkse vertalingen (synoniemen/varianten), in de basisvor
   });
   if(!res.ok){
     const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
+    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
@@ -27541,13 +27709,6 @@ Geef 1-3 veelgebruikte Turkse vertalingen (synoniemen/varianten), in de basisvor
 }
 
 function pickNextItem(){
-  if(activeCheckup){
-    const q = activeCheckup.queue[activeCheckup.index];
-    if(!q) return null; // zou niet moeten voorkomen; checkupNoteAfterAnswer sluit af zodra de wachtrij leeg is
-    if(q.type === "grammar") return {needsGeneration:true, kind:"sentence"};
-    const direction = settings.apiKey && Math.random() < 0.5 ? "tr-en" : "en-tr";
-    return {en:q.en, cefr:q.cefr, type:"word", direction};
-  }
   const unlockedEns = unlockedWordSet();
   const words = allWords().filter(w => unlockedEns.has(w.en));
   const now = Date.now();
@@ -27620,7 +27781,7 @@ Waarbij niveau_index correspondeert met: 0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=
   });
   if(!res.ok){
     const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
+    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
@@ -27648,7 +27809,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"niveau_index": 0-17,
   });
   if(!res.ok){
     const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
+    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
@@ -27719,7 +27880,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
   });
   if(!res.ok){
     const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
+    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
@@ -27818,7 +27979,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
   });
   if(!res.ok){
     const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
+    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
@@ -27918,7 +28079,7 @@ Antwoord van gebruiker (in het Turks): "${answer}"`;
   });
   if(!res.ok){
     const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
+    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
@@ -27964,7 +28125,7 @@ Vertaling van gebruiker: "${answer}"`;
   });
   if(!res.ok){
     const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
+    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
@@ -28032,10 +28193,10 @@ ${isTrEn
   ? `Je krijgt een Turks woord en het (correcte) Engelse trefwoord, en het Engelse antwoord dat de gebruiker gaf. Beoordeel of het antwoord een acceptabele Engelse vertaling is — accepteer synoniemen en kleine spelfouten.`
   : `Je krijgt een Engels woord, de reeds bekende Turkse vertaling(en), en het Turkse antwoord dat de gebruiker gaf. Beoordeel of het antwoord een acceptabele Turkse vertaling is — accepteer synoniemen, alternatieve (correcte) vervoegingen en kleine spelfouten.`}
 BELANGRIJK OVER TYPEFOUTEN: als het antwoord duidelijk een tikfout bevat en de bedoelde vertaling ondubbelzinnig duidelijk en correct is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", maar zet "correct" niet op false enkel vanwege een duidelijke tikfout.
-ALS HET ANTWOORD FOUT IS: geef in "betekenis_antwoord" aan wat het door de gebruiker ingevoerde woord ZELF betekent (in het Engels), mits het een bestaand, betekenisvol woord is — dit helpt de gebruiker begrijpen welk ander woord hij in gedachten had. Is het antwoord geen bestaand woord, laat "betekenis_antwoord" dan leeg (""). Bij een GOED antwoord laat je "betekenis_antwoord" ook leeg.
+ALS HET ANTWOORD FOUT IS: geef in "betekenis_antwoord" aan wat het door de gebruiker ingevoerde woord ZELF betekent, VERTAALD NAAR ${isTrEn ? "het Turks" : "het Engels"} (dus NIET in dezelfde taal als het antwoord zelf — dat zou zinloos zijn, bv. nooit "great means great"), mits het een bestaand, betekenisvol woord is — dit helpt de gebruiker begrijpen welk ander woord hij in gedachten had. Is het antwoord geen bestaand woord, laat "betekenis_antwoord" dan leeg (""). Bij een GOED antwoord laat je "betekenis_antwoord" ook leeg.
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"), in het Engels. Bij een fout antwoord hoeft "uitleg" niet meer te herhalen wat het antwoord betekent (dat staat al in "betekenis_antwoord") — een korte aanvullende opmerking is genoeg, of laat leeg.
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder 'onjuist'-oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord toch (gedeeltelijk) correct kan zijn, bijvoorbeeld als minder gangbaar synoniem of alternatieve vorm." : ""}
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"correct": true of false, "uitleg": "korte uitleg in het Engels, max 1 zin, rechtstreeks tegen de gebruiker gericht, mag leeg zijn", "betekenis_antwoord": "betekenis van het antwoord van de gebruiker indien fout en een bestaand woord, anders leeg"}`;
+Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"correct": true of false, "uitleg": "korte uitleg in het Engels, max 1 zin, rechtstreeks tegen de gebruiker gericht, mag leeg zijn", "betekenis_antwoord": "betekenis van het antwoord van de gebruiker, vertaald naar de ANDERE taal dan waarin het antwoord zelf is getypt, indien fout en een bestaand woord, anders leeg"}`;
   const user = isTrEn
     ? `Turks woord: "${item.tr}"\nCorrecte Engelse vertaling: "${item.en}"\nAntwoord van gebruiker: "${answer}"`
     : `Engels woord: "${item.en}"\nBekende Turkse vertaling(en): ${tr.join(", ") || "(geen)"}\nAntwoord van gebruiker: "${answer}"`;
@@ -28059,7 +28220,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"correct": true of fa
   });
   if(!res.ok){
     const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
+    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
@@ -28087,7 +28248,7 @@ Beantwoord vragen kort, duidelijk, rechtstreeks tegen de gebruiker gericht (spre
   });
   if(!res.ok){
     const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API fout (" + res.status + "): " + txt.slice(0,200));
+    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
   }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
@@ -28181,20 +28342,12 @@ async function renderPractice(){
   el("answer-input").disabled = true;
   el("btn-check").disabled = true;
 
-  if(activeCheckup){
+  const curLesson = LESSONS[currentLessonIndex()];
+  if(curLesson){
     el("lesson-banner").classList.remove("hidden");
-    el("lesson-banner").innerHTML = `📋 <b>Knowledge check</b> — item ${activeCheckup.index+1}/${activeCheckup.queue.length}
-      &nbsp; <button class="toplink" id="btn-exit-lesson">exit check</button>`;
-    const exitBtn = el("btn-exit-lesson");
-    if(exitBtn) exitBtn.addEventListener("click", ()=>{ activeCheckup = null; persistCheckupState(); renderPractice(); });
+    el("lesson-banner").innerHTML = `📍 <b>Current lesson:</b> ${curLesson.icon} ${curLesson.title}`;
   } else {
-    const curLesson = LESSONS[currentLessonIndex()];
-    if(curLesson){
-      el("lesson-banner").classList.remove("hidden");
-      el("lesson-banner").innerHTML = `📍 <b>Current lesson:</b> ${curLesson.icon} ${curLesson.title}`;
-    } else {
-      el("lesson-banner").classList.add("hidden");
-    }
+    el("lesson-banner").classList.add("hidden");
   }
   el("btn-skip").disabled = true;
 
@@ -28304,15 +28457,15 @@ function showFeedback(kind, html){
   box.innerHTML = `<div class="feedback ${kind}">${html}</div>`;
 }
 
-// Korte, duidelijk gekleurde regel: "fout antwoord: X" (rood) en/of "goed antwoord: Y" (groen)
+// Short, clearly coloured line: "wrong answer: X" (red) and/or "correct answer: Y" (green)
 function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning){
   const wrongPart = (!wasCorrect && userAnswer)
     ? (wrongMeaning
-        ? `fout, <span style="color:var(--accent);font-weight:600;">${escapeHtml(userAnswer)}</span> betekent <span style="color:var(--accent);font-weight:600;">${escapeHtml(wrongMeaning)}</span>.`
-        : `fout antwoord: <span style="color:var(--accent);font-weight:600;">${escapeHtml(userAnswer)}</span>`)
+        ? `Wrong: <span style="color:var(--accent);font-weight:600;">${escapeHtml(userAnswer)}</span> means <span style="color:var(--accent);font-weight:600;">${escapeHtml(wrongMeaning)}</span>.`
+        : `wrong answer: <span style="color:var(--accent);font-weight:600;">${escapeHtml(userAnswer)}</span>`)
     : "";
   const goodPart = correctAnswer
-    ? `${wasCorrect ? "goed antwoord" : "Juist is"}: <span style="color:var(--accent2);font-weight:600;">${escapeHtml(correctAnswer)}</span>`
+    ? `${wasCorrect ? "correct answer" : "Correct answer is"}: <span style="color:var(--accent2);font-weight:600;">${escapeHtml(correctAnswer)}</span>`
     : "";
   return [wrongPart, goodPart].filter(Boolean).join("<br>");
 }
@@ -28849,7 +29002,7 @@ function renderCourseTab(){
   });
 }
 
-function openLessonModal(idx){
+async function openLessonModal(idx){
   openLessonIdx = idx;
   const l = LESSONS[idx];
   el("lesson-modal-title").textContent = `${l.icon} ${l.title}`;
@@ -28876,6 +29029,31 @@ function openLessonModal(idx){
     el("btn-lesson-action").textContent = "Got it — mark as read";
   }
   el("modal-lesson").classList.remove("hidden");
+
+  if(l.words && l.words.length){
+    const wordListEl = el("lesson-modal-explanation").querySelector(".vocab-word-list");
+    if(!settings.apiKey){
+      if(wordListEl) wordListEl.insertAdjacentHTML("afterend", `<p class="muted">Set a DeepSeek API key in Settings to preview Turkish translations here.</p>`);
+      return;
+    }
+    // vertalingen LIVE en SEQUENTIEEL ophalen (niet allemaal tegelijk) zodat het geen plotselinge
+    // burst van AI-calls geeft — gecachede woorden (al eerder ergens getoond) zijn direct gratis.
+    const pairs = l.words.map(en => cachedTranslation(en) ? `<code>${en}</code> = ${cachedTranslation(en)[0]}` : `<code>${en}</code> …`);
+    if(wordListEl) wordListEl.innerHTML = pairs.join(" · ");
+    for(let i=0;i<l.words.length;i++){
+      if(openLessonIdx !== idx || el("modal-lesson").classList.contains("hidden")) return; // gebruiker is al weg, stop met bijwerken
+      if(cachedTranslation(l.words[i])) continue; // al gecached, geen call nodig
+      try{
+        const tr = await getOrFetchTranslation(l.words[i]);
+        pairs[i] = `<code>${l.words[i]}</code> = ${tr[0]}`;
+      }catch(e){
+        pairs[i] = `<code>${l.words[i]}</code>`; // vertaling ophalen mislukt, laat gewoon het Engelse woord staan
+      }
+      if(openLessonIdx === idx && !el("modal-lesson").classList.contains("hidden") && wordListEl){
+        wordListEl.innerHTML = pairs.join(" · ");
+      }
+    }
+  }
 }
 
 function startLessonAction(){
@@ -29205,6 +29383,15 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-lesson-close").addEventListener("click", ()=> el("modal-lesson").classList.add("hidden"));
   el("btn-start-test").addEventListener("click", startPlacementTest);
   el("btn-start-checkup").addEventListener("click", startCheckup);
+  el("btn-checkup-next").addEventListener("click", submitCheckupAnswer);
+  el("checkup-answer-input").addEventListener("keydown", e=>{
+    if(e.key === "Enter"){ e.preventDefault(); if(!el("btn-checkup-next").disabled) submitCheckupAnswer(); }
+  });
+  el("btn-checkup-close").addEventListener("click", ()=>{
+    if(!checkupState){ el("modal-checkup").classList.add("hidden"); }
+    else checkupContinue();
+  });
+  el("btn-checkup-cancel").addEventListener("click", cancelCheckup);
   el("btn-test-next").addEventListener("click", handleTestNext);
   el("btn-test-cancel").addEventListener("click", closeTestModal);
   el("btn-test-close").addEventListener("click", closeTestModal);
