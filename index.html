@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 22:15</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-05 09:15</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -249,6 +249,13 @@
       <div class="muted" id="balance-status" style="margin-top:6px;"></div>
     </div>
     <div class="card">
+      <h3 style="margin-top:0;">🟠 Claude (Anthropic) connection</h3>
+      <div class="muted" style="margin-bottom:8px;">Used for the quality-sensitive parts — generating sentences/questions, grading, grammar exercises, and the "ask AI" explanations. Word-for-word translation stays on DeepSeek. Your key is stored only locally on this device and sent directly from your phone to api.anthropic.com — never to anyone else.</div>
+      <input type="text" id="anthropic-key-input" placeholder="sk-ant-..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="btn-primary" id="btn-save-anthropic-key" style="width:100%;margin-top:10px;">Save</button>
+      <div class="muted" id="anthropic-key-status" style="margin-top:8px;"></div>
+    </div>
+    <div class="card">
       <h3 style="margin-top:0;">Practice settings</h3>
       <div class="row space-between" style="margin-bottom:4px;">
         <span>Share of sentences</span>
@@ -322,7 +329,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 22:15</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-05 09:15</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -26540,6 +26547,7 @@ if(settings.newWordPercent === undefined) settings.newWordPercent = 50;
 if(settings.questionPercent === undefined) settings.questionPercent = 0;
 if(settings.adaptiveEnabled === undefined) settings.adaptiveEnabled = false;
 if(settings.adaptiveThreshold === undefined) settings.adaptiveThreshold = 60;
+if(settings.anthropicApiKey === undefined) settings.anthropicApiKey = "";
 if(settings.sentencePercent === undefined){
   // migratie vanaf de oude "aantal van elke 5"-instelling
   settings.sentencePercent = Math.round(((settings.sentenceRatio || 1) / 5) * 100);
@@ -26562,6 +26570,7 @@ let costPending = loadJSON(LS_COST_PENDING, {byModel:{}});
 const MODEL_PRICING = {
   "deepseek-v4-pro":   {hit:0.003625, miss:0.435, output:0.87},
   "deepseek-v4-flash": {hit:0.0028,   miss:0.14,  output:0.28},
+  "claude-sonnet-5":   {hit:0.2,      miss:2.0,   output:10.0}, // introductieprijs t/m 31 aug 2026; wordt daarna 3/15
 };
 
 function mergeCostUsage(a, b){
@@ -26592,6 +26601,43 @@ function maxCostUsage(a, b){
     };
   }
   return result;
+}
+
+/* Generieke aanroep naar de Anthropic Messages API (Claude Sonnet 5), gebruikt voor alle
+   kwaliteitsgevoelige taken (zin/vraag-generatie, beoordeling, grammatica-uitleg-oefeningen).
+   Losse woordvertaling/-beoordeling blijft bewust op DeepSeek (zie askDeepSeekJudge/getOrFetchTranslation)
+   — dat is hoogvolume en simpel genoeg dat het prijsverschil daar niet opweegt tegen de kwaliteitswinst. */
+async function callClaude(systemPrompt, userContentOrMessages, maxTokens, temperature){
+  if(!settings.anthropicApiKey) throw new Error("No Anthropic API key set (Settings).");
+  const messages = Array.isArray(userContentOrMessages)
+    ? userContentOrMessages
+    : [{role:"user", content:userContentOrMessages}];
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": settings.anthropicApiKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-5",
+      max_tokens: maxTokens || 500,
+      temperature: temperature ?? 0.5,
+      system: systemPrompt,
+      messages,
+    })
+  });
+  if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("Claude API error (" + res.status + "): " + txt.slice(0,200)); }
+  const data = await res.json();
+  recordUsage("claude-sonnet-5", {
+    prompt_tokens: data.usage?.input_tokens || 0,
+    completion_tokens: data.usage?.output_tokens || 0,
+    prompt_cache_hit_tokens: data.usage?.cache_read_input_tokens || 0,
+  });
+  let raw = data.content?.[0]?.text || "";
+  raw = raw.replace(/```json|```/g,"").trim();
+  return raw;
 }
 
 function recordUsage(model, usage){
@@ -26626,7 +26672,7 @@ function updateCostDisplay(){
   const bal = loadJSON(LS_BALANCE, null);
   const balTxt = bal ? ` · saldo: ${bal.currency === "CNY" ? "¥" : "$"}${bal.total}` : "";
   elC.textContent = estTxt + balTxt;
-  elC.title = "Estimate based on actually measured token usage (incl. cache hits/misses) × current DeepSeek rates, summed across your synced devices, plus (if fetched) your real remaining DeepSeek balance. Not an official invoice — check platform.deepseek.com for that.";
+  elC.title = "Estimate based on actually measured token usage (incl. cache hits/misses) × current rates for each model used (DeepSeek for word translation, Claude Sonnet 5 for sentences/grading/explanations), summed across your synced devices, plus (if fetched) your real remaining DeepSeek balance. Not an official invoice — check platform.deepseek.com and console.anthropic.com for that.";
 }
 
 const LS_BALANCE = "turks_balance_v1"; // { total, granted, toppedUp, currency, fetchedAt } — laatst opgehaalde saldo (lokaal, niet gesynct)
@@ -27247,7 +27293,7 @@ function showCheckupResumeNotice(){
 }
 
 async function startCheckup(){
-  if(!settings.apiKey){ alert("A DeepSeek API key is needed for the knowledge check (Settings)."); return; }
+  if(!settings.apiKey || !settings.anthropicApiKey){ alert("Both a DeepSeek and an Anthropic (Claude) API key are needed for the knowledge check (Settings)."); return; }
   checkupState = {
     phase: "vocab",
     vocabLevel: 0, vocabLevelResults: [], vocabCeiling: -1,
@@ -27321,20 +27367,7 @@ NOTE — THE ENGLISH GLOSS IN PARENTHESES IS ONLY A MEMORY AID, NOT AN INSTRUCTI
 Write everything in English and Turkish ONLY — never any other language.
 Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the English phrase (for en-tr) or the Turkish form (for tr-en) shown to the user", "correct": "the correct answer in the OTHER language than prompt", "baseWord": "the chosen base word, taken literally from the given list"}`;
   const userMsg = `Topic: ${topic.label}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({
-      model: "deepseek-v4-pro", max_tokens: 200, temperature: 0.4,
-      messages: [{role:"system", content:sys}, {role:"user", content:userMsg}],
-      thinking: {"type":"disabled"}
-    })
-  });
-  if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  let raw = data.choices?.[0]?.message?.content || "";
-  raw = raw.replace(/```json|```/g,"").trim();
+  const raw = await callClaude(sys, userMsg, 200, 0.4);
   return JSON.parse(raw);
 }
 
@@ -27476,20 +27509,7 @@ Build one short sentence using this noun somewhere in it: "${helper.tr}" (${help
 Randomly choose the test direction: en-tr (show the English sentence, ask for the Turkish translation) or tr-en (show the Turkish sentence, ask for the English translation).
 Write everything in English and Turkish ONLY — never any other language.
 Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the sentence shown to the user, in the language matching direction", "correct": "the correct translation in the other language"}`;
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({
-      model: "deepseek-v4-pro", max_tokens: 150, temperature: 0.5,
-      messages: [{role:"system", content:sys}, {role:"user", content:`Word: ${tr[0]} (${en})`}],
-      thinking: {"type":"disabled"}
-    })
-  });
-  if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  let raw = data.choices?.[0]?.message?.content || "";
-  raw = raw.replace(/```json|```/g,"").trim();
+  const raw = await callClaude(sys, `Word: ${tr[0]} (${en})`, 150, 0.5);
   return JSON.parse(raw);
 }
 
@@ -27506,20 +27526,7 @@ Randomly choose the test direction: en-tr (show the English version, ask for the
 Write everything in English and Turkish ONLY — never any other language.
 Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the sentence/phrase shown to the user, in the language matching direction", "correct": "the correct translation in the other language", "baseWord": "${words.map(w=>w.tr).join(" + ")}"}`;
   const userMsg = `Topic: ${topic.label}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({
-      model: "deepseek-v4-pro", max_tokens: 200, temperature: 0.5,
-      messages: [{role:"system", content:sys}, {role:"user", content:userMsg}],
-      thinking: {"type":"disabled"}
-    })
-  });
-  if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  let raw = data.choices?.[0]?.message?.content || "";
-  raw = raw.replace(/```json|```/g,"").trim();
+  const raw = await callClaude(sys, userMsg, 200, 0.5);
   return JSON.parse(raw);
 }
 
@@ -27560,20 +27567,7 @@ async function generateGrammarDrill(topic){
 async function gradeGrammarDrillAnswer(drill, answer){
   const isTrEn = drill.direction === "tr-en";
   const sys = `Je beoordeelt of het ${isTrEn ? "Engelse" : "Turkse"} antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (${isTrEn ? "gebruiker moest de Turkse vorm naar het Engels vertalen" : "gebruiker moest de Engelse frase naar het Turks vertalen"}). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. ${isTrEn ? "" : "NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en"} kleine tikfouten met een ondubbelzinnige bedoeling reken je goed. Antwoord ALLEEN met geldige JSON: {"correct": true of false}`;
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({
-      model: "deepseek-v4-pro", max_tokens: 50, temperature: 0,
-      messages: [{role:"system", content:sys}, {role:"user", content:`Antwoord van gebruiker: "${answer}"`}],
-      thinking: {"type":"disabled"}
-    })
-  });
-  if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  let raw = data.choices?.[0]?.message?.content || "";
-  raw = raw.replace(/```json|```/g,"").trim();
+  const raw = await callClaude(sys, `Antwoord van gebruiker: "${answer}"`, 50, 0);
   return JSON.parse(raw);
 }
 
@@ -27778,7 +27772,7 @@ const SKILL_PRACTICE_ROUND_THRESHOLD = 90;
 const SKILL_PRACTICE_ROUNDS_NEEDED = 3;
 
 async function startSkillPractice(lesson){
-  if(!settings.apiKey){ alert("A DeepSeek API key is needed to practise (Settings)."); return; }
+  if(!settings.apiKey || !settings.anthropicApiKey){ alert("Both a DeepSeek and an Anthropic (Claude) API key are needed to practise (Settings)."); return; }
   skillPracticeState = {lesson, roundResults: [], roundPercentages: [], consecutiveHighRounds: 0, current: null};
   el("modal-lesson").classList.add("hidden");
   el("modal-checkup").classList.remove("hidden");
@@ -28307,8 +28301,8 @@ function pickNextItem(){
   const recent = history.slice(-10);
   const recentSentences = recent.filter(t=>t==="sentence").length;
   const recentQuestions = recent.filter(t=>t==="question").length;
-  const wantSentence = (recentSentences / 10) < sentenceRatio && !!settings.apiKey;
-  const wantQuestion = (recentQuestions / 10) < questionRatio && !!settings.apiKey;
+  const wantSentence = (recentSentences / 10) < sentenceRatio && !!settings.apiKey && !!settings.anthropicApiKey;
+  const wantQuestion = (recentQuestions / 10) < questionRatio && !!settings.apiKey && !!settings.anthropicApiKey;
 
   // Kies willekeurig ÉÉN item uit de groep met de laagste score (in plaats van altijd
   // hetzelfde item bij een gelijke stand — anders krijg je steeds dezelfde paar woorden).
@@ -28350,23 +28344,7 @@ Genereer 20 items met oplopende moeilijkheidsgraad, ruim verspreid over de hele 
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"items": [{"tr": "Turks woord of zin", "type": "word of sentence", "niveau_index": 0-17}]}
 Waarbij niveau_index correspondeert met: 0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2 (begin/midden/eind per niveau). Zorg dat de 20 niveau_index-waarden een goede, realistische spreiding hebben over de hele schaal van 0 t/m 17 (dus niet allemaal exact gelijk verdeeld, maar wel elk hoofdniveau met meerdere items vertegenwoordigd).`;
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({
-      model: "deepseek-v4-pro", max_tokens: 2200, temperature: 0.5,
-      messages: [{role:"system", content:sys}, {role:"user", content:"Genereer de toets."}],
-      thinking: {"type": "disabled"}
-    })
-  });
-  if(!res.ok){
-    const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
-  }
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  let raw = data.choices?.[0]?.message?.content || "";
-  raw = raw.replace(/```json|```/g,"").trim();
+  const raw = await callClaude(sys, "Genereer de toets.", 2200, 0.5);
   const parsed = JSON.parse(raw);
   if(!Array.isArray(parsed.items) || !parsed.items.length) throw new Error("AI did not return any test items.");
   return parsed.items;
@@ -28378,23 +28356,7 @@ async function gradePlacementTest(items, answers){
 Je krijgt per item het Turkse woord/de zin, het geschatte niveau daarvan, en het antwoord van de gebruiker. Beoordeel of elk antwoord (in het Engels) een acceptabele vertaling is.
 Bepaal op basis van het patroon (tot waar de gebruiker het goed had, rekening houdend met het niveau van elk item) het GESCHATTE algehele niveau van de gebruiker op de schaal 0-17. Wees niet te streng, maar ook niet te soepel: kies het niveau waar de gebruiker het merendeel nog goed heeft, en waarboven het duidelijk misgaat.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"niveau_index": 0-17, "toelichting": "korte, vriendelijke uitleg in het Engels, max 3 zinnen, rechtstreeks tegen de gebruiker gericht (spreek de gebruiker aan met 'je')"}`;
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({
-      model: "deepseek-v4-pro", max_tokens: 400, temperature: 0,
-      messages: [{role:"system", content:sys}, {role:"user", content:itemLines}],
-      thinking: {"type": "disabled"}
-    })
-  });
-  if(!res.ok){
-    const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
-  }
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  let raw = data.choices?.[0]?.message?.content || "";
-  raw = raw.replace(/```json|```/g,"").trim();
+  const raw = await callClaude(sys, itemLines, 400, 0);
   const parsed = JSON.parse(raw);
   parsed.niveau_index = Math.max(0, Math.min(17, parseInt(parsed.niveau_index, 10) || 0));
   return parsed;
@@ -28449,23 +28411,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"tr": "Turkse zin", "words": [{"tr": "basisvorm1", "en": "translation", "cefr": 0}, {"tr": "basisvorm2", "en": "translation", "cefr": 0}]}`;
 // "cefr" per woord: schat het CEFR-niveau van dat basiswoord zelf in op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin.
   const user = `Maak een Turkse zin op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als het niveau dat vraagt).${grammarTopic ? ` Verwerk daarbij expliciet: ${grammarTopic.label}.` : ""}`;
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({
-      model: "deepseek-v4-pro", max_tokens: 500, temperature: 0.3,
-      messages: [{role:"system", content:sys}, {role:"user", content:user}],
-      thinking: {"type": "disabled"}
-    })
-  });
-  if(!res.ok){
-    const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
-  }
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  let raw = data.choices?.[0]?.message?.content || "";
-  raw = raw.replace(/```json|```/g,"").trim();
+  const raw = await callClaude(sys, user, 500, 0.3);
   const parsed = JSON.parse(raw);
   if(!parsed.tr) throw new Error("AI did not return a sentence.");
   return parsed;
@@ -28476,24 +28422,11 @@ async function checkSentenceNatural(sentenceTr){
   const sys = `Je bent een kritische moedertaalspreker Turks. Beoordeel of onderstaande zin grammaticaal correct is EN natuurlijk klinkt — dus niet geforceerd, niet zichzelf tegensprekend, geen rare combinatie van woorden die een moedertaalspreker nooit zo zou zeggen.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"natuurlijk": true of false}`;
   const user = `Zin: "${sentenceTr}"`;
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({
-      model: "deepseek-v4-pro", max_tokens: 50, temperature: 0,
-      messages: [{role:"system", content:sys}, {role:"user", content:user}],
-      thinking: {"type": "disabled"}
-    })
-  });
-  if(!res.ok) return true; // check zelf mislukt -> kandidaat gewoon accepteren, niet blokkeren
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  let raw = data.choices?.[0]?.message?.content || "";
-  raw = raw.replace(/```json|```/g,"").trim();
   try{
+    const raw = await callClaude(sys, user, 50, 0);
     const parsed = JSON.parse(raw);
     return parsed.natuurlijk !== false;
-  }catch(e){ return true; }
+  }catch(e){ return true; } // check zelf mislukt -> kandidaat gewoon accepteren, niet blokkeren
 }
 
 /* Een goed beheerst (niveau >=7) woord binnen wat ontgrendeld is — gebruikt als "veilige" tegenpool
@@ -28595,23 +28528,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"tr": "Turkse vraag", "feitelijk": true of false, "words": [{"tr": "basisvorm1", "en": "translation", "cefr": 0}]}`;
 // "cefr" per woord: schat het CEFR-niveau van dat basiswoord zelf in op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
   const user = `Maak een Turkse vraag op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag).${grammarTopic ? ` Verwerk daarbij expliciet: ${grammarTopic.label}.` : ""}`;
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({
-      model: "deepseek-v4-pro", max_tokens: 500, temperature: 0.4,
-      messages: [{role:"system", content:sys}, {role:"user", content:user}],
-      thinking: {"type": "disabled"}
-    })
-  });
-  if(!res.ok){
-    const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
-  }
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  let raw = data.choices?.[0]?.message?.content || "";
-  raw = raw.replace(/```json|```/g,"").trim();
+  const raw = await callClaude(sys, user, 500, 0.4);
   const parsed = JSON.parse(raw);
   if(!parsed.tr) throw new Error("AI did not return a question.");
   return parsed;
@@ -28695,23 +28612,7 @@ BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfd
   const user = `Turkse vraag: "${item.tr}"
 Genummerde woorden in de vraag (basisvorm): ${item.words.map((w,i)=>`${i+1}. ${w.tr} (${w.en})`).join(", ")}
 Antwoord van gebruiker (in het Turks): "${answer}"`;
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({
-      model: "deepseek-v4-pro", max_tokens: 600, temperature: 0,
-      messages: [{role:"system", content:sys}, {role:"user", content:user}],
-      thinking: {"type": "disabled"}
-    })
-  });
-  if(!res.ok){
-    const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
-  }
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  let raw = data.choices?.[0]?.message?.content || "";
-  raw = raw.replace(/```json|```/g,"").trim();
+  const raw = await callClaude(sys, user, 600, 0);
   const parsed = JSON.parse(raw);
   if(!Array.isArray(parsed.words)) parsed.words = [];
   while(parsed.words.length < item.words.length) parsed.words.push(!!parsed.correct);
@@ -28741,23 +28642,7 @@ BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfd
 Genummerde woorden in de zin (basisvorm):
 ${wordContext}
 Vertaling van gebruiker: "${answer}"`;
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({
-      model: "deepseek-v4-pro", max_tokens: 600, temperature: 0,
-      messages: [{role:"system", content:sys}, {role:"user", content:user}],
-      thinking: {"type": "disabled"}
-    })
-  });
-  if(!res.ok){
-    const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
-  }
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  let raw = data.choices?.[0]?.message?.content || "";
-  raw = raw.replace(/```json|```/g,"").trim();
+  const raw = await callClaude(sys, user, 600, 0);
   const parsed = JSON.parse(raw);
   // Verwacht: parsed.words = [true, false, ...] met exact item.words.length entries, op volgorde.
   // Robuust tegen afwijkingen: te kort/lang/ontbrekend -> aanvullen met het algemene oordeel.
@@ -28867,19 +28752,9 @@ async function askDeepSeekFree(item, question, chatHistoryMsgs){
   const sys = `Je bent een behulpzame docent Turks. Je gebruiker oefent het volgende:
 ${context}
 Beantwoord vragen kort, duidelijk, rechtstreeks tegen de gebruiker gericht (spreek diegene aan met "je") en in het Engels.`;
-  const messages = [{role:"system", content: sys}, ...chatHistoryMsgs, {role:"user", content: question}];
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
-    body: JSON.stringify({model:"deepseek-v4-pro", max_tokens:400, temperature:0.3, messages, thinking: {"type": "disabled"}})
-  });
-  if(!res.ok){
-    const txt = await res.text().catch(()=> "");
-    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
-  }
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  return data.choices?.[0]?.message?.content || "(geen antwoord)";
+  const messages = [...chatHistoryMsgs, {role:"user", content: question}];
+  const raw = await callClaude(sys, messages, 400, 0.3);
+  return raw || "(geen antwoord)";
 }
 
 /* ===================== UI STATE ===================== */
@@ -29172,8 +29047,8 @@ async function handleCheck(){
 }
 
 async function handleCheckSentence(answer){
-  if(!settings.apiKey){
-    showFeedback("wrong", "Sentences can only be graded by AI — set a DeepSeek API key in Settings.");
+  if(!settings.anthropicApiKey){
+    showFeedback("wrong", "Sentences can only be graded by AI — set an Anthropic (Claude) API key in Settings.");
     el("btn-check").disabled = false;
     el("answer-input").disabled = false;
     return;
@@ -29223,8 +29098,8 @@ async function handleCheckSentence(answer){
 }
 
 async function handleCheckQuestion(answer){
-  if(!settings.apiKey){
-    showFeedback("wrong", "Turkish question/answer exercises can only be graded by AI — set a DeepSeek API key in Settings.");
+  if(!settings.anthropicApiKey){
+    showFeedback("wrong", "Turkish question/answer exercises can only be graded by AI — set an Anthropic (Claude) API key in Settings.");
     el("btn-check").disabled = false;
     el("answer-input").disabled = false;
     return;
@@ -29308,8 +29183,8 @@ async function disputeAnswer(){
 
   if(currentItem.type === "sentence" || currentItem.type === "question"){
     const isQ = currentItem.type === "question";
-    if(!settings.apiKey){
-      alert("An API key is needed to re-check an answer (Settings).");
+    if(!settings.anthropicApiKey){
+      alert("An Anthropic (Claude) API key is needed to re-check this (Settings).");
       el("btn-dispute").disabled = false;
       return;
     }
@@ -29399,7 +29274,7 @@ async function disputeAnswer(){
 /* ===================== CHAT MODAL (Vraag aan AI) ===================== */
 function openAiModal(){
   if(!currentItem) return;
-  if(!settings.apiKey){ alert("Set a DeepSeek API key in Settings first."); return; }
+  if(!settings.anthropicApiKey){ alert("Set an Anthropic (Claude) API key in Settings first."); return; }
   el("modal-ai-word").textContent = currentItem.tr || currentItem.en;
   el("chat-log").innerHTML = "";
   chatMsgs = [];
@@ -29747,8 +29622,8 @@ let testAnswers = [];
 let testIndex = 0;
 
 async function startPlacementTest(){
-  if(!settings.apiKey){
-    alert("Voor de taaltoets is een DeepSeek API-sleutel nodig (hierboven bij DeepSeek koppeling).");
+  if(!settings.anthropicApiKey){
+    alert("Voor de taaltoets is een Anthropic (Claude) API-sleutel nodig (hierboven bij Claude koppeling).");
     return;
   }
   el("modal-test").classList.remove("hidden");
@@ -29862,6 +29737,7 @@ function updateAdaptiveLabels(){
 /* ===================== INIT ===================== */
 function initSettingsUI(){
   el("api-key-input").value = settings.apiKey || "";
+  el("anthropic-key-input").value = settings.anthropicApiKey || "";
   el("sentence-percent").value = settings.sentencePercent ?? 20;
   el("sentence-percent-label").textContent = (settings.sentencePercent ?? 20) + "%";
   el("new-word-percent").value = settings.newWordPercent ?? 50;
@@ -29875,6 +29751,7 @@ function initSettingsUI(){
   el("adaptive-threshold").value = settings.adaptiveThreshold ?? 60;
   updateAdaptiveLabels();
   el("key-status").textContent = settings.apiKey ? "✅ Key is set." : "No key set yet.";
+  el("anthropic-key-status").textContent = settings.anthropicApiKey ? "✅ Key is set." : "No key set yet.";
   const bal = loadJSON(LS_BALANCE, null);
   if(bal){
     const sym = bal.currency === "CNY" ? "¥" : "$";
@@ -29952,6 +29829,11 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-save-key").addEventListener("click", ()=>{
     settings.apiKey = el("api-key-input").value.trim();
     settings.sentencePercent = parseInt(el("sentence-percent").value, 10) || 0;
+    saveJSON(LS_SETTINGS, settings);
+    initSettingsUI();
+  });
+  el("btn-save-anthropic-key").addEventListener("click", ()=>{
+    settings.anthropicApiKey = el("anthropic-key-input").value.trim();
     saveJSON(LS_SETTINGS, settings);
     initSettingsUI();
   });
