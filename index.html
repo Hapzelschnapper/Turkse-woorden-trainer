@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 19:10</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 19:35</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -322,7 +322,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 19:10</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 19:35</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -27289,18 +27289,20 @@ async function pickGrammarDrillBaseWords(){
 }
 
 async function generateGrammarDrillCandidate(topic, wordList, correctionNote){
-  const sys = `Je maakt een GEÏSOLEERDE grammatica-oefening voor het Turkse onderwerp "${topic.label}" (${topic.hint}).
+  const sys = `You create an ISOLATED grammar drill for the Turkish topic "${topic.label}" (${topic.hint}).
 
-KRITIEK — TOETS DE VAARDIGHEID IN DE PRAKTIJK, NOOIT ABSTRACT:
-FOUT (dit mag NOOIT): een metavraag over de regel zelf, zoals "What does the suffix -e mean?" of "What is the dative case used for?", en zeker ook NOOIT een kale losse uitgang zoals "-e" of "-de" als prompt tonen — dat toetst kennis OVER de grammatica, niet het daadwerkelijk TOEPASSEN ervan.
-GOED (dit moet ALTIJD): een concreet, echt, volledig woord of korte uitdrukking laten VERTALEN, in willekeurig gekozen richting:
-- en-tr: geef een Engelse frase die de vaardigheid vereist om correct te vertalen (bv. "to school" voor de datief, of "on the table" voor een voorzetsel-achtige constructie), en vraag om de juiste Turkse vorm.
-- tr-en: geef een echt, al correct vervoegd/afgeleid Turks woord of woordgroep (bv. "okula", of "masanın üstünde"), en vraag om de Engelse betekenis.
-BELANGRIJK BIJ ONDERWERPEN MET "RELATIENAAMWOORDEN" (voorzetsel-achtige constructies met üst/alt/ön/arka/yan e.d.): test AF EN TOE ook gewoon het kale bouwsteen-woord zelf als losse vocabulaire (bv. "üst" -> top, "yan" -> side, zonder verdere vervoeging) — dat is net zo belangrijk als de suffix-mechaniek zelf, en mag simpelweg als woordvertaling gevraagd worden.
-STRIKTE EIS: het basiswoord MOET letterlijk uit deze lijst komen, GEEN ENKEL ander woord: ${wordList}. Kies er willekeurig één die goed past bij dit onderwerp (een werkwoord voor werkwoordsvervoegingen, een zelfstandig naamwoord voor naamvallen, enz.) — verzin zelf geen ander woord, ook niet als je een "beter" voorbeeld zou kunnen bedenken.
-LET OP — DE ENGELSE GLANS TUSSEN HAAKJES IS SLECHTS EEN GEHEUGENSTEUNTJE, GEEN OPDRACHT OM ZELF OPNIEUW TE VERTALEN: elk item in de lijst staat als "TURKS_WOORD (engelse betekenis)" — gebruik het GEGEVEN Turkse woord letterlijk zoals het er staat. Vertaal de Engelse glans NIET zelf opnieuw, want Engelse woorden zijn vaak dubbelzinnig (bv. "like" kan zowel "leuk vinden" (beğenmek) als "zoals/gelijk aan" (gibi) betekenen) — als er "gibi (like)" in de lijst staat, is het bedoelde woord ALTIJD "gibi", nooit een zelfbedachte vertaling van "like" zoals "beğenmek".
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"direction": "en-tr of tr-en", "prompt": "de Engelse frase (bij en-tr) of de Turkse vorm (bij tr-en) die getoond wordt aan de gebruiker", "correct": "het juiste antwoord in de ANDERE taal dan prompt", "baseWord": "het gekozen basiswoord, letterlijk uit de gegeven lijst"}`;
-  const userMsg = `Onderwerp: ${topic.label}` + (correctionNote ? `\n\nLET OP: je vorige poging werd afgekeurd — ${correctionNote} Probeer het nu goed.` : "");
+CRITICAL — TEST THE SKILL IN ACTUAL USE, NEVER ABSTRACTLY:
+WRONG (never do this): a meta-question about the rule itself, like "What does the suffix -e mean?" or "What is the dative case used for?", and absolutely NEVER show a bare, standalone suffix like "-e" or "-den" as the prompt or answer — that tests knowledge ABOUT the grammar, not actually APPLYING it.
+WRONG (also never do this): a bare, standalone function word/preposition on its own, like just "to" or "from" with no surrounding phrase — that isolates the preposition/case itself instead of testing it "in use".
+RIGHT (always do this): have the student translate a concrete, real, complete word or short phrase, in a randomly chosen direction:
+- en-tr: give an English phrase that requires the skill to translate correctly — e.g. "on the table", "from home", "next to him" (a full phrase, never just "on"/"from"/"next to" alone) — and ask for the correct Turkish form.
+- tr-en: give a real, already correctly inflected/derived Turkish word or phrase (e.g. "okula", or "masanın üstünde"), and ask for the English meaning.
+IMPORTANT FOR TOPICS WITH "RELATIONAL NOUNS" (preposition-like constructions using üst/alt/ön/arka/yan etc.): occasionally also test the bare building-block word itself as plain vocabulary (e.g. "üst" -> top, "yan" -> side, with no further inflection) — that's just as important as the suffix mechanics itself, and may simply be asked as a word translation.
+STRICT REQUIREMENT: the base word MUST come literally from this list, no other word whatsoever: ${wordList}. Pick whichever one best fits this topic (a verb for verb conjugation topics, a noun for case topics, etc.) — do not invent a different word yourself, even if you think you could come up with a "better" example.
+NOTE — THE ENGLISH GLOSS IN PARENTHESES IS ONLY A MEMORY AID, NOT AN INSTRUCTION TO RE-TRANSLATE IT YOURSELF: each item in the list is formatted as "TURKISH_WORD (english meaning)" — use the GIVEN Turkish word literally as written. Do NOT re-translate the English gloss yourself, because English words are often ambiguous (e.g. "like" can mean either "to like" (beğenmek) or "similar to" (gibi)) — if the list contains "gibi (like)", the intended word is ALWAYS "gibi", never a self-invented translation of "like" such as "beğenmek".
+Write everything in English and Turkish ONLY — never any other language.
+Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the English phrase (for en-tr) or the Turkish form (for tr-en) shown to the user", "correct": "the correct answer in the OTHER language than prompt", "baseWord": "the chosen base word, taken literally from the given list"}`;
+  const userMsg = `Topic: ${topic.label}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
@@ -27320,11 +27322,26 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"direction": "en-tr o
 
 /* Keurt een drill af als de AI de instructies toch negeerde: een metavraag over een kale uitgang,
    of een basiswoord dat niet daadwerkelijk uit de meegegeven, beheerste woordenlijst komt. */
+// Losse functiewoorden die NOOIT als op-zichzelf-staand antwoord/prompt mogen voorkomen — een oefening
+// moet altijd een ECHTE woordgroep zijn (bv. "on the table"), nooit alleen het voorzetsel zelf. Ook
+// een handvol Nederlandse woorden erbij, want de AI liet af en toe per ongeluk Nederlands lekken
+// (waarschijnlijk doordat de instructieprompt zelf in het Nederlands is) i.p.v. zuiver Engels/Turks.
+const BARE_FUNCTION_WORDS = new Set([
+  "to","from","at","on","in","under","over","with","without","before","after","like","as","of","by",
+  "for","near","between","behind","toward","towards","above","below","through","during","until","since",
+  "naar","van","bij","op","onder","in","met","zonder","voor","na","als","zoals","achter","tussen","door","tijdens","tot","sinds","boven",
+]);
 function drillLooksInvalid(drill, baseWords){
   if(!drill || !drill.prompt || !drill.correct) return true;
   const p = drill.prompt.trim();
-  if(/^-[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(p)) return true; // begint met een kale uitgang zoals "-e"
-  if(/\bsuffix\b|\bwhat (does|is)\b|\bmean(ing)?\??$|\bwhat.{0,15}case\b/i.test(p)) return true;
+  const c = drill.correct.trim();
+  // kale uitgang zoals "-e"/"-den" ERGENS in de tekst, niet alleen aan het begin
+  if(/-[a-zA-ZçğıöşüÇĞİÖŞÜ]{1,5}\b/.test(p) || /-[a-zA-ZçğıöşüÇĞİÖŞÜ]{1,5}\b/.test(c)) return true;
+  if(/\bsuffix\b|\bwhat (does|is)\b|\bmean(ing)?\??$|\bwhat.{0,15}case\b|\bcase (is|used)\b/i.test(p)) return true;
+  // geen van beide velden mag een KAAL los functiewoord zijn (zonder woordgroep eromheen) — dat toetst
+  // het voorzetsel/de naamval geïsoleerd i.p.v. "in gebruik", precies wat we juist willen vermijden
+  const isBareFunctionWord = s => BARE_FUNCTION_WORDS.has(s.toLowerCase().replace(/[.?!]/g,"").trim());
+  if(isBareFunctionWord(p) || isBareFunctionWord(c)) return true;
   const trPool = baseWords.map(s => s.split(" (")[0].trim().toLowerCase()).filter(Boolean);
   if(!trPool.length) return false; // geen lijst om tegen te toetsen (bv. fallback-lijst) -> niet afkeuren
   const haystack = `${drill.baseWord||""} ${drill.prompt} ${drill.correct}`.toLowerCase();
@@ -27338,9 +27355,18 @@ async function generateGrammarDrill(topic){
   let drill = await generateGrammarDrillCandidate(topic, wordList);
   let attempts = 1;
   while(drillLooksInvalid(drill, baseWords) && attempts < 3){
-    const note = /^-[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test((drill.prompt||"").trim()) || /\bsuffix\b|\bwhat (does|is)\b/i.test(drill.prompt||"")
-      ? "je stelde een metavraag over de kale regel/uitgang zelf in plaats van een concreet woord te laten vertalen."
-      : `je gebruikte het woord "${drill.baseWord || drill.prompt}", dat niet letterlijk in de gegeven woordenlijst voorkomt — waarschijnlijk heb je een Engelse glans zelf herinterpreteert in plaats van het gegeven Turkse woord te gebruiken.`;
+    const p = (drill.prompt || "").trim();
+    const isBareSuffix = /-[a-zA-ZçğıöşüÇĞİÖŞÜ]{1,5}\b/.test(p) || /-[a-zA-ZçğıöşüÇĞİÖŞÜ]{1,5}\b/.test((drill.correct||""));
+    const isMeta = /\bsuffix\b|\bwhat (does|is)\b/i.test(p);
+    const isBareWord = BARE_FUNCTION_WORDS.has(p.toLowerCase().replace(/[.?!]/g,"")) || BARE_FUNCTION_WORDS.has((drill.correct||"").toLowerCase().replace(/[.?!]/g,""));
+    let note;
+    if(isBareSuffix || isMeta){
+      note = "you asked a meta-question about the bare rule/suffix itself, or showed a bare suffix, instead of having the student translate a concrete word.";
+    } else if(isBareWord){
+      note = 'you used a bare, standalone preposition/function word with no surrounding phrase (e.g. just "to" or "from") — this must always be a full phrase like "on the table" or "next to him", testing the skill in actual use, never the isolated word alone.';
+    } else {
+      note = `you used the word "${drill.baseWord || drill.prompt}", which does not literally appear in the given word list — you likely re-translated an English gloss yourself instead of using the given Turkish word.`;
+    }
     drill = await generateGrammarDrillCandidate(topic, wordList, note);
     attempts++;
   }
