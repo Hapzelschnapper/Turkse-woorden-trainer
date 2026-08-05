@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 20:00</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 20:55</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -322,7 +322,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 20:00</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 20:55</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -27367,7 +27367,121 @@ function drillLooksInvalid(drill, baseWords){
   return !usesProvidedWord;
 }
 
+/* Voor "ruimtelijke" onderwerpen (voorzetsel-achtige constructies + de bijbehorende naamvallen) is een
+   vaste, kleine set anker- en hulp-zelfstandignaamwoorden veel betrouwbaarder dan telkens een willekeurig
+   woord: het dwingt de AI om een ECHT kort zinnetje te bouwen (bv. "Kedi masanın üstünde.") in plaats van
+   losse, soms te abstracte fragmenten. */
+/* ===================== OEFENFRAMEWORKS PER GRAMMATICA-ONDERWERP =====================
+   In plaats van 46 losse, individueel afgestelde oefenformats: een handvol herbruikbare
+   "frameworks" (patronen), elk met een eigen woordsoort-behoefte. Elk framework trekt zijn
+   voorbeeldwoorden uit een DYNAMISCHE pool van al beheerste A1-woorden van de juiste woordsoort
+   — nooit een vaste woordenset — zodat er variatie is (goed voor klinkerharmonie-gewenning) en
+   de vaardigheid ISOLEERD maar wel PRAKTISCH TOEGEPAST (in een echt kort zinnetje) getoetst wordt. */
+
+// Welke woordsoort-pool(s) elk onderwerp nodig heeft, en welk framework (zinspatroon) daarbij hoort.
+const GRAMMAR_TOPIC_FRAMEWORK = {
+  // ruimtelijk: voorzetsel-achtige constructies + de bijbehorende naamvallen -> [onderwerp-nw] + [ankernw]+constructie
+  edatlar:"spatial", bulunma_hali:"spatial", yonelme_hali:"spatial", ayrilma_hali:"spatial",
+  // werkwoord-gebaseerd: tijd/wijze/çatı toegepast op een los werkwoord (+onderwerp)
+  copula:"verb", olumsuzluk:"verb", simdiki_zaman:"verb", genis_zaman:"verb", gecmis_di:"verb",
+  gecmis_mis:"verb", gelecek_zaman:"verb", gecmis_devam:"verb", gelecek_gecmis:"verb",
+  birlesik_gecmis:"verb", gereklilik_kipi:"verb", sart_kipi:"verb", istek_kipi:"verb",
+  emir_kipi:"verb", yeterlik_kipi:"verb", mastar:"verb", edilgen_cati:"verb", ettirgen_cati:"verb",
+  donusluluk_cati:"verb", islik_cati:"verb", gecmis_copula:"verb", isim_fiil:"verb", dolayli_anlatim:"verb",
+  // twee werkwoorden nodig: verbindende/temporele constructies
+  madan_once:"verb2", diginde:"verb2", inca:"verb2", dikce:"verb2", zarf_fiil:"verb2", ortac:"verb2",
+  // zelfstandig-naamwoord-gebaseerd: 1 nw
+  belirtme_hali:"noun", iyelik_ekleri:"noun", cogul_eki:"noun", kucultme_eki:"noun", hitap_bicimleri:"noun",
+  sayilar_siralar:"noun",
+  // twee zelfstandige naamwoorden nodig
+  tamlayan_hali:"noun2", isim_tamlamasi:"noun2", karsilastirma:"noun2", ki_eki:"noun2",
+  // rest: geen duidelijke woordsoort-voorkeur, gebruikt de brede gemengde pool (bestaand gedrag)
+};
+
+let _a1CategoryCache = {};
+function a1CategoryWordSet(category){
+  if(_a1CategoryCache[category]) return _a1CategoryCache[category];
+  const set = new Set();
+  for(const v of VOCAB_LESSON_DATA){
+    if(v.cefr === 0 && v.title.startsWith(category)) for(const w of v.words) set.add(w);
+  }
+  _a1CategoryCache[category] = set;
+  return set;
+}
+
+/* Trekt `count` VERSCHILLENDE woorden uit de A1-pool van een bepaalde woordsoort, bij voorkeur al
+   goed beheerste woorden — dat geeft variatie (i.p.v. steeds dezelfde 2 vaste woorden) en dus meer
+   blootstelling aan verschillende klinkerharmonie-patronen. */
+async function pickMasteredPoolWords(category, count){
+  const catWords = a1CategoryWordSet(category);
+  const a1 = EN_WORDS_DATA.filter(w => w.cefr === 0 && catWords.has(w.en));
+  const mastered = a1.filter(w=>{ const p=getProgress(w.en); return p.reps>0 && (100*(p.correct||0)/p.reps)>=70; });
+  const pool = mastered.length >= count ? mastered : a1;
+  const shuffled = [...pool];
+  for(let i=shuffled.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]; }
+  const picks = shuffled.slice(0, count);
+  const pairs = [];
+  for(const w of picks){
+    try{ const tr = await getOrFetchTranslation(w.en); pairs.push({en:w.en, tr:tr[0]}); }
+    catch(e){ /* deze overslaan als vertalen mislukt */ }
+  }
+  return pairs;
+}
+
+const FRAMEWORK_INSTRUCTIONS = {
+  spatial: {needCategory:["Nouns","Nouns"], needCount:[1,1],
+    instr: (w1,w2) => `Build one short, natural sentence using EXACTLY these two nouns: "${w1.tr}" (${w1.en}) as the subject, and "${w2.tr}" (${w2.en}) as the location/reference noun that the grammar point attaches to.\nIllustration only (build your OWN sentence with the given words/topic, don't just copy this): "Kedi masanın üstünde." (The cat is on the table.)\nKeep it SHORT (3-6 words) and use no other nouns besides the two given.`},
+  verb: {needCategory:["Verbs"], needCount:[1],
+    instr: (w1) => `Build one short, natural sentence applying the grammar point to EXACTLY this verb: "${w1.tr}" (${w1.en}). Pick any subject (I/you/he/she/we/they) yourself. Keep it SHORT (2-5 words) and use no other verb besides the one given.`},
+  verb2: {needCategory:["Verbs","Verbs"], needCount:[1,1],
+    instr: (w1,w2) => `Build one short, natural sentence that links/combines EXACTLY these two verbs using the grammar point: "${w1.tr}" (${w1.en}) and "${w2.tr}" (${w2.en}). Example shape only (build your own): "Koşarak geldi." combines running+coming. Keep it SHORT and use no other verbs besides the two given.`},
+  noun: {needCategory:["Nouns"], needCount:[1],
+    instr: (w1) => `Build one short, natural sentence or short phrase applying the grammar point to EXACTLY this noun: "${w1.tr}" (${w1.en}). Keep it SHORT (2-5 words) and use no other noun besides the one given.`},
+  noun2: {needCategory:["Nouns","Nouns"], needCount:[1,1],
+    instr: (w1,w2) => `Build one short, natural phrase or sentence that relates EXACTLY these two nouns using the grammar point: "${w1.tr}" (${w1.en}) and "${w2.tr}" (${w2.en}). Keep it SHORT and use no other nouns besides the two given.`},
+};
+
+async function generateFrameworkDrillCandidate(topic, framework, correctionNote){
+  const cfg = FRAMEWORK_INSTRUCTIONS[framework];
+  const words = [];
+  for(let i=0;i<cfg.needCategory.length;i++){
+    const picked = await pickMasteredPoolWords(cfg.needCategory[i], 1);
+    words.push(picked[0] || {en:"school", tr:"okul"}); // veiligheidsnet als de pool leeg is
+  }
+  const sys = `You create a SHORT, concrete example testing the Turkish topic "${topic.label}" (${topic.hint}), isolated to this one skill but applied PRACTICALLY (a real short sentence/phrase, never an abstract rule question).
+${cfg.instr(...words)}
+Randomly choose the test direction: en-tr (show the English version, ask for the Turkish translation) or tr-en (show the Turkish version, ask for the English translation).
+Write everything in English and Turkish ONLY — never any other language.
+Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the sentence/phrase shown to the user, in the language matching direction", "correct": "the correct translation in the other language", "baseWord": "${words.map(w=>w.tr).join(" + ")}"}`;
+  const userMsg = `Topic: ${topic.label}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
+    body: JSON.stringify({
+      model: "deepseek-v4-pro", max_tokens: 200, temperature: 0.5,
+      messages: [{role:"system", content:sys}, {role:"user", content:userMsg}],
+      thinking: {"type":"disabled"}
+    })
+  });
+  if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
+  const data = await res.json();
+  recordUsage("deepseek-v4-pro", data.usage);
+  let raw = data.choices?.[0]?.message?.content || "";
+  raw = raw.replace(/```json|```/g,"").trim();
+  return JSON.parse(raw);
+}
+
 async function generateGrammarDrill(topic){
+  const framework = GRAMMAR_TOPIC_FRAMEWORK[topic.key];
+  if(framework){
+    let drill = await generateFrameworkDrillCandidate(topic, framework);
+    let attempts = 1;
+    while(drillLooksInvalid(drill, []) && attempts < 3){ // lege pool: alleen de kale-uitgang/metavraag/kaal-functiewoord-checks gelden hier
+      drill = await generateFrameworkDrillCandidate(topic, framework, "make sure it's a real short sentence/phrase using only the given word(s), never a bare suffix or standalone preposition/function word.");
+      attempts++;
+    }
+    return drill;
+  }
   const baseWords = await pickGrammarDrillBaseWords();
   const wordList = baseWords.length ? baseWords.join(", ") : CHECKUP_DRILL_BASE_WORDS;
   let drill = await generateGrammarDrillCandidate(topic, wordList);
