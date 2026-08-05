@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 18:00</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-04 18:20</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -322,7 +322,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 18:00</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-04 18:20</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -27292,10 +27292,15 @@ async function generateGrammarDrill(topic){
   const baseWords = await pickGrammarDrillBaseWords();
   const wordList = baseWords.length ? baseWords.join(", ") : CHECKUP_DRILL_BASE_WORDS;
   const sys = `Je maakt een GEÏSOLEERDE grammatica-oefening voor het Turkse onderwerp "${topic.label}" (${topic.hint}).
-BELANGRIJK: gebruik uitsluitend één van deze woorden als basis, die de student zelf al goed beheerst: ${wordList}. Kies er willekeurig één die goed past bij dit onderwerp (een werkwoord voor werkwoordsvervoegingen, een zelfstandig naamwoord voor naamvallen, enz. — kies zelf wat grammaticaal het beste past).
-Geef een KORTE, in het Engels geschreven instructie die vraagt om dat woord grammaticaal te transformeren volgens dit onderwerp — GEEN volledige zin, puur de kale transformatie-opdracht. Bijvoorbeeld: "Put \\"ev\\" (house) in the dative case (to/towards)." of "Make \\"gitmek\\" (to go) negative in the present continuous, for \\"I\\"."
-Geef ook het correcte, getransformeerde Turkse antwoord.
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"prompt": "instructie in het Engels", "correct": "het juiste getransformeerde Turkse woord", "baseWord": "het gekozen basiswoord"}`;
+
+KRITIEK — TOETS DE VAARDIGHEID IN DE PRAKTIJK, NOOIT ABSTRACT:
+FOUT (dit mag NOOIT): een metavraag over de regel zelf, zoals "What does the suffix -e mean?" of "What is the dative case used for?" — dat toetst kennis OVER de grammatica, niet het daadwerkelijk TOEPASSEN ervan.
+GOED (dit moet ALTIJD): een concreet, echt woord of korte uitdrukking laten VERTALEN, in willekeurig gekozen richting:
+- en-tr: geef een Engelse frase die de vaardigheid vereist om correct te vertalen (bv. "to school" voor de datief, of "on the table" voor een voorzetsel-achtige constructie), en vraag om de juiste Turkse vorm.
+- tr-en: geef een echt, al correct vervoegd/afgeleid Turks woord of woordgroep (bv. "okula", of "masanın üstünde"), en vraag om de Engelse betekenis.
+BELANGRIJK BIJ ONDERWERPEN MET "RELATIENAAMWOORDEN" (voorzetsel-achtige constructies met üst/alt/ön/arka/yan e.d.): test AF EN TOE ook gewoon het kale bouwsteen-woord zelf als losse vocabulaire (bv. "üst" -> top, "yan" -> side, zonder verdere vervoeging) — dat is net zo belangrijk als de suffix-mechaniek zelf, en mag simpelweg als woordvertaling gevraagd worden.
+Gebruik uitsluitend een van deze woorden als basis, die de student zelf al goed beheerst: ${wordList}. Kies er willekeurig één die goed past bij dit onderwerp (een werkwoord voor werkwoordsvervoegingen, een zelfstandig naamwoord voor naamvallen, enz.).
+Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"direction": "en-tr of tr-en", "prompt": "de Engelse frase (bij en-tr) of de Turkse vorm (bij tr-en) die getoond wordt aan de gebruiker", "correct": "het juiste antwoord in de ANDERE taal dan prompt", "baseWord": "het gekozen basiswoord"}`;
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
@@ -27314,7 +27319,8 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"prompt": "instructie
 }
 
 async function gradeGrammarDrillAnswer(drill, answer){
-  const sys = `Je beoordeelt of het Turkse antwoord van een gebruiker een correcte grammaticale transformatie is voor de opdracht "${drill.prompt}". Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen bestaan. NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en kleine tikfouten met een ondubbelzinnige bedoeling. Antwoord ALLEEN met geldige JSON: {"correct": true of false}`;
+  const isTrEn = drill.direction === "tr-en";
+  const sys = `Je beoordeelt of het ${isTrEn ? "Engelse" : "Turkse"} antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (${isTrEn ? "gebruiker moest de Turkse vorm naar het Engels vertalen" : "gebruiker moest de Engelse frase naar het Turks vertalen"}). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. ${isTrEn ? "" : "NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en"} kleine tikfouten met een ondubbelzinnige bedoeling reken je goed. Antwoord ALLEEN met geldige JSON: {"correct": true of false}`;
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
@@ -27372,7 +27378,7 @@ async function nextCheckupQuestion(){
       await nextCheckupQuestion();
       return;
     }
-    el("checkup-answer-input").placeholder = "Type the transformed Turkish word…";
+    el("checkup-answer-input").placeholder = checkupState.current.drill.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   }
   persistCheckupState();
   el("checkup-answer-input").disabled = false;
@@ -27550,7 +27556,7 @@ async function nextSkillPracticeQuestion(){
       el("btn-checkup-next").disabled = true;
       return;
     }
-    el("checkup-answer-input").placeholder = "Type the transformed Turkish word…";
+    el("checkup-answer-input").placeholder = skillPracticeState.current.drill.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   }
   el("checkup-answer-input").disabled = false;
   el("btn-checkup-next").disabled = false;
