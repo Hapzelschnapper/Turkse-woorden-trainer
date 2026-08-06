@@ -44,6 +44,10 @@
   .word-row-tr{font-weight:700;}
   .word-row-trans{color:var(--muted);font-size:.8rem;margin-top:1px;}
   .word-row-score{font-size:.75rem;font-weight:700;white-space:nowrap;padding-left:10px;}
+  table.vocab-word-list{width:100%;border-collapse:collapse;margin:8px 0;font-size:.85rem;}
+  table.vocab-word-list td{padding:5px 8px;border-bottom:1px solid var(--border);}
+  table.vocab-word-list td:first-child{width:45%;}
+  table.vocab-word-list tr:last-child td{border-bottom:none;}
   .cefr-section{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;}
   .cefr-section summary{list-style:none;cursor:pointer;padding:10px 12px;display:flex;
     justify-content:space-between;align-items:center;background:#0d1720;font-weight:700;font-size:.85rem;}
@@ -117,7 +121,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-06 14:30</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-06 15:15</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -378,7 +382,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-06 14:30</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-06 15:15</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -57589,7 +57593,7 @@ const GRAMMAR_LESSONS = [
 <p>One thing to get used to: because Turkish verbs carry a personal ending that already shows who's doing the action (you'll meet this in the next lesson), pronouns are very often <b>dropped</b> — much like in Spanish or Italian. "Gidiyorum" already means "I am going" all by itself; adding "ben" in front is only for emphasis ("<i>I'M</i> going").</p>`
   },
   {
-    id:"copula_basic", title:"The Copula — Basics (\"to be\")", icon:"🔗", grammarTopics:["copula_basic"], targetExercises:8,
+    id:"copula_basic", title:"The Copula — Basics (\"to be\")", icon:"🔗", grammarTopics:["copula_basic"], targetExercises:20,
     explanation:`<p>English has a separate word "to be" (am/is/are). Turkish doesn't — in the present tense, "to be" is just a <b>suffix</b> glued onto the noun or adjective, following vowel harmony. Start with the singular persons:</p>
 <ul>
 <li><b>-im/-ım/-um/-üm</b> — I am</li>
@@ -57600,7 +57604,7 @@ const GRAMMAR_LESSONS = [
 <p>You'll practise this by building and checking simple sentences that use this suffix — the app will pick example words for you.</p>`
   },
   {
-    id:"copula_plural", title:"The Copula — Plural & Buffer Letters", icon:"🔗", grammarTopics:["copula_plural"], targetExercises:8,
+    id:"copula_plural", title:"The Copula — Plural & Buffer Letters", icon:"🔗", grammarTopics:["copula_plural"], targetExercises:20,
     explanation:`<p>Now the plural persons — same idea, same vowel-harmony logic, just a different set of endings:</p>
 <ul>
 <li><b>-iz/-ız/-uz/-üz</b> — we are</li>
@@ -57611,14 +57615,14 @@ const GRAMMAR_LESSONS = [
 <p>Watch for words ending in a vowel — a buffer letter (usually <b>y</b>) slots in before the ending so the two vowels don't collide: <b>mutlu</b> + <b>uz</b> → <b>mutlu<u>y</u>uz</b>, not "mutluuz".</p>`
   },
   {
-    id:"copula_soru_olumsuz", title:"The Copula — Questions & Negation", icon:"🔗", grammarTopics:["copula_soru_olumsuz"], targetExercises:8,
+    id:"copula_soru_olumsuz", title:"The Copula — Questions & Negation", icon:"🔗", grammarTopics:["copula_soru_olumsuz"], targetExercises:20,
     explanation:`<p>Two more copula skills, both building on what you just learned:</p>
 <p><b>Questions:</b> the particle <b>mi/mı/mu/mü</b> (vowel-harmony again) goes <i>before</i> the personal ending, not after — and is written as a separate word: <b>öğretmen misin?</b> = are you a teacher?</p>
 <p><b>Negation:</b> instead of a suffix, Turkish uses the separate word <b>değil</b> ("not"), which then takes the personal ending itself: <b>öğretmen değilim</b> = I am not a teacher.</p>
 <p>One thing to get used to: because Turkish verbs carry a personal ending that already shows who's doing the action (you'll meet this in the next lesson), pronouns are very often <b>dropped</b> — much like in Spanish or Italian. "Gidiyorum" already means "I am going" all by itself; adding "ben" in front is only for emphasis ("<i>I'M</i> going").</p>`
   },
   {
-    id:"nouns_plural", title:"Nouns & Plural", icon:"📦", grammarTopics:["cogul_eki"], targetExercises:8,
+    id:"nouns_plural", title:"Nouns & Plural", icon:"📦", grammarTopics:["cogul_eki"], targetExercises:20,
     explanation:`<p>Turkish nouns have no grammatical gender, and there's no word for "a/an" or "the" — context tells you which is meant.</p>
 <p>The plural suffix is <b>-ler</b> or <b>-lar</b>, chosen by vowel harmony (front vowels → -ler, back vowels → -lar):</p>
 <ul>
@@ -57637,7 +57641,7 @@ const GRAMMAR_LESSONS = [
 <p>Any adjective can also stand alone as a description: "Ev büyük." = "The house is big" (using the copula suffix from the previous lesson: büyük + tür/dür is usually dropped, so you'll often just hear "Ev büyük.").</p>`
   },
   {
-    id:"questions", title:"The Question Particle", icon:"❓", grammarTopics:["soru_eki"], targetExercises:8,
+    id:"questions", title:"The Question Particle", icon:"❓", grammarTopics:["soru_eki"], targetExercises:20,
     explanation:`<p>To turn a statement into a yes/no question, Turkish uses a separate little word: <b>mi / mı / mu / mü</b> (chosen by vowel harmony), placed right after the word being questioned.</p>
 <ul>
 <li><b>İyi misin?</b> — Are you well? (from "iyisin", split around "mi")</li>
@@ -57646,7 +57650,7 @@ const GRAMMAR_LESSONS = [
 <p>Note it's written as a <b>separate word</b>, unlike most Turkish suffixes which attach directly. You'll get plenty of exposure to this by answering the app's Turkish question/answer exercises.</p>`
   },
   {
-    id:"negation", title:"Negation", icon:"🚫", grammarTopics:["olumsuzluk"], targetExercises:8,
+    id:"negation", title:"Negation", icon:"🚫", grammarTopics:["olumsuzluk"], targetExercises:20,
     explanation:`<p>To negate a nominal sentence (one using the copula "to be"), Turkish uses the word <b>değil</b> ("not"):</p>
 <ul>
 <li><b>İyi değilim.</b> — I am not well.</li>
@@ -57655,7 +57659,7 @@ const GRAMMAR_LESSONS = [
 <p>Verbs negate differently — with an infix <b>-me-/-ma-</b> inserted right into the verb before the tense ending (e.g. <b>gel-mi-yorum</b> = I am not coming). You'll meet this properly once verbs are introduced in the next lesson, but it's good to recognise it already.</p>`
   },
   {
-    id:"present_cont", title:"Verbs: Present Continuous", icon:"🏃", grammarTopics:["simdiki_zaman"], targetExercises:8,
+    id:"present_cont", title:"Verbs: Present Continuous", icon:"🏃", grammarTopics:["simdiki_zaman"], targetExercises:20,
     explanation:`<p>The present continuous suffix <b>-iyor</b> (with its vowel-harmony variants -ıyor/-uyor/-üyor) is usually the first verb tense learners meet, because it's used very broadly — not just for "right now", but for most everyday present-tense statements.</p>
 <ul>
 <li><b>geliyorum</b> — I am coming / I come</li>
@@ -57664,7 +57668,7 @@ const GRAMMAR_LESSONS = [
 <p>The personal endings after -iyor are the same family you already saw with the copula — that pattern keeps reappearing, which is good news for how much new material you actually need to memorise.</p>`
   },
   {
-    id:"simple_sentences", title:"Simple Sentences (SOV)", icon:"🧩", grammarTopics:["genis_zaman"], targetExercises:10,
+    id:"simple_sentences", title:"Simple Sentences (SOV)", icon:"🧩", grammarTopics:["genis_zaman"], targetExercises:20,
     explanation:`<p>Now put the pieces together. Remember the word order from lesson 1: <b>Subject – Object – Verb</b>. A classic beginner example: <b>"Kedi süt içer."</b> — literally "Cat milk drinks" = "The cat drinks milk."</p>
 <p>Notice the verb form <b>içer</b> here isn't -iyor — it's the <b>aorist</b> (a "general truth / habitual action" tense, roughly like the English simple present "drinks" rather than "is drinking"). Compare:</p>
 <ul>
@@ -57674,7 +57678,7 @@ const GRAMMAR_LESSONS = [
 <p>Both are "simple present" in English, but Turkish distinguishes them. You'll practise building and reading full SOV sentences using this pattern.</p>`
   },
   {
-    id:"possessives", title:"Possessive Suffixes", icon:"🏠", grammarTopics:["iyelik_ekleri"], targetExercises:8,
+    id:"possessives", title:"Possessive Suffixes", icon:"🏠", grammarTopics:["iyelik_ekleri"], targetExercises:20,
     explanation:`<p>Turkish shows "my/your/his/her/our/their" with suffixes on the noun, rather than separate possessive pronouns in front of it:</p>
 <ul>
 <li><b>evim</b> — my house</li>
@@ -57687,7 +57691,7 @@ const GRAMMAR_LESSONS = [
 <p>These suffixes follow the same vowel-harmony logic you've now seen a few times. If a separate pronoun is added for emphasis ("benim evim" — MY house), the possessive suffix still stays on the noun.</p>`
   },
   {
-    id:"accusative", title:"Case: Accusative", icon:"🎯", grammarTopics:["belirtme_hali"], targetExercises:8,
+    id:"accusative", title:"Case: Accusative", icon:"🎯", grammarTopics:["belirtme_hali"], targetExercises:20,
     explanation:`<p>The accusative suffix <b>-i/-ı/-u/-ü</b> marks a <b>definite, specific</b> direct object — compare:</p>
 <ul>
 <li><b>Elma yedim.</b> — I ate an apple / I ate apple(s). (unspecific)</li>
@@ -57696,7 +57700,7 @@ const GRAMMAR_LESSONS = [
 <p>This is a genuinely useful distinction English doesn't mark on the noun at all (it uses "a" vs "the" instead) — so pay attention to when it appears.</p>`
   },
   {
-    id:"locative", title:"Case: Locative", icon:"📍", grammarTopics:["bulunma_hali"], targetExercises:8,
+    id:"locative", title:"Case: Locative", icon:"📍", grammarTopics:["bulunma_hali"], targetExercises:20,
     explanation:`<p>The locative case suffix <b>-de/-da</b> replaces the English prepositions "at/in/on" for a fixed location:</p>
 <ul>
 <li><b>evde</b> — at home</li>
@@ -57704,7 +57708,7 @@ const GRAMMAR_LESSONS = [
 </ul>`
   },
   {
-    id:"dative", title:"Case: Dative", icon:"📍", grammarTopics:["yonelme_hali"], targetExercises:8,
+    id:"dative", title:"Case: Dative", icon:"📍", grammarTopics:["yonelme_hali"], targetExercises:20,
     explanation:`<p>The dative case suffix <b>-e/-a</b> replaces the English preposition "to/towards" — movement or direction:</p>
 <ul>
 <li><b>eve</b> — to home</li>
@@ -57713,7 +57717,7 @@ const GRAMMAR_LESSONS = [
 <p>Compare with the locative from the previous lesson: same root, different single-letter case suffix, completely different meaning — this is agglutination doing real work for you.</p>`
   },
   {
-    id:"past_tense", title:"Past Tense", icon:"⏳", grammarTopics:["gecmis_di"], targetExercises:10,
+    id:"past_tense", title:"Past Tense", icon:"⏳", grammarTopics:["gecmis_di"], targetExercises:20,
     explanation:`<p>The definite past tense suffix is <b>-di</b>, with the usual vowel-harmony variants (-dı/-du/-dü), plus a voiceless-consonant version (-ti/-tı/-tu/-tü) after certain consonants:</p>
 <ul>
 <li><b>geldim</b> — I came</li>
@@ -57722,7 +57726,7 @@ const GRAMMAR_LESSONS = [
 <p>This tense is used for actions you witnessed or are certain happened — Turkish actually has a <i>second</i> past tense (-miş) for hearsay/inference, which is a fascinating topic for later once you're comfortable here.</p>`
   },
   {
-    id:"infinitive", title:"The Infinitive", icon:"➰", grammarTopics:["mastar"], targetExercises:8,
+    id:"infinitive", title:"The Infinitive", icon:"➰", grammarTopics:["mastar"], targetExercises:20,
     explanation:`<p>The Turkish infinitive is formed with <b>-mek/-mak</b> (vowel harmony) and works much like English "to + verb":</p>
 <ul>
 <li><b>gitmek</b> — to go</li>
@@ -57731,7 +57735,7 @@ const GRAMMAR_LESSONS = [
 <p>You'll see this constantly attached to other verbs like <i>istemek</i> (to want) and <i>gerekmek</i> (to be necessary) — it's also the form you'll find infinitives listed under in a dictionary.</p>`
   },
   {
-    id:"numbers_ordinals", title:"Numbers & Ordinals", icon:"🔢", grammarTopics:["sayilar_siralar"], targetExercises:8,
+    id:"numbers_ordinals", title:"Numbers & Ordinals", icon:"🔢", grammarTopics:["sayilar_siralar"], targetExercises:20,
     explanation:`<p>Cardinal numbers (bir, iki, üç...) are straightforward. Ordinals ("first, second, third...") add the suffix <b>-inci</b> (with vowel-harmony variants):</p>
 <ul>
 <li><b>üç</b> (three) → <b>üçüncü</b> (third)</li>
@@ -57740,7 +57744,7 @@ const GRAMMAR_LESSONS = [
 <p>Remember from the noun lesson: numbers keep the following noun <b>singular</b> — "üç kitap" not "üç kitaplar".</p>`
   },
   {
-    id:"imperative", title:"The Imperative", icon:"❗", grammarTopics:["emir_kipi"], targetExercises:8,
+    id:"imperative", title:"The Imperative", icon:"❗", grammarTopics:["emir_kipi"], targetExercises:20,
     explanation:`<p>Commands in Turkish change by who you're addressing:</p>
 <ul>
 <li><b>Gel!</b> — Come! (to sen, informal singular)</li>
@@ -57749,7 +57753,7 @@ const GRAMMAR_LESSONS = [
 <p>Negative commands use <b>-me/-ma</b>: <b>Gelme!</b> — Don't come! This is one of the most frequently heard verb forms in everyday spoken Turkish.</p>`
   },
   {
-    id:"past_copula", title:"Past Copula", icon:"🔗", grammarTopics:["gecmis_copula"], targetExercises:8,
+    id:"past_copula", title:"Past Copula", icon:"🔗", grammarTopics:["gecmis_copula"], targetExercises:20,
     explanation:`<p>Just as the present-tense copula ("to be") is a suffix, so is its past-tense form: <b>-ydi</b> (with vowel-harmony variants -ydı/-ydu/-ydü):</p>
 <ul>
 <li><b>öğrenciydim</b> — I was a student</li>
@@ -57758,7 +57762,7 @@ const GRAMMAR_LESSONS = [
 <p>This attaches to the same personal-ending pattern you already learned for the present copula — just with -ydi- inserted before it.</p>`
   },
   {
-    id:"ability", title:"Ability: \"Can\"", icon:"💪", grammarTopics:["yeterlik_kipi"], targetExercises:8,
+    id:"ability", title:"Ability: \"Can\"", icon:"💪", grammarTopics:["yeterlik_kipi"], targetExercises:20,
     explanation:`<p>"Can/be able to" is expressed with the suffix <b>-ebil-/-abil-</b>, inserted right into the verb before the tense ending:</p>
 <ul>
 <li><b>gidebilirim</b> — I can go (git + ebil + ir + im)</li>
@@ -57767,21 +57771,21 @@ const GRAMMAR_LESSONS = [
 <p>The negative ("can't") uses a slightly different pattern — <b>-eme-/-ama-</b> — instead of just adding "değil" or "-me-": <b>gidemem</b> — I can't go. This is one of the most frequently used constructions in everyday Turkish, so it's worth getting comfortable with early.</p>`
   },
   {
-    id:"address_forms", title:"Address Forms & Politeness", icon:"🎩", grammarTopics:["hitap_bicimleri"], targetExercises:8,
+    id:"address_forms", title:"Address Forms & Politeness", icon:"🎩", grammarTopics:["hitap_bicimleri"], targetExercises:20,
     explanation:`<p>Turkish has a few distinctive ways of addressing people directly:</p>
 <p><b>Titles after first names:</b> <b>Ahmet Bey</b> (Mr. Ahmet), <b>Ayşe Hanım</b> (Ms. Ayşe) — much more common than using a surname with "Mr./Mrs.".</p>
 <p><b>Affectionate/vocative address:</b> adding <b>-cığım/-ciğim</b> or similar softens a term of address: <b>anneciğim</b> (mommy/dear mother), <b>canım</b> (dear/darling, very commonly used).</p>
 <p><b>Register:</b> you already know <b>sen</b> (informal) vs. <b>siz</b> (formal/plural) — remember that siz also takes the plural-style verb ending, even for one formally-addressed person: <b>Nasılsınız?</b> (How are you? — formal) vs. <b>Nasılsın?</b> (informal).</p>`
   },
   {
-    id:"noun_compounds", title:"Noun Compounds", icon:"🧷", grammarTopics:["isim_tamlamasi"], targetExercises:8,
+    id:"noun_compounds", title:"Noun Compounds", icon:"🧷", grammarTopics:["isim_tamlamasi"], targetExercises:20,
     explanation:`<p>Turkish links two nouns together ("noun compounds") in two ways:</p>
 <p><b>Indefinite compound</b> (a general category, no specific owner): <b>araba anahtarı</b> — a car key.</p>
 <p><b>Definite compound</b> (specific possession, combines genitive + possessive suffix): <b>okulun bahçesi</b> — the school's garden (okul + un [genitive] + bahçe + si [possessive]).</p>
 <p>Recognising which type you're looking at just takes practice — you'll get plenty of exposure here.</p>`
   },
   {
-    id:"postpositions", title:"Postpositions", icon:"🧭", grammarTopics:["edatlar"], targetExercises:8,
+    id:"postpositions", title:"Postpositions", icon:"🧭", grammarTopics:["edatlar"], targetExercises:20,
     explanation:`<p>Where English uses prepositions (before the noun), Turkish uses <b>postpositions</b> — separate words placed <i>after</i> the noun:</p>
 <ul>
 <li><b>senin için</b> — for you</li>
@@ -57792,7 +57796,7 @@ const GRAMMAR_LESSONS = [
 <p>Some require a specific case on the preceding noun (e.g. "göre" pairs with dative) — you'll pick up the common pairings through the example sentences.</p>`
   },
   {
-    id:"conjunctions", title:"Conjunctions", icon:"🔀", grammarTopics:["baglaclar"], targetExercises:8,
+    id:"conjunctions", title:"Conjunctions", icon:"🔀", grammarTopics:["baglaclar"], targetExercises:20,
     explanation:`<p>Beyond the basics (ve "and", ama "but", çünkü "because"), Turkish has some distinctive paired conjunctions:</p>
 <ul>
 <li><b>hem...hem (de)</b> — both...and: <i>hem yorgunum hem açım</i> (I'm both tired and hungry)</li>
@@ -57801,7 +57805,7 @@ const GRAMMAR_LESSONS = [
 </ul>`
   },
   {
-    id:"emphasis_particles", title:"Emphasis Particles", icon:"❗", grammarTopics:["vurgu_partikelleri"], targetExercises:8,
+    id:"emphasis_particles", title:"Emphasis Particles", icon:"❗", grammarTopics:["vurgu_partikelleri"], targetExercises:20,
     explanation:`<p>A handful of small words add emphasis or nuance without changing the core sentence:</p>
 <ul>
 <li><b>de/da</b> ("also/too", written as a separate word, vowel-harmony only — never confuse with the locative -de suffix): <i>ben de geliyorum</i> (I'm coming too)</li>
@@ -57812,7 +57816,7 @@ const GRAMMAR_LESSONS = [
 <p>These are subtle but extremely common in natural spoken and written Turkish — they're part of what makes a sentence sound native rather than textbook-stiff.</p>`
   },
   {
-    id:"past_continuous", title:"Past Continuous", icon:"⏱️", grammarTopics:["gecmis_devam"], targetExercises:8,
+    id:"past_continuous", title:"Past Continuous", icon:"⏱️", grammarTopics:["gecmis_devam"], targetExercises:20,
     explanation:`<p>Combine the present-continuous marker <b>-iyor</b> with the past copula <b>-du</b> to describe an ongoing action in the past:</p>
 <ul>
 <li><b>geliyordum</b> — I was coming</li>
@@ -57821,7 +57825,7 @@ const GRAMMAR_LESSONS = [
 <p>Just like English "was/were -ing", this sets the scene for something else that happened — very common in storytelling.</p>`
   },
   {
-    id:"optative", title:"The Optative (Wish)", icon:"🙏", grammarTopics:["istek_kipi"], targetExercises:8,
+    id:"optative", title:"The Optative (Wish)", icon:"🙏", grammarTopics:["istek_kipi"], targetExercises:20,
     explanation:`<p>The optative suffix <b>-e/-a</b> expresses a wish, suggestion, or "let me/us..." :</p>
 <ul>
 <li><b>Gideyim.</b> — Let me go. / I think I'll go.</li>
@@ -57830,13 +57834,13 @@ const GRAMMAR_LESSONS = [
 <p>It's less common than the imperative but essential for polite suggestions and self-directed intentions.</p>`
   },
   {
-    id:"ki_suffix", title:"The Suffix -ki", icon:"🔖", grammarTopics:["ki_eki"], targetExercises:8,
+    id:"ki_suffix", title:"The Suffix -ki", icon:"🔖", grammarTopics:["ki_eki"], targetExercises:20,
     explanation:`<p>Don't confuse this with the conjunction "ki" from the previous conjunctions lesson — this <b>-ki</b> is a suffix with two related uses:</p>
 <p><b>Possessive:</b> <b>benimki</b> — mine, <b>seninki</b> — yours (stands in for "my one/yours" without repeating the noun).</p>
 <p><b>Relative/locational:</b> <b>masadaki kitap</b> — the book [that is] on the table (attaches to a locative form to make it modify a noun, like an adjective).</p>`
   },
   {
-    id:"madan_once", title:"Converb: Without/Before Doing", icon:"⏮️", grammarTopics:["madan_once"], targetExercises:8,
+    id:"madan_once", title:"Converb: Without/Before Doing", icon:"⏮️", grammarTopics:["madan_once"], targetExercises:20,
     explanation:`<p>The suffix <b>-madan/-meden</b> attached directly to a verb stem means "without doing X":</p>
 <ul>
 <li><b>Yemeden gitti.</b> — He left without eating.</li>
@@ -57844,7 +57848,7 @@ const GRAMMAR_LESSONS = [
 <p>Add <b>önce</b> ("before") after it for "before doing X": <b>gitmeden önce</b> — before going. Note this is the SAME suffix as the negative marker -me/-ma, but here it's doing a completely different, converb job — context makes clear which is meant.</p>`
   },
   {
-    id:"future_in_past", title:"Future-in-the-Past", icon:"↩️", grammarTopics:["gelecek_gecmis"], targetExercises:8,
+    id:"future_in_past", title:"Future-in-the-Past", icon:"↩️", grammarTopics:["gelecek_gecmis"], targetExercises:20,
     explanation:`<p>Combine the future marker <b>-ecek</b> with the past copula to talk about something that WAS going to happen (regardless of whether it actually did):</p>
 <ul>
 <li><b>Gelecekti ama gelmedi.</b> — He was going to come, but he didn't.</li>
@@ -57852,7 +57856,7 @@ const GRAMMAR_LESSONS = [
 <p>This is a nuance English handles the same way ("was going to..."), so the logic should feel familiar even though the Turkish form is new.</p>`
   },
   {
-    id:"verbal_nouns", title:"Verbal Nouns", icon:"📇", grammarTopics:["isim_fiil"], targetExercises:8,
+    id:"verbal_nouns", title:"Verbal Nouns", icon:"📇", grammarTopics:["isim_fiil"], targetExercises:20,
     explanation:`<p>Turkish can turn a verb into a noun with <b>-me</b> or <b>-iş</b> — similar to English "-ing" as a noun ("the going", "the arrival"):</p>
 <ul>
 <li><b>gitme</b> — the act of going (more abstract/grammatical)</li>
@@ -57861,7 +57865,7 @@ const GRAMMAR_LESSONS = [
 <p>You'll often see these as the subject or object of a sentence, where English would use a gerund.</p>`
   },
   {
-    id:"diginde", title:"Converb: \"When\" (-diğinde)", icon:"⏰", grammarTopics:["diginde"], targetExercises:8,
+    id:"diginde", title:"Converb: \"When\" (-diğinde)", icon:"⏰", grammarTopics:["diginde"], targetExercises:20,
     explanation:`<p>The suffix <b>-diğinde</b> (a possessive-based construction, works across all tenses) means "when X happens/happened":</p>
 <ul>
 <li><b>Eve geldiğinde...</b> — when he arrives/arrived home...</li>
@@ -57869,7 +57873,7 @@ const GRAMMAR_LESSONS = [
 <p>It replaces an entire English "when..." clause with a single suffixed verb form — no separate word for "when" needed inside the sentence.</p>`
   },
   {
-    id:"inca", title:"Converb: \"As Soon As\" (-ınca)", icon:"⏰", grammarTopics:["inca"], targetExercises:8,
+    id:"inca", title:"Converb: \"As Soon As\" (-ınca)", icon:"⏰", grammarTopics:["inca"], targetExercises:20,
     explanation:`<p>The suffix <b>-ınca</b> is a simpler, more neutral way to say "as soon as/when X happens":</p>
 <ul>
 <li><b>Okula varınca...</b> — as soon as he got to school...</li>
@@ -57877,7 +57881,7 @@ const GRAMMAR_LESSONS = [
 <p>Compared to -diğinde from the previous lesson, -ınca leans more toward "as soon as" (immediate sequence), while -diğinde is more neutral about timing — the difference is subtle and both are very common.</p>`
   },
   {
-    id:"diminutive", title:"The Diminutive -cik", icon:"🤏", grammarTopics:["kucultme_eki"], targetExercises:8,
+    id:"diminutive", title:"The Diminutive -cik", icon:"🤏", grammarTopics:["kucultme_eki"], targetExercises:20,
     explanation:`<p>Adding <b>-cik</b> (with variants) makes something smaller, cuter, or softer — similar to "-ie/-y" in English (doggy, teeny):</p>
 <ul>
 <li><b>az</b> (little) → <b>azıcık</b> (just a tiny bit)</li>
@@ -57886,7 +57890,7 @@ const GRAMMAR_LESSONS = [
 <p>Very common in affectionate or informal speech.</p>`
   },
   {
-    id:"participles", title:"Participles", icon:"🧩", grammarTopics:["ortac"], targetExercises:9,
+    id:"participles", title:"Participles", icon:"🧩", grammarTopics:["ortac"], targetExercises:20,
     explanation:`<p>Participles turn a verb into an adjective-like modifier attached directly to a noun — no relative pronoun ("who/which/that") needed, unlike English:</p>
 <ul>
 <li><b>gelen adam</b> — the man who is coming/came (lit. "coming man")</li>
@@ -57895,7 +57899,7 @@ const GRAMMAR_LESSONS = [
 <p>This takes some getting used to since Turkish builds the whole relative clause BEFORE the noun it describes — the opposite order from English.</p>`
   },
   {
-    id:"compound_past", title:"Compound Past Combinations", icon:"🕰️", grammarTopics:["birlesik_gecmis"], targetExercises:8,
+    id:"compound_past", title:"Compound Past Combinations", icon:"🕰️", grammarTopics:["birlesik_gecmis"], targetExercises:20,
     explanation:`<p>Turkish tenses can stack: combining <b>-miş</b> (hearsay past) with another past-tense copula gives a "past of the past" — roughly like English past perfect ("had gone"):</p>
 <ul>
 <li><b>gitmişti</b> — he had (apparently) gone</li>
@@ -57903,14 +57907,14 @@ const GRAMMAR_LESSONS = [
 <p>This is genuinely advanced material — take your time here, it builds directly on the two separate past tenses you already know.</p>`
   },
   {
-    id:"reported_speech", title:"Direct & Indirect Speech", icon:"💬", grammarTopics:["dolayli_anlatim"], targetExercises:8,
+    id:"reported_speech", title:"Direct & Indirect Speech", icon:"💬", grammarTopics:["dolayli_anlatim"], targetExercises:20,
     explanation:`<p><b>Direct speech</b> quotes the exact words, followed by "dedi" (said):</p>
 <p>"Geliyorum" dedi. — "I'm coming," he said.</p>
 <p><b>Indirect speech</b> reports what was said without quoting, restructuring the verb (often into a verbal noun + possessive, from the earlier lesson):</p>
 <p>Geleceğini söyledi. — He said that he would come. (lit. "his-coming-ness he-told")</p>`
   },
   {
-    id:"reciprocal", title:"Reciprocal Voice", icon:"🤝", grammarTopics:["islik_cati"], targetExercises:8,
+    id:"reciprocal", title:"Reciprocal Voice", icon:"🤝", grammarTopics:["islik_cati"], targetExercises:20,
     explanation:`<p>The suffix <b>-iş</b> added to a verb stem creates a "reciprocal" meaning — doing something to/with each other:</p>
 <ul>
 <li><b>görmek</b> (to see) → <b>görüşmek</b> (to see each other / to meet up)</li>
@@ -57919,7 +57923,7 @@ const GRAMMAR_LESSONS = [
 <p>You've actually already used this suffix without realising it, in the common goodbye "görüşürüz".</p>`
   },
   {
-    id:"dikce", title:"Converb: \"The More...\" (-dıkça)", icon:"📈", grammarTopics:["dikce"], targetExercises:8,
+    id:"dikce", title:"Converb: \"The More...\" (-dıkça)", icon:"📈", grammarTopics:["dikce"], targetExercises:20,
     explanation:`<p>The suffix <b>-dıkça</b> (vowel-harmony variants -dikçe/-dukça/-dükçe) expresses "the more X.../every time X...":</p>
 <ul>
 <li><b>Okudukça öğrenirsin.</b> — The more you read, the more you learn.</li>
@@ -58001,7 +58005,7 @@ function buildFullLessonList(){
     targetExercises: v.words.length,
     explanation: vocabCategoryExplanation(v.title) +
 `<p>This lesson introduces ${v.words.length} words at level <b>${cefrLabel(v.cefr)}</b>:</p>
-<p class="vocab-word-list" style="line-height:1.8;">${v.words.map(w=>`<code>${w}</code>`).join(" · ")}</p>
+<table class="vocab-word-list"><tbody>${v.words.map(w=>`<tr><td><code>${w}</code></td><td>…</td></tr>`).join("")}</tbody></table>
 <p>You'll be asked to translate each one — sometimes English→Turkish, sometimes Turkish→English — so start the practice session below whenever you're ready.</p>`
   }));
 
@@ -58109,7 +58113,7 @@ async function startCheckup(){
     phase: "vocab",
     vocabLevel: 0, vocabLevelResults: [], vocabCeiling: -1,
     grammarTopicIdx: 0, grammarTopicResults: [], grammarCeiling: -1,
-    current: null,
+    current: null, consecutiveFailures: 0,
   };
   persistCheckupState();
   el("modal-checkup").classList.remove("hidden");
@@ -58470,9 +58474,22 @@ async function nextCheckupQuestion(){
     try{
       const drill = await generateGrammarDrill(topic);
       checkupState.current = {type:"grammar", topic, drill};
+      checkupState.consecutiveFailures = 0; // gelukte generatie -> teller resetten
       el("checkup-word").textContent = drill.prompt;
       el("checkup-word").className = "tr-word sentence";
     }catch(e){
+      checkupState.consecutiveFailures = (checkupState.consecutiveFailures || 0) + 1;
+      if(checkupState.consecutiveFailures >= 3){
+        // herhaaldelijk mislukt (bv. een structureel probleem, niet gewoon 1x pech) -> hier stoppen
+        // i.p.v. stilletjes door alle resterende onderwerpen heen te blijven proberen, wat aanvoelt
+        // als "vastlopen" zonder dat de gebruiker weet wat er aan de hand is.
+        el("checkup-word").textContent = "⚠️ Exercise generation kept failing (" + e.message + "). Stopping here for now — your progress so far is saved.";
+        el("checkup-word").className = "tr-word";
+        el("checkup-answer-input").disabled = true;
+        el("btn-checkup-next").disabled = true;
+        persistCheckupState();
+        return;
+      }
       // generatie mislukt: sla dit hele onderwerp over zonder het mee te tellen (voorkomt vastlopen)
       checkupState.grammarTopicIdx++;
       checkupState.grammarTopicResults = [];
@@ -58857,37 +58874,17 @@ function advanceTrackSession(track){
   const l = list[idx];
   if(!l || isLessonCompleted(l.id)) return "";
   let done = false;
-  let progressTxt = "";
-  // Bij oudere voortgang (van vóór deze correctie) bestaat p.correct nog niet — in dat geval schatten
-  // we 'm op basis van het niveau, puur als eenmalige overgang; nieuw verzamelde data is exact.
-  const accuracyOf = p => (typeof p.correct === "number") ? p.correct : Math.round(p.reps * (p.level / 10));
   if(l.words && l.words.length){
     const attempted = l.words.filter(en => getProgress(en).reps > 0);
-    const allAttempted = attempted.length >= l.words.length;
-    let totalReps = 0, totalCorrect = 0;
-    for(const en of attempted){ const p = getProgress(en); totalReps += p.reps; totalCorrect += accuracyOf(p); }
-    const avgPct = totalReps ? Math.round(100 * totalCorrect / totalReps) : 0;
-    done = allAttempted && avgPct >= LESSON_ACCURACY_THRESHOLD;
-    progressTxt = `Vocabulary lesson progress: ${attempted.length}/${l.words.length} words introduced, ${avgPct}% accuracy (need ${LESSON_ACCURACY_THRESHOLD}%)`;
+    done = attempted.length >= l.words.length;
   } else if(l.grammarTopics && l.grammarTopics.length){
     const topic = grammarTopicByKey(l.grammarTopics[0]);
-    const p = getGrammarProgress(topic.key);
-    const enoughReps = p.reps >= l.targetExercises;
-    const pct = p.reps ? Math.round(100 * accuracyOf(p) / p.reps) : 0;
-    done = enoughReps && pct >= LESSON_ACCURACY_THRESHOLD;
-    progressTxt = `Grammar lesson progress: ${Math.min(p.reps, l.targetExercises)}/${l.targetExercises} exercises on "${topic.label}", ${pct}% accuracy (need ${LESSON_ACCURACY_THRESHOLD}%)`;
+    done = getGrammarProgress(topic.key).reps >= l.targetExercises;
   } else {
-    return ""; // pure leesles: wordt alleen via de Course-tab zelf afgevinkt, niet automatisch
+    return ""; // pure leesles: geen eigen oefenstof
   }
-  if(done){
-    markLessonComplete(l.id);
-    const next = list[idx+1];
-    return `<br><br>🎉 <b>Lesson complete: ${l.title}!</b> ` +
-      (next ? `You've unlocked the next lesson in this track: <b>${next.icon} ${next.title}</b>.` : `You've reached the end of this track!`);
-  }
-  // niet-behaalde nauwkeurigheid: de woorden/het onderwerp met een laag niveau komen vanzelf sneller
-  // weer "due" terug (kortere herhalingsintervallen), dus dit lost zichzelf op via gewoon dooroefenen
-  return `<br><br><span class="muted">${progressTxt}</span>`;
+  if(done) markLessonComplete(l.id); // stille bijhouding -- voortgang is al zichtbaar via het 0-10-cijfer, geen apart bericht meer nodig
+  return "";
 }
 
 /* ===================== ADAPTIEVE MOEILIJKHEIDSGRAAD ===================== */
@@ -60665,19 +60662,19 @@ async function openLessonModal(idx){
     }
     // vertalingen LIVE en SEQUENTIEEL ophalen (niet allemaal tegelijk) zodat het geen plotselinge
     // burst van AI-calls geeft — gecachede woorden (al eerder ergens getoond) zijn direct gratis.
-    const pairs = l.words.map(en => cachedTranslation(en) ? `<code>${en}</code> = ${cachedTranslation(en)[0]}` : `<code>${en}</code> …`);
-    if(wordListEl) wordListEl.innerHTML = pairs.join(" · ");
+    const rows = l.words.map(en => cachedTranslation(en) ? `<tr><td><code>${en}</code></td><td>${cachedTranslation(en)[0]}</td></tr>` : `<tr><td><code>${en}</code></td><td>…</td></tr>`);
+    if(wordListEl) wordListEl.innerHTML = rows.join("");
     for(let i=0;i<l.words.length;i++){
       if(openLessonIdx !== idx || el("modal-lesson").classList.contains("hidden")) return; // gebruiker is al weg, stop met bijwerken
       if(cachedTranslation(l.words[i])) continue; // al gecached, geen call nodig
       try{
         const tr = await getOrFetchTranslation(l.words[i]);
-        pairs[i] = `<code>${l.words[i]}</code> = ${tr[0]}`;
+        rows[i] = `<tr><td><code>${l.words[i]}</code></td><td>${tr[0]}</td></tr>`;
       }catch(e){
-        pairs[i] = `<code>${l.words[i]}</code>`; // vertaling ophalen mislukt, laat gewoon het Engelse woord staan
+        rows[i] = `<tr><td><code>${l.words[i]}</code></td><td>—</td></tr>`; // vertaling ophalen mislukt
       }
       if(openLessonIdx === idx && !el("modal-lesson").classList.contains("hidden") && wordListEl){
-        wordListEl.innerHTML = pairs.join(" · ");
+        wordListEl.innerHTML = rows.join("");
       }
     }
   }
