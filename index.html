@@ -44,6 +44,14 @@
   .word-row-tr{font-weight:700;}
   .word-row-trans{color:var(--muted);font-size:.8rem;margin-top:1px;}
   .word-row-score{font-size:.75rem;font-weight:700;white-space:nowrap;padding-left:10px;}
+  .cefr-section{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;}
+  .cefr-section summary{list-style:none;cursor:pointer;padding:10px 12px;display:flex;
+    justify-content:space-between;align-items:center;background:#0d1720;font-weight:700;font-size:.85rem;}
+  .cefr-section summary::-webkit-details-marker{display:none;}
+  .cefr-section summary::after{content:"▸";color:var(--muted);transition:transform .15s;margin-left:8px;}
+  .cefr-section[open] summary::after{transform:rotate(90deg);}
+  .cefr-section .cefr-section-body{padding:0 12px;}
+  .cefr-section .word-row{padding:8px 0;}
   textarea{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);
     background:#0d1720;color:var(--text);font-size:.95rem;font-family:inherit;resize:vertical;}
   .tabbar{position:fixed;bottom:0;left:0;right:0;background:#101b26;border-top:1px solid var(--border);
@@ -109,7 +117,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-06 01:30</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-06 10:15</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -162,8 +170,17 @@
       <div class="muted" style="margin-bottom:10px;">A short, repeatable quiz that samples already-practised words and grammar topics — spread across low/mid/high levels — to check whether your progress is genuinely solid, not just assumed from routine practice.</div>
       <button class="btn-secondary" id="btn-start-checkup" style="width:100%;">Take a knowledge check</button>
     </div>
-    <div class="card">
-      <div id="lesson-list"></div>
+    <div class="card" style="padding:10px;">
+      <div class="course-columns" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;">
+        <div style="flex:1 1 280px;min-width:0;">
+          <h4 style="margin:4px 0 8px;">🌳 Grammar</h4>
+          <div id="grammar-tree"></div>
+        </div>
+        <div style="flex:1 1 280px;min-width:0;">
+          <h4 style="margin:4px 0 8px;">📖 Vocabulary</h4>
+          <div id="vocab-tree"></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -361,7 +378,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-06 01:30</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-06 10:15</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -408,13 +425,23 @@
   <div class="modal">
     <h3 id="checkup-modal-title" style="margin-top:0;">📋 Knowledge Check</h3>
     <div id="checkup-progress" class="muted" style="margin-bottom:8px;"></div>
+    <span id="checkup-badge" class="badge badge-word hidden" style="margin-bottom:8px;display:inline-block;">word</span>
     <div id="checkup-question-box">
       <div class="tr-word" id="checkup-word">…</div>
       <input type="text" id="checkup-answer-input" placeholder="Type your answer…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-top:10px;">
-      <button class="btn-primary" id="btn-checkup-next" style="width:100%;margin-top:10px;">Check</button>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn-primary" id="btn-checkup-next" style="flex:1;">Check</button>
+        <button class="btn-secondary btn-small hidden" id="btn-checkup-skip">Skip</button>
+      </div>
     </div>
     <div id="checkup-result-box" class="hidden">
       <div class="feedback correct" id="checkup-result-text"></div>
+      <div id="checkup-explanation-box" class="muted hidden" style="margin-top:8px;font-size:.9rem;"></div>
+      <div id="checkup-post-actions" class="row wrap hidden" style="margin-top:10px;">
+        <button class="btn-ghost btn-small hidden" id="btn-checkup-show-explanation">💬 Explanation</button>
+        <button class="btn-ghost btn-small hidden" id="btn-checkup-ask-ai">🤖 Ask AI</button>
+        <button class="btn-ghost btn-small hidden" id="btn-checkup-dispute">⚖️ I disagree</button>
+      </div>
       <button class="btn-primary" id="btn-checkup-close" style="width:100%;margin-top:12px;">Continue</button>
     </div>
     <button class="btn-ghost" id="btn-checkup-cancel" style="width:100%;margin-top:10px;">Cancel</button>
@@ -58387,7 +58414,7 @@ async function generateGrammarDrill(topic){
 
 async function gradeGrammarDrillAnswer(drill, answer){
   const isTrEn = drill.direction === "tr-en";
-  const sys = `Je beoordeelt of het ${isTrEn ? "Engelse" : "Turkse"} antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (${isTrEn ? "gebruiker moest de Turkse vorm naar het Engels vertalen" : "gebruiker moest de Engelse frase naar het Turks vertalen"}). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. ${isTrEn ? "" : "NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en"} kleine tikfouten met een ondubbelzinnige bedoeling reken je goed. Antwoord ALLEEN met geldige JSON: {"correct": true of false}`;
+  const sys = `Je beoordeelt of het ${isTrEn ? "Engelse" : "Turkse"} antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (${isTrEn ? "gebruiker moest de Turkse vorm naar het Engels vertalen" : "gebruiker moest de Engelse frase naar het Turks vertalen"}). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. ${isTrEn ? "" : "NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en"} kleine tikfouten met een ondubbelzinnige bedoeling reken je goed. Geef ook een korte (max 2 zinnen) uitleg in het Engels, rechtstreeks tegen de gebruiker gericht (spreek de gebruiker aan met "you") — vooral nuttig als het antwoord fout is, om te laten zien waarom. Antwoord ALLEEN met geldige JSON: {"correct": true of false, "uitleg": "korte uitleg in het Engels"}`;
   const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 300, 0);
   return parseAIJson(raw);
 }
@@ -58606,15 +58633,21 @@ async function nextSkillPracticeQuestion(){
   el("checkup-answer-input").value = "";
   el("checkup-answer-input").disabled = true;
   el("btn-checkup-next").disabled = true;
+  el("btn-checkup-skip").classList.remove("hidden");
+  el("checkup-explanation-box").classList.add("hidden");
+  el("checkup-post-actions").classList.add("hidden");
   const lesson = skillPracticeState.lesson;
 
   el("checkup-modal-title").textContent = `🎯 Practice: ${lesson.title}`;
   el("checkup-progress").textContent = `Round ${skillPracticeState.roundPercentages.length+1} · question ${skillPracticeState.roundResults.length+1}/${SKILL_PRACTICE_ROUND_SIZE}` +
     (skillPracticeState.consecutiveHighRounds>0 ? ` · ${skillPracticeState.consecutiveHighRounds}/${SKILL_PRACTICE_ROUNDS_NEEDED} strong rounds so far` : "");
   el("checkup-word").textContent = "🤖 …";
+  const badgeEl = el("checkup-badge");
+  badgeEl.classList.remove("hidden");
 
   if(lesson.words && lesson.words.length){
     const en = lesson.words[Math.floor(Math.random()*lesson.words.length)];
+    badgeEl.textContent = "word"; badgeEl.className = "badge badge-word";
     if(needsContextualDrill(en) || lesson.title.startsWith("Prepositions")){
       // voorzetsel-vocabulaire is inherent relationeel (bv. "under" = "altında", zelf al een naamval-
       // constructie) -- als kaal woordpaar getoetst herhaalt dat precies het "geïsoleerd, niet in gebruik"
@@ -58639,6 +58672,7 @@ async function nextSkillPracticeQuestion(){
     el("checkup-word").className = "tr-word";
     el("checkup-answer-input").placeholder = direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
+    badgeEl.textContent = "grammar"; badgeEl.className = "badge badge-sentence";
     const topic = grammarTopicByKey(lesson.grammarTopics[0]);
     try{
       const drill = await generateGrammarDrill(topic);
@@ -58661,9 +58695,11 @@ async function submitSkillPracticeAnswer(){
   const answer = el("checkup-answer-input").value.trim();
   el("btn-checkup-next").disabled = true;
   el("checkup-answer-input").disabled = true;
+  el("btn-checkup-skip").classList.add("hidden");
   const cur = skillPracticeState.current;
   let correct = false;
   let correctAnswerTxt = "";
+  let uitleg = "";
 
   if(cur.type === "word"){
     if(cur.sentenceDrill){
@@ -58671,27 +58707,30 @@ async function submitSkillPracticeAnswer(){
       if(answer && normalize(answer) === normalize(correctAnswerTxt)){
         correct = true;
       } else if(answer){
-        try{ correct = !!(await gradeGrammarDrillAnswer(cur.sentenceDrill, answer)).correct; }catch(e){ correct = false; }
+        try{ const v = await gradeGrammarDrillAnswer(cur.sentenceDrill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }catch(e){ correct = false; }
       }
     } else {
       correctAnswerTxt = cur.direction === "tr-en" ? cur.en : (cur.tr || "");
       if(answer && normalize(answer) === normalize(correctAnswerTxt)){
         correct = true;
       } else if(answer){
-        try{ correct = !!(await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction}, answer, false)).correct; }catch(e){ correct = false; }
+        try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; }catch(e){ correct = false; }
       }
     }
     recordResult(cur.en, correct);
+    chatItem = {type:"word", en:cur.en, tr:cur.tr || correctAnswerTxt, direction:cur.direction};
   } else {
     correctAnswerTxt = cur.drill.correct;
     if(answer && normalize(answer) === normalize(correctAnswerTxt)){
       correct = true;
     } else if(answer){
-      try{ correct = !!(await gradeGrammarDrillAnswer(cur.drill, answer)).correct; }catch(e){ correct = false; }
+      try{ const v = await gradeGrammarDrillAnswer(cur.drill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }catch(e){ correct = false; }
     }
     recordGrammarResult(cur.topic.key, correct);
+    chatItem = {type:"word", tr:cur.drill.correct, en:cur.drill.prompt, direction:cur.drill.direction};
   }
   skillPracticeState.roundResults.push(correct);
+  skillPracticeState.lastAnswer = {answer, correctAnswerTxt};
 
   el("checkup-question-box").classList.add("hidden");
   el("checkup-result-box").classList.remove("hidden");
@@ -58711,6 +58750,73 @@ async function submitSkillPracticeAnswer(){
   }
   el("checkup-result-text").innerHTML = (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
   el("btn-checkup-close").textContent = "Continue";
+
+  // dezelfde post-actions als het reguliere oefenscherm: uitleg, vraag-aan-AI, dispuut
+  el("checkup-post-actions").classList.remove("hidden");
+  el("btn-checkup-ask-ai").classList.remove("hidden");
+  el("btn-checkup-dispute").classList.toggle("hidden", !!correct);
+  if(uitleg){
+    el("checkup-explanation-box").textContent = "💬 " + uitleg;
+    el("btn-checkup-show-explanation").classList.remove("hidden");
+  } else {
+    el("checkup-explanation-box").classList.add("hidden");
+    el("btn-checkup-show-explanation").classList.add("hidden");
+  }
+}
+
+function toggleSkillPracticeExplanation(){
+  el("checkup-explanation-box").classList.toggle("hidden");
+}
+
+async function skipSkillPracticeQuestion(){
+  const cur = skillPracticeState.current;
+  if(!cur) return;
+  if(cur.type === "word") recordResult(cur.en, false);
+  else recordGrammarResult(cur.topic.key, false);
+  skillPracticeState.roundResults.push(false);
+  if(skillPracticeState.roundResults.length >= SKILL_PRACTICE_ROUND_SIZE){
+    const pct = Math.round(100 * skillPracticeState.roundResults.filter(Boolean).length / skillPracticeState.roundResults.length);
+    skillPracticeState.roundPercentages.push(pct);
+    skillPracticeState.consecutiveHighRounds = pct > SKILL_PRACTICE_ROUND_THRESHOLD ? skillPracticeState.consecutiveHighRounds + 1 : 0;
+    skillPracticeState.roundResults = [];
+  }
+  await nextSkillPracticeQuestion();
+}
+
+async function disputeSkillPracticeAnswer(){
+  const cur = skillPracticeState.current;
+  const {answer, correctAnswerTxt} = skillPracticeState.lastAnswer || {};
+  if(!cur || !answer) return;
+  el("btn-checkup-dispute").disabled = true;
+  el("checkup-result-text").className = "feedback pending";
+  el("checkup-result-text").innerHTML = "🤖 AI is critically re-checking your answer…";
+  try{
+    let correct, uitleg = "";
+    if(cur.type === "word"){
+      const drill = cur.sentenceDrill;
+      if(drill){ const v = await gradeGrammarDrillAnswer(drill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }
+      else { const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction}, answer, true); correct = !!v.correct; uitleg = v.uitleg || ""; }
+      if(correct) recordResult(cur.en, true);
+    } else {
+      const v = await gradeGrammarDrillAnswer(cur.drill, answer);
+      correct = !!v.correct; uitleg = v.uitleg || "";
+      if(correct) recordGrammarResult(cur.topic.key, true);
+    }
+    el("checkup-result-text").className = "feedback " + (correct ? "correct" : "wrong");
+    el("checkup-result-text").innerHTML = correct
+      ? "🔁 ✅<br>Score restored."
+      : `🔁 ❌<br>Still incorrect. Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`;
+    if(uitleg){
+      el("checkup-explanation-box").textContent = "💬 " + uitleg;
+      el("checkup-explanation-box").classList.remove("hidden");
+      el("btn-checkup-show-explanation").classList.remove("hidden");
+    }
+    el("btn-checkup-dispute").classList.add("hidden");
+  }catch(e){
+    el("checkup-result-text").className = "feedback wrong";
+    el("checkup-result-text").innerHTML = "⚠️ Could not reach the AI: " + escapeHtml(e.message);
+  }
+  el("btn-checkup-dispute").disabled = false;
 }
 
 function skillPracticeContinueOrClose(){
@@ -59574,10 +59680,33 @@ function recordHistory(type){
    je in het ergste geval alleen het allerlaatste, half afgemaakte veld, in plaats van de hele oefening. */
 function parseAIJson(raw){
   try{ return JSON.parse(raw); }catch(e){ /* val hieronder terug op reparatie */ }
-  // Probeer net zo lang steeds een stukje van het einde af te knippen (tot aan de laatste komma of
-  // openende haak) en dan de nog openstaande haken/aanhalingstekens te sluiten, tot het weer geldige
-  // JSON oplevert — zo verlies je in het ergste geval alleen het laatste, half afgemaakte element
-  // (bv. het laatste woord in de woordenlijst), in plaats van de hele oefening.
+
+  // Scenario 1: het antwoord is eigenlijk al compleet en geldig, maar heeft nog wat overtollige tekens
+  // ACHTERAAN hangen (bv. een dwalend extra aanhalingsteken) -- zoek het punt waar de buitenste
+  // haak/accolade voor het eerst weer op "helemaal gesloten" uitkomt, en knip alles daarna gewoon weg.
+  {
+    let depth = 0, inStr = false, esc = false, endIdx = -1;
+    for(let i=0;i<raw.length;i++){
+      const ch = raw[i];
+      if(esc){ esc = false; continue; }
+      if(ch === "\\"){ esc = true; continue; }
+      if(ch === '"'){ inStr = !inStr; continue; }
+      if(inStr) continue;
+      if(ch === "{" || ch === "[") depth++;
+      else if(ch === "}" || ch === "]"){
+        depth--;
+        if(depth === 0){ endIdx = i; break; }
+      }
+    }
+    if(endIdx !== -1 && endIdx < raw.length - 1){
+      try{ return JSON.parse(raw.slice(0, endIdx + 1)); }catch(e){ /* val verder terug op onderstaande strategie */ }
+    }
+  }
+
+  // Scenario 2: het antwoord is juist AFGEKAPT (mist iets aan het einde) -- probeer net zo lang steeds
+  // een stukje van het einde af te knippen (tot aan de laatste komma of openende haak) en dan de nog
+  // openstaande haken/aanhalingstekens te sluiten, tot het weer geldige JSON oplevert — zo verlies je
+  // in het ergste geval alleen het laatste, half afgemaakte element, i.p.v. de hele oefening.
   let s = raw;
   for(let i=0; i<6; i++){
     let attempt = s;
@@ -60184,10 +60313,12 @@ async function disputeAnswer(){
 }
 
 /* ===================== CHAT MODAL (Vraag aan AI) ===================== */
+let chatItem = null; // het item waar de "vraag aan AI"-chat momenteel context over heeft (regulier of skill-practice)
 function openAiModal(){
   if(!currentItem) return;
   if(!hasKeyFor("sentence")){ alert("Set a " + keyNameFor("sentence") + " API key in Settings first."); return; }
-  el("modal-ai-word").textContent = currentItem.tr || currentItem.en;
+  chatItem = currentItem;
+  el("modal-ai-word").textContent = chatItem.tr || chatItem.en;
   el("chat-log").innerHTML = "";
   chatMsgs = [];
   el("modal-ai").classList.remove("hidden");
@@ -60198,14 +60329,14 @@ function closeAiModal(){ el("modal-ai").classList.add("hidden"); }
 
 async function sendChat(){
   const q = el("chat-input").value.trim();
-  if(!q || !currentItem) return;
+  if(!q || !chatItem) return;
   el("chat-input").value = "";
   const log = el("chat-log");
   log.innerHTML += `<div class="chatline user"><b>Jij:</b> ${escapeHtml(q)}</div>`;
   log.innerHTML += `<div class="chatline ai" id="chat-pending">🤖 …</div>`;
   log.scrollTop = log.scrollHeight;
   try{
-    const answer = await askDeepSeekFree(currentItem, q, chatMsgs);
+    const answer = await askDeepSeekFree(chatItem, q, chatMsgs);
     chatMsgs.push({role:"user", content:q});
     chatMsgs.push({role:"assistant", content:answer});
     el("chat-pending").outerHTML = `<div class="chatline ai"><b>AI:</b> ${escapeHtml(answer)}</div>`;
@@ -60405,38 +60536,81 @@ function renderWordsTab(){
 /* ===================== COURSE TAB ===================== */
 let openLessonIdx = null;
 
-function renderCourseTab(){
-  const doneCount = LESSONS.filter(l=>isLessonCompleted(l.id)).length;
-  el("course-progress-count").textContent = `${doneCount} / ${LESSONS.length} lessons complete`;
-  el("lesson-list").innerHTML = LESSONS.map((l, idx)=>{
-    const unlocked = isLessonUnlocked(idx);
-    const completed = isLessonCompleted(l.id);
-    const status = completed ? "✅" : (unlocked ? "▶️" : "🔒");
-    const hasPractice = l.grammarTopics.length > 0 || (l.words && l.words.length > 0);
-    const sub = completed ? "Completed" : (unlocked ? (hasPractice ? "Tap to open" : "Tap to read") : "Locked — finish the previous lesson first");
-    // proficiency-cijfer (0-10): voor grammaticalessen het (afgeronde) gemiddelde niveau van de gekoppelde onderwerpen
-    let profBadge = "";
-    if(l.grammarTopics.length){
-      const avg = l.grammarTopics.reduce((s,k)=>s+getGrammarProgress(k).level, 0) / l.grammarTopics.length;
-      const rounded = Math.round(avg*10)/10;
-      const color = rounded<=3 ? "#e0333f" : rounded<=6 ? "#e0a733" : "#2fae6a";
-      profBadge = `<span class="muted" style="font-size:.72rem;color:${color};font-weight:700;">${rounded}/10</span>`;
-    }
-    return `<div class="word-row" style="cursor:${unlocked?"pointer":"default"};opacity:${unlocked?1:.5};" data-idx="${idx}">
-      <div>
-        <div class="word-row-tr">${l.icon} ${l.title}</div>
-        <div class="word-row-trans">${sub}</div>
-      </div>
-      <div style="text-align:right;">
-        <div style="font-size:1.2rem;">${status}</div>
-        ${profBadge}
-      </div>
-    </div>`;
+const CEFR_MACRO_ORDER = ["A1","A2","B1","B2","C1","C2"];
+function macroCefrOfLesson(l){
+  let cefr18 = null;
+  if(typeof l.cefr === "number") cefr18 = l.cefr; // vocabulaire-les
+  else if(l.grammarTopics && l.grammarTopics.length) cefr18 = Math.max(...l.grammarTopics.map(k=>grammarTopicByKey(k).minCefr));
+  if(cefr18 === null) return "A1"; // uitlegles zonder eigen niveau (bv. "How Turkish Works") -> bovenaan bij A1
+  return CEFR_MAJOR[Math.max(0, Math.min(17, cefr18))];
+}
+
+function renderCourseLessonRow(l, idx){
+  const unlocked = isLessonUnlocked(idx);
+  const completed = isLessonCompleted(l.id);
+  const status = completed ? "✅" : (unlocked ? "▶️" : "🔒");
+  const hasPractice = l.grammarTopics.length > 0 || (l.words && l.words.length > 0);
+  const sub = completed ? "Completed" : (unlocked ? (hasPractice ? "Tap to open" : "Tap to read") : "Locked — finish the previous lesson first");
+  // proficiency-cijfer (0-10): voor grammaticalessen het (afgeronde) gemiddelde niveau van de gekoppelde onderwerpen
+  let profBadge = "";
+  if(l.grammarTopics.length){
+    const avg = l.grammarTopics.reduce((s,k)=>s+getGrammarProgress(k).level, 0) / l.grammarTopics.length;
+    const rounded = Math.round(avg*10)/10;
+    const color = rounded<=3 ? "#e0333f" : rounded<=6 ? "#e0a733" : "#2fae6a";
+    profBadge = `<span class="muted" style="font-size:.72rem;color:${color};font-weight:700;">${rounded}/10</span>`;
+  }
+  return `<div class="word-row" style="cursor:${unlocked?"pointer":"default"};opacity:${unlocked?1:.5};" data-idx="${idx}">
+    <div>
+      <div class="word-row-tr">${l.icon} ${l.title}</div>
+      <div class="word-row-trans">${sub}</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:1.1rem;">${status}</div>
+      ${profBadge}
+    </div>
+  </div>`;
+}
+
+// Rendert één kolom (grammatica óf vocabulaire) als in-/uitklapbare A1-C2-secties, om te veel
+// scrollen door 500+ lessen te voorkomen -- alleen de sectie waar de gebruiker nu daadwerkelijk
+// zit staat standaard open, de rest is ingeklapt maar wel altijd bereikbaar.
+function renderCourseColumn(containerEl, items, currentMacro){
+  const groups = {};
+  for(const item of items){
+    const macro = macroCefrOfLesson(item.l);
+    (groups[macro] = groups[macro] || []).push(item);
+  }
+  containerEl.innerHTML = CEFR_MACRO_ORDER.filter(m=>groups[m] && groups[m].length).map(macro=>{
+    const list = groups[macro];
+    const doneInGroup = list.filter(({l})=>isLessonCompleted(l.id)).length;
+    const openAttr = macro === currentMacro ? " open" : "";
+    return `<details class="cefr-section" data-macro="${macro}"${openAttr}>
+      <summary>${macro} <span class="muted" style="font-weight:400;">(${doneInGroup}/${list.length} · ${list.length} lessons)</span></summary>
+      <div class="cefr-section-body">${list.map(({l,idx})=>renderCourseLessonRow(l, idx)).join("")}</div>
+    </details>`;
   }).join("");
-  el("lesson-list").querySelectorAll("[data-idx]").forEach(row=>{
+  containerEl.querySelectorAll("[data-idx]").forEach(row=>{
     const idx = parseInt(row.dataset.idx, 10);
     if(isLessonUnlocked(idx)) row.addEventListener("click", ()=> openLessonModal(idx));
   });
+}
+
+function renderCourseTab(){
+  const doneCount = LESSONS.filter(l=>isLessonCompleted(l.id)).length;
+  el("course-progress-count").textContent = `${doneCount} / ${LESSONS.length} lessons complete`;
+
+  const curIdx = currentLessonIndex();
+  const curMacro = LESSONS[curIdx] ? macroCefrOfLesson(LESSONS[curIdx]) : "A1";
+
+  // links: grammatica-boom (incl. eventuele pure uitleglessen zonder eigen oefenstof) -- rechts: vocabulaire
+  const grammarItems = [], vocabItems = [];
+  LESSONS.forEach((l, idx)=>{
+    if(l.words && l.words.length) vocabItems.push({l, idx});
+    else grammarItems.push({l, idx});
+  });
+
+  renderCourseColumn(el("grammar-tree"), grammarItems, curMacro);
+  renderCourseColumn(el("vocab-tree"), vocabItems, curMacro);
 }
 
 async function openLessonModal(idx){
@@ -60914,6 +61088,19 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("checkup-answer-input").addEventListener("keydown", e=>{
     if(e.key === "Enter"){ e.preventDefault(); if(!el("btn-checkup-next").disabled) el("btn-checkup-next").click(); }
   });
+  el("btn-checkup-skip").addEventListener("click", ()=>{ if(skillPracticeState) skipSkillPracticeQuestion(); });
+  el("btn-checkup-show-explanation").addEventListener("click", toggleSkillPracticeExplanation);
+  el("btn-checkup-ask-ai").addEventListener("click", ()=>{
+    if(!chatItem) return;
+    if(!hasKeyFor("sentence")){ alert("Set a " + keyNameFor("sentence") + " API key in Settings first."); return; }
+    el("modal-ai-word").textContent = chatItem.tr || chatItem.en;
+    el("chat-log").innerHTML = "";
+    chatMsgs = [];
+    el("modal-ai").classList.remove("hidden");
+    el("chat-input").value = "";
+    setTimeout(()=> el("chat-input").focus(), 50);
+  });
+  el("btn-checkup-dispute").addEventListener("click", ()=>{ if(skillPracticeState) disputeSkillPracticeAnswer(); });
   el("btn-checkup-close").addEventListener("click", ()=>{
     if(skillPracticeState){ skillPracticeContinueOrClose(); return; }
     if(!checkupState){ el("modal-checkup").classList.add("hidden"); }
