@@ -121,7 +121,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-06 15:45</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-06 18:15</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -260,18 +260,19 @@
   <!-- ===================== SETTINGS SCREEN ===================== -->
   <section id="screen-settings" class="hidden">
     <div class="card">
+      <h3 style="margin-top:0;">🌐 Shared access (no personal API key needed)</h3>
+      <div class="muted" style="margin-bottom:8px;">If someone gave you a proxy URL + access code instead of asking you to set up your own DeepSeek/Claude API keys, fill those in here — this replaces both key cards below entirely.</div>
+      <input type="text" id="proxy-url-input" placeholder="https://your-proxy.workers.dev" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-bottom:8px;">
+      <input type="text" id="proxy-token-input" placeholder="Access code" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="btn-primary" id="btn-save-proxy" style="width:100%;margin-top:10px;">Save</button>
+      <div class="muted" id="proxy-status" style="margin-top:8px;"></div>
+    </div>
+    <div class="card">
       <h3 style="margin-top:0;">DeepSeek connection</h3>
       <div class="muted" style="margin-bottom:8px;">Your key is stored only locally on this device (localStorage) and sent directly from your phone to api.deepseek.com — never to anyone else.</div>
       <input type="text" id="api-key-input" placeholder="sk-..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
       <button class="btn-primary" id="btn-save-key" style="width:100%;margin-top:10px;">Save</button>
       <div class="muted" id="key-status" style="margin-top:8px;"></div>
-      <button class="btn-secondary" id="btn-fetch-balance" style="width:100%;margin-top:10px;">💰 Fetch balance from DeepSeek</button>
-      <div class="muted" id="balance-status" style="margin-top:6px;"></div>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;">📊 Cost breakdown by model</h3>
-      <div class="muted" style="margin-bottom:8px;">How your actual usage splits between DeepSeek (word translation/judging) and Claude (sentences, grading, explanations) — in both estimated cost and raw token share.</div>
-      <div id="cost-breakdown-list"></div>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">🟠 Claude (Anthropic) connection</h3>
@@ -279,6 +280,12 @@
       <input type="text" id="anthropic-key-input" placeholder="sk-ant-..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
       <button class="btn-primary" id="btn-save-anthropic-key" style="width:100%;margin-top:10px;">Save</button>
       <div class="muted" id="anthropic-key-status" style="margin-top:8px;"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">💰 Balance</h3>
+      <button class="btn-secondary" id="btn-fetch-balance" style="width:100%;">Fetch DeepSeek balance</button>
+      <div class="muted" id="balance-status" style="margin-top:6px;"></div>
+      <div class="muted" style="margin-top:12px;">Anthropic doesn't offer a way to check your balance from within an app — check it directly at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent2);">console.anthropic.com</a> → Billing.</div>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">🔀 Which model handles what</h3>
@@ -382,12 +389,11 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-06 15:45</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-06 18:15</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
 
-  <div id="cost-tracker" style="text-align:center;font-size:.62rem;color:var(--muted);opacity:.7;padding:2px 0;"></div>
 
   <div class="tabbar">
     <button class="tab-btn active" data-tab="practice"><span class="ic">📝</span>Practice</button>
@@ -469,6 +475,7 @@
     <div id="test-progress" class="muted" style="margin-bottom:8px;"></div>
     <div id="test-question-box">
       <div class="badge badge-word" id="test-badge">word</div>
+      <div class="muted" style="margin-top:8px;font-weight:700;font-size:.85rem;">🇹🇷 Turkish → 🇬🇧 English</div>
       <div class="tr-word" id="test-word">…</div>
       <input type="text" id="test-answer-input" placeholder="Type the English translation…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-top:10px;">
       <button class="btn-primary" id="btn-test-next" style="width:100%;margin-top:10px;">Next</button>
@@ -57177,6 +57184,7 @@ const LS_GRAMMAR   = "turks_grammar_v1";       // { [topicKey]: {level, due, rep
 const LS_TRCACHE   = "turks_trcache_v1";       // { [en]: {tr:[...], fetchedAt} } — op-aanvraag gegenereerde Turkse vertaling, 1x per woord
 const LS_CURATED_TR = "turks_curated_tr_v1";   // { [en]: {tr:[...], register, note} } — eenmalige, grondige AI-doorloop van de hele woordenlijst incl. registermetadata; heeft voorrang boven trCache
 const LS_LESSONS   = "turks_lessons_v1";       // { [lessonId]: {completed:bool, done:n} } — voortgang door het gestructureerde lespad
+const LS_SKILL_SCORES = "turks_skill_scores_v1"; // { [lessonId]: {correct, total} } — score van de laatst afgeronde "Practice this skill"-ronde
 const LS_ACTIVE_LESSON  = "turks_active_lesson_v1";   // { lessonId, sessionDone } — tussentijdse les-sessie, overleeft tabwissel/minimaliseren
 const LS_ACTIVE_CHECKUP = "turks_active_checkup_v1";  // volledige activeCheckup-state — tussentijdse kennischeck-sessie
 const LS_ADAPTIVE_WINDOW = "turks_adaptive_v1";        // array van laatste N correct/fout-uitkomsten (reguliere oefeningen)
@@ -57217,6 +57225,8 @@ if(settings.questionPercent === undefined) settings.questionPercent = 0;
 if(settings.adaptiveEnabled === undefined) settings.adaptiveEnabled = false;
 if(settings.adaptiveThreshold === undefined) settings.adaptiveThreshold = 60;
 if(settings.anthropicApiKey === undefined) settings.anthropicApiKey = "";
+if(settings.proxyUrl === undefined) settings.proxyUrl = "";
+if(settings.proxyToken === undefined) settings.proxyToken = "";
 if(settings.wordModel === undefined) settings.wordModel = "deepseek";       // vertaling + woordbeoordeling
 if(settings.sentenceModel === undefined) settings.sentenceModel = "claude"; // zin/vraag-generatie, -beoordeling, grammatica-oefeningen, taaltoets, "vraag aan AI"
 if(settings.sentencePercent === undefined){
@@ -57306,13 +57316,18 @@ function maxCostUsage(a, b){
    via dezelfde soort interface (systeemprompt + gebruikersinhoud, evt. berichtenreeks) bruikbaar zijn. */
 async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt){
   const attempt = _attempt || 0;
-  if(!settings.apiKey) throw new Error("No DeepSeek API key set (Settings).");
+  const useProxy = proxyConfigured();
+  if(!useProxy && !settings.apiKey) throw new Error("No DeepSeek API key set (Settings).");
   const messages = Array.isArray(userContentOrMessages)
     ? [{role:"system", content:systemPrompt}, ...userContentOrMessages]
     : [{role:"system", content:systemPrompt}, {role:"user", content:userContentOrMessages}];
-  const res = await fetchWithTimeout("https://api.deepseek.com/chat/completions", {
+  const url = useProxy ? (settings.proxyUrl.replace(/\/$/,"") + "/deepseek") : "https://api.deepseek.com/chat/completions";
+  const headers = useProxy
+    ? {"Content-Type":"application/json", "X-Proxy-Token": settings.proxyToken}
+    : {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey};
+  const res = await fetchWithTimeout(url, {
     method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey},
+    headers,
     body: JSON.stringify({
       model: "deepseek-v4-pro", max_tokens: maxTokens || 500, temperature: temperature ?? 0,
       messages,
@@ -57341,7 +57356,11 @@ function preferredModelFor(category){
   const setting = category === "word" ? settings.wordModel : settings.sentenceModel;
   return setting === "deepseek" || setting === "claude" ? setting : (category === "word" ? "deepseek" : "claude");
 }
+function proxyConfigured(){
+  return !!(settings.proxyUrl && settings.proxyToken);
+}
 function hasKeyFor(category){
+  if(proxyConfigured()) return true; // de gedeelde tussenserver dekt beide categorieën, geen eigen sleutel nodig
   return preferredModelFor(category) === "claude" ? !!settings.anthropicApiKey : !!settings.apiKey;
 }
 function keyNameFor(category){
@@ -57356,18 +57375,23 @@ async function callAI(category, systemPrompt, userContentOrMessages, maxTokens, 
 
 async function callClaude(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt){
   const attempt = _attempt || 0;
-  if(!settings.anthropicApiKey) throw new Error("No Anthropic API key set (Settings).");
+  const useProxy = proxyConfigured();
+  if(!useProxy && !settings.anthropicApiKey) throw new Error("No Anthropic API key set (Settings).");
   const messages = Array.isArray(userContentOrMessages)
     ? userContentOrMessages
     : [{role:"user", content:userContentOrMessages}];
-  const res = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
+  const url = useProxy ? (settings.proxyUrl.replace(/\/$/,"") + "/claude") : "https://api.anthropic.com/v1/messages";
+  const headers = useProxy
+    ? {"content-type": "application/json", "X-Proxy-Token": settings.proxyToken}
+    : {
+        "x-api-key": settings.anthropicApiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+        "anthropic-dangerous-direct-browser-access": "true",
+      };
+  const res = await fetchWithTimeout(url, {
     method: "POST",
-    headers: {
-      "x-api-key": settings.anthropicApiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
+    headers,
     body: JSON.stringify({
       model: "claude-sonnet-5",
       max_tokens: maxTokens || 500,
@@ -57427,37 +57451,7 @@ function estimateTotalCostUSD(usage){
   return total;
 }
 
-/* Splitst de geschatte kosten uit per model, met het percentage van het totaal — dit is precies wat
-   nodig is om te beantwoorden "hoeveel % van alle AI-verkeer is dit", zonder dat je zelf tokentellingen
-   hoeft na te rekenen. */
-function costBreakdownByModel(){
-  const usage = mergeCostUsage(costUsage, costPending);
-  const rows = [];
-  let grandTotal = 0;
-  for(const [model, u] of Object.entries(usage.byModel || {})){
-    const p = MODEL_PRICING[model] || MODEL_PRICING["deepseek-v4-pro"];
-    const costUSD = (u.hit/1e6*p.hit) + (u.miss/1e6*p.miss) + (u.output/1e6*p.output);
-    const tokens = (u.hit||0) + (u.miss||0) + (u.output||0);
-    rows.push({model, hit:u.hit||0, miss:u.miss||0, output:u.output||0, tokens, costUSD});
-    grandTotal += costUSD;
-  }
-  rows.forEach(r => { r.pctOfCost = grandTotal ? Math.round(100*r.costUSD/grandTotal) : 0; });
-  const totalTokens = rows.reduce((s,r)=>s+r.tokens, 0);
-  rows.forEach(r => { r.pctOfTokens = totalTokens ? Math.round(100*r.tokens/totalTokens) : 0; });
-  rows.sort((a,b)=> b.costUSD - a.costUSD);
-  return {rows, grandTotal, totalTokens};
-}
-
-function updateCostDisplay(){
-  const elC = document.getElementById("cost-tracker");
-  if(!elC) return;
-  const usd = estimateTotalCostUSD(mergeCostUsage(costUsage, costPending));
-  const estTxt = usd < 0.01 ? `~$${usd.toFixed(4)} geschat` : `~$${usd.toFixed(3)} geschat`;
-  const bal = loadJSON(LS_BALANCE, null);
-  const balTxt = bal ? ` · saldo: ${bal.currency === "CNY" ? "¥" : "$"}${bal.total}` : "";
-  elC.textContent = estTxt + balTxt;
-  elC.title = "Estimate based on actually measured token usage (incl. cache hits/misses) × current rates for each model used (DeepSeek for word translation, Claude Sonnet 5 for sentences/grading/explanations), summed across your synced devices, plus (if fetched) your real remaining DeepSeek balance. Not an official invoice — check platform.deepseek.com and console.anthropic.com for that.";
-}
+function updateCostDisplay(){}
 
 const LS_BALANCE = "turks_balance_v1"; // { total, granted, toppedUp, currency, fetchedAt } — laatst opgehaalde saldo (lokaal, niet gesynct)
 
@@ -58635,7 +58629,6 @@ function finishCheckup(){
 }
 
 function cancelCheckup(){
-  if(checkupState && !confirm("Cancel this knowledge check? Your progress on individual questions so far is already saved, but no course-unlock decision will be made.")) return;
   checkupState = null;
   persistCheckupState();
   el("modal-checkup").classList.add("hidden");
@@ -58644,17 +58637,16 @@ function cancelCheckup(){
 /* ===================== "PRACTICE THIS SKILL" (gerichte sessie op precies 1 les) =====================
    Hergebruikt dezelfde modal en dezelfde onderliggende oefen-generatie als de kennischeck, maar:
    - blijft op ÉÉN vaste les/onderwerp (geen trap door opeenvolgende niveaus)
-   - werkt in afgebakende "lessen" (rondes) van 20 oefeningen; per ronde wordt een score-percentage
-     opgeslagen. Pas als 3 rondes ACHTER ELKAAR boven de 90% scoren, meldt de app dat de vaardigheid
-     goed onder de knie is — een enkele goede ronde (of zelfs 2) is bewust nog niet genoeg.
+   - werkt in afgebakende rondes van 10 oefeningen; de score van de laatst afgeronde ronde wordt
+     opgeslagen en als "x/10" bij de les getoond (zie lastSkillPracticeScore hieronder)
    - heeft geen effect op lessen ontgrendelen — puur extra herhaling op verzoek */
-const SKILL_PRACTICE_ROUND_SIZE = 20;
-const SKILL_PRACTICE_ROUND_THRESHOLD = 90;
-const SKILL_PRACTICE_ROUNDS_NEEDED = 3;
+const SKILL_PRACTICE_ROUND_SIZE = 10;
+
+let lastSkillPracticeScore = loadJSON(LS_SKILL_SCORES, {}); // { [lessonId]: {correct, total} } -- score van de laatst afgeronde ronde
 
 async function startSkillPractice(lesson){
   if(!hasKeyFor("word") || !hasKeyFor("sentence")){ alert("Both a " + keyNameFor("word") + " and a " + keyNameFor("sentence") + " API key are needed to practise (Settings)."); return; }
-  skillPracticeState = {lesson, roundResults: [], roundPercentages: [], consecutiveHighRounds: 0, current: null};
+  skillPracticeState = {lesson, roundResults: [], current: null};
   el("modal-lesson").classList.add("hidden");
   el("modal-checkup").classList.remove("hidden");
   await nextSkillPracticeQuestion();
@@ -58672,8 +58664,7 @@ async function nextSkillPracticeQuestion(){
   const lesson = skillPracticeState.lesson;
 
   el("checkup-modal-title").textContent = `🎯 Practice: ${lesson.title}`;
-  el("checkup-progress").textContent = `Round ${skillPracticeState.roundPercentages.length+1} · question ${skillPracticeState.roundResults.length+1}/${SKILL_PRACTICE_ROUND_SIZE}` +
-    (skillPracticeState.consecutiveHighRounds>0 ? ` · ${skillPracticeState.consecutiveHighRounds}/${SKILL_PRACTICE_ROUNDS_NEEDED} strong rounds so far` : "");
+  el("checkup-progress").textContent = `Question ${skillPracticeState.roundResults.length+1}/${SKILL_PRACTICE_ROUND_SIZE}`;
   el("checkup-word").textContent = "🤖 …";
   const badgeEl = el("checkup-badge");
   badgeEl.classList.remove("hidden");
@@ -58771,15 +58762,11 @@ async function submitSkillPracticeAnswer(){
 
   let extra = "";
   if(skillPracticeState.roundResults.length >= SKILL_PRACTICE_ROUND_SIZE){
-    // ronde ("les") van 20 is compleet -> percentage opslaan en de opeenvolgende-hoge-rondes-teller bijwerken
-    const pct = Math.round(100 * skillPracticeState.roundResults.filter(Boolean).length / skillPracticeState.roundResults.length);
-    skillPracticeState.roundPercentages.push(pct);
-    skillPracticeState.consecutiveHighRounds = pct > SKILL_PRACTICE_ROUND_THRESHOLD ? skillPracticeState.consecutiveHighRounds + 1 : 0;
+    const roundCorrect = skillPracticeState.roundResults.filter(Boolean).length;
+    lastSkillPracticeScore[skillPracticeState.lesson.id] = {correct: roundCorrect, total: SKILL_PRACTICE_ROUND_SIZE};
+    saveJSON(LS_SKILL_SCORES, lastSkillPracticeScore);
     skillPracticeState.roundResults = [];
-    extra = `<br><br>📊 <b>Round ${skillPracticeState.roundPercentages.length} complete: ${pct}% correct</b> (need >${SKILL_PRACTICE_ROUND_THRESHOLD}% — ${skillPracticeState.consecutiveHighRounds}/${SKILL_PRACTICE_ROUNDS_NEEDED} strong rounds in a row so far).`;
-    if(skillPracticeState.consecutiveHighRounds >= SKILL_PRACTICE_ROUNDS_NEEDED){
-      extra += `<br><br>🎉 <b>Proficiency confirmed!</b> You've scored above ${SKILL_PRACTICE_ROUND_THRESHOLD}% over ${SKILL_PRACTICE_ROUNDS_NEEDED} rounds of ${SKILL_PRACTICE_ROUND_SIZE} in a row — this skill is genuinely well in hand. Keep going for more practice, or close whenever you like.`;
-    }
+    extra = `<br><br>📊 <b>Round complete: ${roundCorrect}/${SKILL_PRACTICE_ROUND_SIZE} correct.</b> Saved as this lesson's score — keep going for another round, or close whenever you like.`;
   }
   el("checkup-result-text").innerHTML = (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
   el("btn-checkup-close").textContent = "Continue";
@@ -58808,9 +58795,9 @@ async function skipSkillPracticeQuestion(){
   else recordGrammarResult(cur.topic.key, false);
   skillPracticeState.roundResults.push(false);
   if(skillPracticeState.roundResults.length >= SKILL_PRACTICE_ROUND_SIZE){
-    const pct = Math.round(100 * skillPracticeState.roundResults.filter(Boolean).length / skillPracticeState.roundResults.length);
-    skillPracticeState.roundPercentages.push(pct);
-    skillPracticeState.consecutiveHighRounds = pct > SKILL_PRACTICE_ROUND_THRESHOLD ? skillPracticeState.consecutiveHighRounds + 1 : 0;
+    const roundCorrect = skillPracticeState.roundResults.filter(Boolean).length;
+    lastSkillPracticeScore[skillPracticeState.lesson.id] = {correct: roundCorrect, total: SKILL_PRACTICE_ROUND_SIZE};
+    saveJSON(LS_SKILL_SCORES, lastSkillPracticeScore);
     skillPracticeState.roundResults = [];
   }
   await nextSkillPracticeQuestion();
@@ -59216,7 +59203,7 @@ let bulkTranslateRunning = false;
 let bulkTranslateCancelled = false;
 
 async function runBulkTranslate(onProgress){
-  if(!settings.anthropicApiKey) throw new Error("An Anthropic (Claude) API key is needed for this (Settings).");
+  if(!proxyConfigured() && !settings.anthropicApiKey) throw new Error("An Anthropic (Claude) API key (or shared proxy) is needed for this (Settings).");
   const remaining = EN_WORDS_DATA.filter(w => !curatedTr[w.en]);
   bulkTranslateRunning = true;
   bulkTranslateCancelled = false;
@@ -59258,8 +59245,7 @@ De volgorde en het aantal items in "words" moet EXACT overeenkomen met de gegeve
 async function getOrFetchTranslation(en){
   const cached = cachedTranslation(en);
   if(cached && cached.length) return cached;
-  const neededKey = preferredModelFor("word") === "claude" ? settings.anthropicApiKey : settings.apiKey;
-  if(!neededKey) throw new Error(`No ${preferredModelFor("word") === "claude" ? "Anthropic" : "DeepSeek"} API key set — needed to generate Turkish translations.`);
+  if(!hasKeyFor("word")) throw new Error(`No ${preferredModelFor("word") === "claude" ? "Anthropic" : "DeepSeek"} API key (or shared proxy) set — needed to generate Turkish translations.`);
 
   const sys = `Je bent een Engels-Turks vertaler voor een taalleerapp. Geef de meest gangbare Turkse vertaling(en) van een Engels woord.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"tr": ["vertaling1", "vertaling2"]}
@@ -60008,7 +59994,7 @@ async function renderPractice(){
   const dueN = words.filter(w => getProgress(w.en).due <= now).length;
   el("due-count").textContent = dueN + " word" + (dueN===1?"":"s") + " ready to practise";
 
-  el("no-key-warning").style.display = settings.apiKey ? "none" : "block";
+  el("no-key-warning").style.display = hasKeyFor("word") ? "none" : "block";
   setTimeout(()=> el("answer-input").focus(), 50);
 }
 
@@ -60334,7 +60320,7 @@ async function disputeAnswer(){
 /* ===================== CHAT MODAL (Vraag aan AI) ===================== */
 let chatItem = null; // het item waar de "vraag aan AI"-chat momenteel context over heeft (regulier of skill-practice)
 function openAiModal(){
-  if(!currentItem) return;
+  if(!currentItem){ alert("No active exercise to ask about right now — answer or start one first."); return; }
   if(!hasKeyFor("sentence")){ alert("Set a " + keyNameFor("sentence") + " API key in Settings first."); return; }
   chatItem = currentItem;
   el("modal-ai-word").textContent = chatItem.tr || chatItem.en;
@@ -60581,6 +60567,8 @@ function lessonProficiency(l){
 
 function renderCourseLessonRow(l, idx){
   const level = lessonProficiency(l);
+  const lastScore = lastSkillPracticeScore[l.id];
+  const scoreTxt = lastScore ? ` · Last score: ${lastScore.correct}/${lastScore.total}` : "";
   let rightHtml, sub;
   if(level === null){
     rightHtml = `<div style="font-size:1.1rem;">📖</div>`;
@@ -60588,7 +60576,7 @@ function renderCourseLessonRow(l, idx){
   } else {
     const color = level<=3 ? "#e0333f" : level<=6 ? "#e0a733" : level<9 ? "#2fae6a" : "#4fd88a";
     rightHtml = `<div style="font-size:1rem;font-weight:700;color:${color};">${level}/10</div>`;
-    sub = level === 0 ? "Not tried yet" : level >= 9 ? "Well in hand" : "In progress";
+    sub = (level === 0 ? "Not tried yet" : level >= 9 ? "Well in hand" : "In progress") + scoreTxt;
   }
   return `<div class="word-row" style="cursor:pointer;" data-idx="${idx}">
     <div>
@@ -60650,8 +60638,9 @@ async function openLessonModal(idx){
   el("lesson-modal-explanation").innerHTML = l.explanation;
   const needsPractice = l.grammarTopics.length > 0 || (l.words && l.words.length > 0);
   const level = lessonProficiency(l);
+  const lastScore = lastSkillPracticeScore[l.id];
   el("lesson-modal-progress").innerHTML = level !== null
-    ? `<div class="muted">Current proficiency: <b>${level}/10</b></div>`
+    ? `<div class="muted">Current proficiency: <b>${level}/10</b>` + (lastScore ? ` · Last practice round: <b>${lastScore.correct}/${lastScore.total}</b>` : "") + `</div>`
     : "";
   el("btn-lesson-action").classList.add("hidden"); // geen apart "Go to practice" meer nodig -- "Practice this skill" hieronder is nu altijd de weg
   el("btn-practice-skill").classList.toggle("hidden", !needsPractice);
@@ -60826,32 +60815,6 @@ function closeTestModal(){
   placementState = null;
 }
 
-const MODEL_DISPLAY_NAME = {
-  "deepseek-v4-pro": "DeepSeek v4-pro (word translation/judging)",
-  "claude-sonnet-5": "Claude Sonnet 5 (sentences, grading, explanations)",
-};
-function renderCostBreakdown(){
-  const listEl = el("cost-breakdown-list");
-  if(!listEl) return;
-  const {rows, grandTotal, totalTokens} = costBreakdownByModel();
-  if(!rows.length || !totalTokens){
-    listEl.innerHTML = `<div class="muted">No AI usage recorded yet on this device.</div>`;
-    return;
-  }
-  listEl.innerHTML = rows.map(r => `
-    <div style="margin-bottom:12px;">
-      <div class="row space-between" style="font-size:.9rem;margin-bottom:3px;">
-        <span>${MODEL_DISPLAY_NAME[r.model] || r.model}</span>
-        <span class="muted">$${r.costUSD.toFixed(4)} · ${r.pctOfCost}% of cost</span>
-      </div>
-      <div style="height:8px;border-radius:4px;background:#0d1720;overflow:hidden;">
-        <div style="height:100%;width:${r.pctOfCost}%;background:${r.model.startsWith('claude')?'#e0a733':'#2fae6a'};"></div>
-      </div>
-      <div class="muted" style="font-size:.72rem;margin-top:3px;">${r.tokens.toLocaleString()} tokens (${r.pctOfTokens}% of all tokens) — ${r.hit.toLocaleString()} cache-hit, ${r.miss.toLocaleString()} cache-miss, ${r.output.toLocaleString()} output</div>
-    </div>
-  `).join("") + `<div class="muted" style="margin-top:4px;">Total: $${grandTotal.toFixed(4)} across ${totalTokens.toLocaleString()} tokens.</div>`;
-}
-
 function updateBulkTranslateStatus(){
   const statusEl = el("bulk-translate-status");
   const barEl = el("bulk-translate-bar");
@@ -60914,8 +60877,10 @@ function initSettingsUI(){
   updateAdaptiveLabels();
   el("key-status").textContent = settings.apiKey ? "✅ Key is set." : "No key set yet.";
   el("anthropic-key-status").textContent = settings.anthropicApiKey ? "✅ Key is set." : "No key set yet.";
+  el("proxy-url-input").value = settings.proxyUrl || "";
+  el("proxy-token-input").value = settings.proxyToken || "";
+  el("proxy-status").textContent = proxyConfigured() ? "✅ Using shared proxy — no personal API keys needed." : "Not set up — using your own API keys below (if any).";
   updateBulkTranslateStatus();
-  renderCostBreakdown();
   const bal = loadJSON(LS_BALANCE, null);
   if(bal){
     const sym = bal.currency === "CNY" ? "¥" : "$";
@@ -60989,6 +60954,12 @@ document.addEventListener("DOMContentLoaded", ()=>{
     if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); sendChat(); }
   });
 
+  el("btn-save-proxy").addEventListener("click", ()=>{
+    settings.proxyUrl = el("proxy-url-input").value.trim();
+    settings.proxyToken = el("proxy-token-input").value.trim();
+    saveJSON(LS_SETTINGS, settings);
+    initSettingsUI();
+  });
   el("btn-save-key").addEventListener("click", ()=>{
     settings.apiKey = el("api-key-input").value.trim();
     settings.sentencePercent = parseInt(el("sentence-percent").value, 10) || 0;
@@ -61009,7 +60980,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     saveJSON(LS_SETTINGS, settings);
   });
   el("btn-bulk-translate").addEventListener("click", async ()=>{
-    if(!settings.anthropicApiKey){ alert("Set an Anthropic (Claude) API key first (above)."); return; }
+    if(!proxyConfigured() && !settings.anthropicApiKey){ alert("Set an Anthropic (Claude) API key (or shared proxy) first (above)."); return; }
     el("btn-bulk-translate").disabled = true;
     el("btn-bulk-translate-cancel").classList.remove("hidden");
     try{
@@ -61123,7 +61094,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-checkup-skip").addEventListener("click", ()=>{ if(skillPracticeState) skipSkillPracticeQuestion(); });
   el("btn-checkup-show-explanation").addEventListener("click", toggleSkillPracticeExplanation);
   el("btn-checkup-ask-ai").addEventListener("click", ()=>{
-    if(!chatItem) return;
+    if(!chatItem){ alert("No active exercise to ask about right now — answer it first."); return; }
     if(!hasKeyFor("sentence")){ alert("Set a " + keyNameFor("sentence") + " API key in Settings first."); return; }
     el("modal-ai-word").textContent = chatItem.tr || chatItem.en;
     el("chat-log").innerHTML = "";
