@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-05 21:30</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-05 22:15</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -361,7 +361,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-05 21:30</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-05 22:15</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -56195,7 +56195,7 @@ NOTE — THE ENGLISH GLOSS IN PARENTHESES IS ONLY A MEMORY AID, NOT AN INSTRUCTI
 Write everything in English and Turkish ONLY — never any other language.
 Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the English phrase (for en-tr) or the Turkish form (for tr-en) shown to the user", "correct": "the correct answer in the OTHER language than prompt", "baseWord": "the chosen base word, taken literally from the given list"}`;
   const userMsg = `Topic: ${topic.label}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
-  const raw = await callAI("sentence", sys, userMsg, 1200, 0.4);
+  const raw = await callAI("sentence", sys, userMsg, 2500, 0.4);
   return parseAIJson(raw);
 }
 
@@ -56337,7 +56337,7 @@ Build one short sentence using this noun somewhere in it: "${helper.tr}" (${help
 Randomly choose the test direction: en-tr (show the English sentence, ask for the Turkish translation) or tr-en (show the Turkish sentence, ask for the English translation).
 Write everything in English and Turkish ONLY — never any other language.
 Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the sentence shown to the user, in the language matching direction", "correct": "the correct translation in the other language"}`;
-  const raw = await callAI("sentence", sys, `Word: ${tr[0]} (${en})`, 1200, 0.5);
+  const raw = await callAI("sentence", sys, `Word: ${tr[0]} (${en})`, 2500, 0.5);
   return parseAIJson(raw);
 }
 
@@ -56354,7 +56354,7 @@ Randomly choose the test direction: en-tr (show the English version, ask for the
 Write everything in English and Turkish ONLY — never any other language.
 Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the sentence/phrase shown to the user, in the language matching direction", "correct": "the correct translation in the other language", "baseWord": "${words.map(w=>w.tr).join(" + ")}"}`;
   const userMsg = `Topic: ${topic.label}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
-  const raw = await callAI("sentence", sys, userMsg, 1200, 0.5);
+  const raw = await callAI("sentence", sys, userMsg, 2500, 0.5);
   return parseAIJson(raw);
 }
 
@@ -57213,7 +57213,7 @@ Genereer 20 items met oplopende moeilijkheidsgraad, ruim verspreid over de hele 
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"items": [{"tr": "Turks woord of zin", "type": "word of sentence", "niveau_index": 0-17}]}
 Waarbij niveau_index correspondeert met: 0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2 (begin/midden/eind per niveau). Zorg dat de 20 niveau_index-waarden een goede, realistische spreiding hebben over de hele schaal van 0 t/m 17 (dus niet allemaal exact gelijk verdeeld, maar wel elk hoofdniveau met meerdere items vertegenwoordigd).`;
-  const raw = await callAI("sentence", sys, "Genereer de toets.", 3500, 0.5);
+  const raw = await callAI("sentence", sys, "Genereer de toets.", 4500, 0.5);
   const parsed = parseAIJson(raw);
   if(!Array.isArray(parsed.items) || !parsed.items.length) throw new Error("AI did not return any test items.");
   return parsed.items;
@@ -57225,7 +57225,7 @@ async function gradePlacementTest(items, answers){
 Je krijgt per item het Turkse woord/de zin, het geschatte niveau daarvan, en het antwoord van de gebruiker. Beoordeel of elk antwoord (in het Engels) een acceptabele vertaling is.
 Bepaal op basis van het patroon (tot waar de gebruiker het goed had, rekening houdend met het niveau van elk item) het GESCHATTE algehele niveau van de gebruiker op de schaal 0-17. Wees niet te streng, maar ook niet te soepel: kies het niveau waar de gebruiker het merendeel nog goed heeft, en waarboven het duidelijk misgaat.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"niveau_index": 0-17, "toelichting": "korte, vriendelijke uitleg in het Engels, max 3 zinnen, rechtstreeks tegen de gebruiker gericht (spreek de gebruiker aan met 'je')"}`;
-  const raw = await callAI("sentence", sys, itemLines, 1000, 0);
+  const raw = await callAI("sentence", sys, itemLines, 2000, 0);
   const parsed = parseAIJson(raw);
   parsed.niveau_index = Math.max(0, Math.min(17, parseInt(parsed.niveau_index, 10) || 0));
   return parsed;
@@ -57292,7 +57292,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"tr": "Turkse zin", "words": [{"tr": "basisvorm1", "en": "translation", "cefr": 0}, {"tr": "basisvorm2", "en": "translation", "cefr": 0}]}`;
 // "cefr" per woord: schat het CEFR-niveau van dat basiswoord zelf in op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin.
   const user = `Maak een Turkse zin op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als het niveau dat vraagt).${grammarTopic ? ` Verwerk daarbij expliciet: ${grammarTopic.label}.` : ""}`;
-  const raw = await callAI("sentence", sys, user, 2000, 0.3);
+  const raw = await callAI("sentence", sys, user, 4000, 0.3);
   const parsed = parseAIJson(raw);
   if(!parsed.tr) throw new Error("AI did not return a sentence.");
   return parsed;
@@ -57411,7 +57411,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"tr": "Turkse vraag", "feitelijk": true of false, "words": [{"tr": "basisvorm1", "en": "translation", "cefr": 0}]}`;
 // "cefr" per woord: schat het CEFR-niveau van dat basiswoord zelf in op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
   const user = `Maak een Turkse vraag op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag).${grammarTopic ? ` Verwerk daarbij expliciet: ${grammarTopic.label}.` : ""}`;
-  const raw = await callAI("sentence", sys, user, 2000, 0.4);
+  const raw = await callAI("sentence", sys, user, 4000, 0.4);
   const parsed = parseAIJson(raw);
   if(!parsed.tr) throw new Error("AI did not return a question.");
   return parsed;
@@ -57495,7 +57495,7 @@ BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfd
   const user = `Turkse vraag: "${item.tr}"
 Genummerde woorden in de vraag (basisvorm): ${item.words.map((w,i)=>`${i+1}. ${w.tr} (${w.en})`).join(", ")}
 Antwoord van gebruiker (in het Turks): "${answer}"`;
-  const raw = await callAI("sentence", sys, user, 1500, 0);
+  const raw = await callAI("sentence", sys, user, 3000, 0);
   const parsed = parseAIJson(raw);
   if(!Array.isArray(parsed.words)) parsed.words = [];
   while(parsed.words.length < item.words.length) parsed.words.push(!!parsed.correct);
@@ -57525,7 +57525,7 @@ BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfd
 Genummerde woorden in de zin (basisvorm):
 ${wordContext}
 Vertaling van gebruiker: "${answer}"`;
-  const raw = await callAI("sentence", sys, user, 1500, 0);
+  const raw = await callAI("sentence", sys, user, 3000, 0);
   const parsed = parseAIJson(raw);
   // Verwacht: parsed.words = [true, false, ...] met exact item.words.length entries, op volgorde.
   // Robuust tegen afwijkingen: te kort/lang/ontbrekend -> aanvullen met het algemene oordeel.
@@ -57588,7 +57588,13 @@ function parseAIJson(raw){
     if(lastBreak <= 0) break;
     s = s.slice(0, lastBreak);
   }
-  return JSON.parse(raw); // alle reparatiepogingen mislukt -> gooi alsnog de oorspronkelijke, duidelijke fout
+  try{
+    return JSON.parse(raw);
+  }catch(e){
+    // alle reparatiepogingen mislukt -> gooi een duidelijkere fout met wat er daadwerkelijk binnenkwam,
+    // zodat een eventuele volgende keer meteen zichtbaar is of het om afkapping ging of iets anders
+    throw new Error(`Unparseable AI response (${raw.length} chars, ends with: "${raw.slice(-60)}")`);
+  }
 }
 
 function normalize(s){
@@ -57657,7 +57663,7 @@ async function askDeepSeekFree(item, question, chatHistoryMsgs){
 ${context}
 Beantwoord vragen kort, duidelijk, rechtstreeks tegen de gebruiker gericht (spreek diegene aan met "je") en in het Engels.`;
   const messages = [...chatHistoryMsgs, {role:"user", content: question}];
-  const raw = await callAI("sentence", sys, messages, 2000, 0.3);
+  const raw = await callAI("sentence", sys, messages, 3000, 0.3);
   return raw || "(geen antwoord)";
 }
 
