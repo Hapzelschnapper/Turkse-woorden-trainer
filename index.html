@@ -121,7 +121,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-06 18:15</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-06 19:00</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -389,7 +389,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-06 18:15</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-06 19:00</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -59394,6 +59394,22 @@ function pickKnownVocabSample(count){
   return shuffled.slice(0, count);
 }
 
+/* De AI geeft naast de zin zelf ook een lijst van "betekenisvolle woorden" terug (voor de klikbare
+   woord-chips in het oefenscherm) -- af en toe komt het voor dat die lijst een woord bevat dat de AI
+   uiteindelijk niet daadwerkelijk in de zin heeft verwerkt (een inconsistentie tussen de zin en de eigen
+   metadata). Filtert zulke "spookwoorden" eruit: een woord telt alleen mee als zijn basisvorm ook
+   daadwerkelijk als substring in de zin voorkomt (Turkse achtervoegsels plakken aan de stam vast, dus de
+   stam blijft normaliter gewoon herkenbaar aanwezig). */
+function filterWordsActuallyInSentence(sentenceTr, words){
+  if(!Array.isArray(words) || !words.length) return words || [];
+  const normSentence = sentenceTr.toLocaleLowerCase("tr");
+  const filtered = words.filter(w => w.tr && normSentence.includes(String(w.tr).toLocaleLowerCase("tr")));
+  // Vangnet: Turkse medeklinker-verzachting (kitap -> kitabı, bv.) kan een substring-check soms laten
+  // mislukken voor een woord dat wel degelijk gebruikt is. Liever een enkel spookwoord laten staan dan
+  // per ongeluk de hele woordenlijst leegvegen.
+  return filtered.length ? filtered : words;
+}
+
 async function generateSentenceCandidate(targetWord, grammarTopic){
   const level = settings.cefrLevel ?? 4;
   const knownSample = pickKnownVocabSample(35);
@@ -59411,6 +59427,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
   const raw = await callAI("sentence", sys, user, 4000, 0.3);
   const parsed = parseAIJson(raw);
   if(!parsed.tr) throw new Error("AI did not return a sentence.");
+  parsed.words = filterWordsActuallyInSentence(parsed.tr, parsed.words);
   return parsed;
 }
 
@@ -59532,6 +59549,7 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
   const raw = await callAI("sentence", sys, user, 4000, 0.4);
   const parsed = parseAIJson(raw);
   if(!parsed.tr) throw new Error("AI did not return a question.");
+  parsed.words = filterWordsActuallyInSentence(parsed.tr, parsed.words);
   return parsed;
 }
 
