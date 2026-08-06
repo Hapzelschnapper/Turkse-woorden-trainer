@@ -109,7 +109,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-05 20:30</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-05 21:30</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -361,7 +361,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-05 20:30</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-05 21:30</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -55330,7 +55330,8 @@ function maxCostUsage(a, b){
    — dat is hoogvolume en simpel genoeg dat het prijsverschil daar niet opweegt tegen de kwaliteitswinst. */
 /* Generieke aanroep naar DeepSeek — analoog aan callClaude() hierboven, zodat beide providers
    via dezelfde soort interface (systeemprompt + gebruikersinhoud, evt. berichtenreeks) bruikbaar zijn. */
-async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temperature){
+async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt){
+  const attempt = _attempt || 0;
   if(!settings.apiKey) throw new Error("No DeepSeek API key set (Settings).");
   const messages = Array.isArray(userContentOrMessages)
     ? [{role:"system", content:systemPrompt}, ...userContentOrMessages]
@@ -55347,6 +55348,12 @@ async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temp
   if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
+  // Zelfde afkap-bescherming als bij callClaude: DeepSeek geeft finish_reason:"length" als de
+  // tokenlimiet geraakt werd vóórdat de JSON afgesloten was.
+  if(data.choices?.[0]?.finish_reason === "length" && attempt < 2){
+    const nextBudget = Math.max((maxTokens || 500) * 2, 900);
+    return callDeepSeek(systemPrompt, userContentOrMessages, nextBudget, temperature, attempt + 1);
+  }
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   return raw;
@@ -56188,8 +56195,8 @@ NOTE — THE ENGLISH GLOSS IN PARENTHESES IS ONLY A MEMORY AID, NOT AN INSTRUCTI
 Write everything in English and Turkish ONLY — never any other language.
 Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the English phrase (for en-tr) or the Turkish form (for tr-en) shown to the user", "correct": "the correct answer in the OTHER language than prompt", "baseWord": "the chosen base word, taken literally from the given list"}`;
   const userMsg = `Topic: ${topic.label}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
-  const raw = await callAI("sentence", sys, userMsg, 600, 0.4);
-  return JSON.parse(raw);
+  const raw = await callAI("sentence", sys, userMsg, 1200, 0.4);
+  return parseAIJson(raw);
 }
 
 /* Keurt een drill af als de AI de instructies toch negeerde: een metavraag over een kale uitgang,
@@ -56330,8 +56337,8 @@ Build one short sentence using this noun somewhere in it: "${helper.tr}" (${help
 Randomly choose the test direction: en-tr (show the English sentence, ask for the Turkish translation) or tr-en (show the Turkish sentence, ask for the English translation).
 Write everything in English and Turkish ONLY — never any other language.
 Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the sentence shown to the user, in the language matching direction", "correct": "the correct translation in the other language"}`;
-  const raw = await callAI("sentence", sys, `Word: ${tr[0]} (${en})`, 500, 0.5);
-  return JSON.parse(raw);
+  const raw = await callAI("sentence", sys, `Word: ${tr[0]} (${en})`, 1200, 0.5);
+  return parseAIJson(raw);
 }
 
 async function generateFrameworkDrillCandidate(topic, framework, correctionNote){
@@ -56347,8 +56354,8 @@ Randomly choose the test direction: en-tr (show the English version, ask for the
 Write everything in English and Turkish ONLY — never any other language.
 Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the sentence/phrase shown to the user, in the language matching direction", "correct": "the correct translation in the other language", "baseWord": "${words.map(w=>w.tr).join(" + ")}"}`;
   const userMsg = `Topic: ${topic.label}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
-  const raw = await callAI("sentence", sys, userMsg, 600, 0.5);
-  return JSON.parse(raw);
+  const raw = await callAI("sentence", sys, userMsg, 1200, 0.5);
+  return parseAIJson(raw);
 }
 
 async function generateGrammarDrill(topic){
@@ -56388,8 +56395,8 @@ async function generateGrammarDrill(topic){
 async function gradeGrammarDrillAnswer(drill, answer){
   const isTrEn = drill.direction === "tr-en";
   const sys = `Je beoordeelt of het ${isTrEn ? "Engelse" : "Turkse"} antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (${isTrEn ? "gebruiker moest de Turkse vorm naar het Engels vertalen" : "gebruiker moest de Engelse frase naar het Turks vertalen"}). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. ${isTrEn ? "" : "NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en"} kleine tikfouten met een ondubbelzinnige bedoeling reken je goed. Antwoord ALLEEN met geldige JSON: {"correct": true of false}`;
-  const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 50, 0);
-  return JSON.parse(raw);
+  const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 300, 0);
+  return parseAIJson(raw);
 }
 
 async function nextCheckupQuestion(){
@@ -57090,7 +57097,7 @@ let bulkTranslateRunning = false;
 let bulkTranslateCancelled = false;
 
 async function runBulkTranslate(onProgress){
-  if(!hasKeyFor("sentence")) throw new Error("A " + keyNameFor("sentence") + " API key is needed for this (Settings).");
+  if(!settings.anthropicApiKey) throw new Error("An Anthropic (Claude) API key is needed for this (Settings).");
   const remaining = EN_WORDS_DATA.filter(w => !curatedTr[w.en]);
   const totalToDo = remaining.length;
   const alreadyDone = EN_WORDS_DATA.length - totalToDo;
@@ -57109,8 +57116,8 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"words": [{"en": "...
 De volgorde en het aantal items in "words" moet EXACT overeenkomen met de gegeven lijst, in dezelfde volgorde.`;
     const userMsg = "Woorden: " + batch.map(w=>w.en).join(", ");
     try{
-      const raw = await callAI("sentence", sys, userMsg, 1800, 0.2);
-      const parsed = JSON.parse(raw);
+      const raw = await callClaude(sys, userMsg, 3500, 0.2);
+      const parsed = parseAIJson(raw);
       for(const item of (parsed.words || [])){
         if(item.en && Array.isArray(item.tr) && item.tr.length){
           curatedTr[item.en] = {tr:item.tr, register:item.register||"neutral", note:item.note||""};
@@ -57136,8 +57143,8 @@ async function getOrFetchTranslation(en){
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"tr": ["vertaling1", "vertaling2"]}
 Geef 1-3 veelgebruikte Turkse vertalingen (synoniemen/varianten), in de basisvorm (infinitief bij werkwoorden, bv. "gitmek" niet "gider").`;
   const user = `Engels woord: "${en}"`;
-  const raw = await callAI("word", sys, user, 150, 0);
-  const parsed = JSON.parse(raw);
+  const raw = await callAI("word", sys, user, 400, 0);
+  const parsed = parseAIJson(raw);
   const tr = Array.isArray(parsed.tr) && parsed.tr.length ? parsed.tr : [String(parsed.tr || "")];
   trCache[en] = {tr, fetchedAt: Date.now()};
   saveJSON(LS_TRCACHE, trCache);
@@ -57206,8 +57213,8 @@ Genereer 20 items met oplopende moeilijkheidsgraad, ruim verspreid over de hele 
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"items": [{"tr": "Turks woord of zin", "type": "word of sentence", "niveau_index": 0-17}]}
 Waarbij niveau_index correspondeert met: 0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2 (begin/midden/eind per niveau). Zorg dat de 20 niveau_index-waarden een goede, realistische spreiding hebben over de hele schaal van 0 t/m 17 (dus niet allemaal exact gelijk verdeeld, maar wel elk hoofdniveau met meerdere items vertegenwoordigd).`;
-  const raw = await callAI("sentence", sys, "Genereer de toets.", 2200, 0.5);
-  const parsed = JSON.parse(raw);
+  const raw = await callAI("sentence", sys, "Genereer de toets.", 3500, 0.5);
+  const parsed = parseAIJson(raw);
   if(!Array.isArray(parsed.items) || !parsed.items.length) throw new Error("AI did not return any test items.");
   return parsed.items;
 }
@@ -57218,8 +57225,8 @@ async function gradePlacementTest(items, answers){
 Je krijgt per item het Turkse woord/de zin, het geschatte niveau daarvan, en het antwoord van de gebruiker. Beoordeel of elk antwoord (in het Engels) een acceptabele vertaling is.
 Bepaal op basis van het patroon (tot waar de gebruiker het goed had, rekening houdend met het niveau van elk item) het GESCHATTE algehele niveau van de gebruiker op de schaal 0-17. Wees niet te streng, maar ook niet te soepel: kies het niveau waar de gebruiker het merendeel nog goed heeft, en waarboven het duidelijk misgaat.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"niveau_index": 0-17, "toelichting": "korte, vriendelijke uitleg in het Engels, max 3 zinnen, rechtstreeks tegen de gebruiker gericht (spreek de gebruiker aan met 'je')"}`;
-  const raw = await callAI("sentence", sys, itemLines, 400, 0);
-  const parsed = JSON.parse(raw);
+  const raw = await callAI("sentence", sys, itemLines, 1000, 0);
+  const parsed = parseAIJson(raw);
   parsed.niveau_index = Math.max(0, Math.min(17, parseInt(parsed.niveau_index, 10) || 0));
   return parsed;
 }
@@ -57285,8 +57292,8 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"tr": "Turkse zin", "words": [{"tr": "basisvorm1", "en": "translation", "cefr": 0}, {"tr": "basisvorm2", "en": "translation", "cefr": 0}]}`;
 // "cefr" per woord: schat het CEFR-niveau van dat basiswoord zelf in op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin.
   const user = `Maak een Turkse zin op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als het niveau dat vraagt).${grammarTopic ? ` Verwerk daarbij expliciet: ${grammarTopic.label}.` : ""}`;
-  const raw = await callAI("sentence", sys, user, 500, 0.3);
-  const parsed = JSON.parse(raw);
+  const raw = await callAI("sentence", sys, user, 2000, 0.3);
+  const parsed = parseAIJson(raw);
   if(!parsed.tr) throw new Error("AI did not return a sentence.");
   return parsed;
 }
@@ -57297,8 +57304,8 @@ async function checkSentenceNatural(sentenceTr){
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"natuurlijk": true of false}`;
   const user = `Zin: "${sentenceTr}"`;
   try{
-    const raw = await callAI("sentence", sys, user, 50, 0);
-    const parsed = JSON.parse(raw);
+    const raw = await callAI("sentence", sys, user, 150, 0);
+    const parsed = parseAIJson(raw);
     return parsed.natuurlijk !== false;
   }catch(e){ return true; } // check zelf mislukt -> kandidaat gewoon accepteren, niet blokkeren
 }
@@ -57404,8 +57411,8 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"tr": "Turkse vraag", "feitelijk": true of false, "words": [{"tr": "basisvorm1", "en": "translation", "cefr": 0}]}`;
 // "cefr" per woord: schat het CEFR-niveau van dat basiswoord zelf in op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
   const user = `Maak een Turkse vraag op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag).${grammarTopic ? ` Verwerk daarbij expliciet: ${grammarTopic.label}.` : ""}`;
-  const raw = await callAI("sentence", sys, user, 500, 0.4);
-  const parsed = JSON.parse(raw);
+  const raw = await callAI("sentence", sys, user, 2000, 0.4);
+  const parsed = parseAIJson(raw);
   if(!parsed.tr) throw new Error("AI did not return a question.");
   return parsed;
 }
@@ -57488,8 +57495,8 @@ BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfd
   const user = `Turkse vraag: "${item.tr}"
 Genummerde woorden in de vraag (basisvorm): ${item.words.map((w,i)=>`${i+1}. ${w.tr} (${w.en})`).join(", ")}
 Antwoord van gebruiker (in het Turks): "${answer}"`;
-  const raw = await callAI("sentence", sys, user, 600, 0);
-  const parsed = JSON.parse(raw);
+  const raw = await callAI("sentence", sys, user, 1500, 0);
+  const parsed = parseAIJson(raw);
   if(!Array.isArray(parsed.words)) parsed.words = [];
   while(parsed.words.length < item.words.length) parsed.words.push(!!parsed.correct);
   parsed.words = parsed.words.slice(0, item.words.length).map(v=>{
@@ -57518,8 +57525,8 @@ BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfd
 Genummerde woorden in de zin (basisvorm):
 ${wordContext}
 Vertaling van gebruiker: "${answer}"`;
-  const raw = await callAI("sentence", sys, user, 600, 0);
-  const parsed = JSON.parse(raw);
+  const raw = await callAI("sentence", sys, user, 1500, 0);
+  const parsed = parseAIJson(raw);
   // Verwacht: parsed.words = [true, false, ...] met exact item.words.length entries, op volgorde.
   // Robuust tegen afwijkingen: te kort/lang/ontbrekend -> aanvullen met het algemene oordeel.
   if(!Array.isArray(parsed.words)) parsed.words = [];
@@ -57554,6 +57561,36 @@ function recordHistory(type){
 }
 
 /* ===================== ANTWOORD CONTROLEREN ===================== */
+/* Probeert eerst gewoon te parsen; lukt dat niet, dan wordt aangenomen dat de string halverwege is
+   afgekapt (ontbrekende sluithaakjes/-aanhalingsteken) en wordt die afsluiting alsnog toegevoegd,
+   als allerlaatste redmiddel ná de herkansingen die callClaude/callDeepSeek zelf al doen. Zo verlies
+   je in het ergste geval alleen het allerlaatste, half afgemaakte veld, in plaats van de hele oefening. */
+function parseAIJson(raw){
+  try{ return JSON.parse(raw); }catch(e){ /* val hieronder terug op reparatie */ }
+  // Probeer net zo lang steeds een stukje van het einde af te knippen (tot aan de laatste komma of
+  // openende haak) en dan de nog openstaande haken/aanhalingstekens te sluiten, tot het weer geldige
+  // JSON oplevert — zo verlies je in het ergste geval alleen het laatste, half afgemaakte element
+  // (bv. het laatste woord in de woordenlijst), in plaats van de hele oefening.
+  let s = raw;
+  for(let i=0; i<6; i++){
+    let attempt = s;
+    const quoteCount = (attempt.match(/(?<!\\)"/g) || []).length;
+    if(quoteCount % 2 === 1) attempt += `"`;
+    const stack = [];
+    for(const ch of attempt){
+      if(ch === "{" || ch === "[") stack.push(ch);
+      else if(ch === "}" && stack[stack.length-1] === "{") stack.pop();
+      else if(ch === "]" && stack[stack.length-1] === "[") stack.pop();
+    }
+    while(stack.length){ attempt += stack.pop() === "{" ? "}" : "]"; }
+    try{ return JSON.parse(attempt); }catch(e){ /* nog steeds ongeldig -> verder terugsnijden */ }
+    const lastBreak = Math.max(s.lastIndexOf(","), s.lastIndexOf("{"), s.lastIndexOf("["));
+    if(lastBreak <= 0) break;
+    s = s.slice(0, lastBreak);
+  }
+  return JSON.parse(raw); // alle reparatiepogingen mislukt -> gooi alsnog de oorspronkelijke, duidelijke fout
+}
+
 function normalize(s){
   return (s||"").toLowerCase().trim()
     .replace(/[.,!?;:'"“”‘’]/g,"")
@@ -57604,9 +57641,9 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"correct": true of fa
     ? `Turks woord: "${item.tr}"\nCorrecte Engelse vertaling: "${item.en}"\nAntwoord van gebruiker: "${answer}"`
     : `Engels woord: "${item.en}"\nBekende Turkse vertaling(en): ${tr.join(", ") || "(geen)"}\nAntwoord van gebruiker: "${answer}"`;
 
-  const raw = await callAI("word", sys, user, 500, 0);
+  const raw = await callAI("word", sys, user, 1000, 0);
   try{
-    return JSON.parse(raw);
+    return parseAIJson(raw);
   }catch(e){
     return {correct:false, uitleg:"(kon AI-antwoord niet verwerken: " + raw.slice(0,150) + ")"};
   }
@@ -57620,7 +57657,7 @@ async function askDeepSeekFree(item, question, chatHistoryMsgs){
 ${context}
 Beantwoord vragen kort, duidelijk, rechtstreeks tegen de gebruiker gericht (spreek diegene aan met "je") en in het Engels.`;
   const messages = [...chatHistoryMsgs, {role:"user", content: question}];
-  const raw = await callAI("sentence", sys, messages, 800, 0.3);
+  const raw = await callAI("sentence", sys, messages, 2000, 0.3);
   return raw || "(geen antwoord)";
 }
 
