@@ -57626,15 +57626,136 @@ function cefrGuidance(idx){
 }
 
 const GRAMMAR_LESSONS = [
-  {
-    id:"welcome", title:"How Turkish Works", icon:"🇹🇷", grammarTopics:[], targetExercises:0,
-    explanation:`<p>Before you dive into vocabulary, it helps to know a few things that make Turkish fundamentally different from English.</p>
-<p><b>1. Turkish is agglutinative.</b> Instead of separate words for tense, possession, case, etc., Turkish glues a chain of suffixes onto a root word, each suffix carrying exactly one piece of meaning. For example: <i>ev</i> (house) → <i>evlerimde</i> (in my houses) is built as ev + ler (plural) + im (my) + de (in). Once you learn the suffix "building blocks", you can combine them predictably.</p>
-<p><b>2. Word order is Subject–Object–Verb (SOV)</b>, not Subject–Verb–Object like English. "Ali elmayı yedi" is literally "Ali the-apple ate" — the verb comes last.</p>
-<p><b>3. Vowel harmony.</b> Suffix vowels change to match the last vowel of the word they attach to, so suffixes sound natural. Turkish vowels split into two groups: <i>back</i> (a, ı, o, u) and <i>front</i> (e, i, ö, ü). Most 2-way suffixes (like plural -ler/-lar) just follow back/front; some 4-way suffixes also track rounding. Don't worry about memorising rules — your ear will pick it up fast through the examples you'll practise.</p>
-<p><b>4. No grammatical gender, no articles.</b> There's no "a/an/the", and "o" means he, she, AND it — one less thing to worry about!</p>
-<p>That's the whole map. Every lesson from here builds one small, concrete piece onto this foundation.</p>`
-  },
+{
+  id:"welcome", title:"How Turkish Works", icon:"🇹🇷", grammarTopics:[], targetExercises:0,
+  explanation:`<p>Before you start learning vocabulary and grammar, it helps to understand a few key ideas that make Turkish very different from English. Once you know these principles, almost everything else will make much more sense.</p>
+
+<p><b>1. Turkish is agglutinative.</b></p>
+
+<p>This is probably the biggest difference from English. Instead of using many separate words, Turkish adds a series of suffixes to the end of a word. Each suffix has one clear job: it might show plurality, possession, location, tense, or many other meanings.</p>
+
+<p>Think of Turkish words as being built with LEGO blocks:</p>
+
+<p><b>ev</b> = house</p>
+<p><b>evler</b> = houses (ev + <i>-ler</i> = plural)</p>
+<p><b>evlerim</b> = my houses (ev + ler + <i>-im</i> = my)</p>
+<p><b>evlerimde</b> = in my houses (ev + ler + im + <i>-de</i> = in)</p>
+
+<p>Another example:</p>
+
+<p><b>kitap</b> = book</p>
+<p><b>kitaplar</b> = books</p>
+<p><b>kitaplarınız</b> = your books</p>
+<p><b>kitaplarınızdan</b> = from your books</p>
+
+<p>At first these long words may look intimidating, but they're actually very logical. Once you learn the meaning of each suffix, you simply combine them like building blocks.</p>
+
+<p><b>2. Word order is Subject–Object–Verb (SOV).</b></p>
+
+<p>English usually follows Subject–Verb–Object:</p>
+
+<p><i>I eat the apple.</i></p>
+
+<p>Turkish puts the verb at the end:</p>
+
+<p><b>Ben elmayı yerim.</b></p>
+<p>Literally: <i>I the apple eat.</i></p>
+
+<p>Another example:</p>
+
+<p><b>Ayşe kitabı okuyor.</b></p>
+<p>Literally: <i>Ayşe the book is reading.</i></p>
+
+<p>As you learn Turkish, you'll naturally get used to waiting until the end of the sentence to hear the action.</p>
+
+<p><b>3. Turkish uses vowel harmony.</b></p>
+
+<p>Suffixes don't always have one fixed spelling. Their vowels change to match the last vowel of the word they attach to, making words easier and more natural to pronounce.</p>
+
+<p>The simplest example is the plural suffix:</p>
+
+<ul>
+<li><b>ev → evler</b> (houses)</li>
+<li><b>şehir → şehirler</b> (cities)</li>
+<li><b>araba → arabalar</b> (cars)</li>
+<li><b>çocuk → çocuklar</b> (children)</li>
+</ul>
+
+<p>Notice how the suffix becomes <b>-ler</b> after front vowels and <b>-lar</b> after back vowels.</p>
+
+<p>Some suffixes have four different forms instead of two:</p>
+
+<ul>
+<li><b>evim</b> = my house</li>
+<li><b>kapım</b> = my door</li>
+<li><b>gözüm</b> = my eye</li>
+<li><b>köyüm</b> = my village</li>
+</ul>
+
+<p>Don't worry about memorising every rule immediately. After seeing enough examples, vowel harmony quickly starts to feel natural.</p>
+
+<p><b>4. There is no grammatical gender.</b></p>
+
+<p>Unlike many European languages, Turkish nouns are not masculine or feminine.</p>
+
+<p>The pronoun <b>o</b> can mean:</p>
+
+<ul>
+<li>he</li>
+<li>she</li>
+<li>it</li>
+</ul>
+
+<p>For example:</p>
+
+<p><b>O geliyor.</b></p>
+
+<p>Depending on the context, this can mean:</p>
+
+<ul>
+<li>He is coming.</li>
+<li>She is coming.</li>
+<li>It is coming.</li>
+</ul>
+
+<p>This makes Turkish grammar much simpler because you never have to memorise the gender of nouns.</p>
+
+<p><b>5. Turkish has no articles.</b></p>
+
+<p>English uses <i>a</i>, <i>an</i>, and <i>the</i>. Turkish doesn't.</p>
+
+<p><b>Ev büyük.</b></p>
+
+<p>Depending on the situation, this can mean:</p>
+
+<ul>
+<li>The house is big.</li>
+<li>A house is big.</li>
+<li>House is big (rare literal translation).</li>
+</ul>
+
+<p>The context tells you which meaning is intended.</p>
+
+<p><b>6. Turkish pronunciation is very regular.</b></p>
+
+<p>One of the nicest things about Turkish is that words are almost always pronounced exactly as they are written.</p>
+
+<p>Unlike English, there are very few surprises.</p>
+
+<p>For example:</p>
+
+<ul>
+<li><b>merhaba</b> is always pronounced the same way.</li>
+<li><b>kitap</b> is always pronounced the same way.</li>
+<li><b>güzel</b> is always pronounced the same way.</li>
+</ul>
+
+<p>Once you've learned the Turkish alphabet, you'll be able to read almost any new word aloud, even if you've never seen it before.</p>
+
+<p><b>That's the foundation of Turkish.</b></p>
+
+<p>Everything you'll learn from this point builds on these simple ideas. Turkish may look unfamiliar at first, but it's an extremely logical language. Learn the word roots, learn the suffixes, and you'll soon be able to understand and build surprisingly complex sentences.</p>`
+},
   {
     id:"pronouns", title:"Personal Pronouns", icon:"👤", grammarTopics:[], targetExercises:0,
     explanation:`<p>The Turkish personal pronouns are:</p>
