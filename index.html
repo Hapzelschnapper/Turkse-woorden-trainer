@@ -57354,10 +57354,19 @@ async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temp
   const attempt = _attempt || 0;
   const useProxy = proxyConfigured();
   if(!useProxy && !settings.apiKey) throw new Error("No DeepSeek API key set (Settings).");
+  
+  // OPLOSSING: We controleren en dwingen het woord 'json' af in de systeemprompt vÓÓrdat we de array bouwen
+  let finalSystemPrompt = systemPrompt || "";
+  if (schema && !finalSystemPrompt.toLowerCase().includes("json")) {
+    finalSystemPrompt += " Return the output as a valid JSON object.";
+  }
+
+  // Bouw nu de messages array op met de gecorrigeerde systeemprompt
   const messages = Array.isArray(userContentOrMessages)
-    ? [{role:"system", content:systemPrompt}, ...userContentOrMessages]
-    : [{role:"system", content:systemPrompt}, {role:"user", content:userContentOrMessages}];
-  const url = useProxy ? (settings.proxyUrl.replace(/\/$/,"") + "/deepseek") : "https://api.deepseek.com/chat/completions";
+    ? [{role:"system", content:finalSystemPrompt}, ...userContentOrMessages]
+    : [{role:"system", content:finalSystemPrompt}, {role:"user", content:userContentOrMessages}];
+
+  const url = useProxy ? (settings.proxyUrl.replace(/\/$/,"") + "/deepseek") : "https://deepseek.com";
   const headers = useProxy
     ? {"Content-Type":"application/json", "X-Proxy-Token": settings.proxyToken}
     : {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey};
@@ -57366,17 +57375,10 @@ async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temp
     messages,
     thinking: {"type":"disabled"}
   };
-  // DeepSeek kent geen tool-schema-afdwinging zoals Claude's tool_choice -- de systeemprompt moet dus
-  // (in tegenstelling tot bij Claude) wél zelf blijven uitleggen welke velden verwacht worden. Wat
-  // response_format WEL garandeert: altijd geldige, kale JSON (nooit binnen ```json ... ``` verpakt,
-  // nooit met verdwaalde tekst ervoor/erna) -- dus geen losse regex-opschoning meer nodig voor dat deel.
-    if(schema) {
-    body.response_format = {type: "json_object"};
-    // Voeg 'json' toe aan de systeemprompt in het object als het er nog niet in staat
-    if (!messages[0].content.toLowerCase().includes("json")) {
-      messages[0].content += " Return the output as a valid JSON object.";
-    }
-  }
+  
+  // Activeer het JSON response format
+  if(schema) body.response_format = {type: "json_object"};
+
   const res = await fetchWithTimeout(url, {
     method: "POST",
     headers,
@@ -57385,8 +57387,6 @@ async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temp
   if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
-  // Zelfde afkap-bescherming als bij callClaude: DeepSeek geeft finish_reason:"length" als de
-  // tokenlimiet geraakt werd vóórdat de JSON afgesloten was.
   if(data.choices?.[0]?.finish_reason === "length" && attempt < 2){
     const nextBudget = Math.max((maxTokens || 500) * 2, 900);
     return callDeepSeek(systemPrompt, userContentOrMessages, nextBudget, temperature, attempt + 1, schema);
@@ -57394,31 +57394,6 @@ async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temp
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   return raw;
-}
-
-/* Dispatcher: kiest op basis van de instelling per taakcategorie ("word" = vertaling/woordbeoordeling,
-   "sentence" = zin/vraag-generatie, -beoordeling, grammatica-oefeningen, taaltoets, "vraag aan AI")
-   welke provider de aanroep daadwerkelijk uitvoert. De aanroepende functies hoeven zelf niets van dit
-   onderscheid te weten — die roepen altijd gewoon callAI(categorie, ...) aan. */
-function preferredModelFor(category){
-  const setting = category === "word" ? settings.wordModel : settings.sentenceModel;
-  return setting === "deepseek" || setting === "claude" ? setting : (category === "word" ? "deepseek" : "claude");
-}
-function proxyConfigured(){
-  return !!(settings.proxyUrl && settings.proxyToken);
-}
-function hasKeyFor(category){
-  if(proxyConfigured()) return true; // de gedeelde tussenserver dekt beide categorieën, geen eigen sleutel nodig
-  return preferredModelFor(category) === "claude" ? !!settings.anthropicApiKey : !!settings.apiKey;
-}
-function keyNameFor(category){
-  return preferredModelFor(category) === "claude" ? "Anthropic (Claude)" : "DeepSeek";
-}
-async function callAI(category, systemPrompt, userContentOrMessages, maxTokens, temperature, schema){
-  const model = preferredModelFor(category);
-  return model === "claude"
-    ? callClaude(systemPrompt, userContentOrMessages, maxTokens, temperature, 0, schema)
-    : callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temperature, 0, schema);
 }
 
 async function callClaude(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt, schema){
