@@ -371,16 +371,6 @@
       </select>
     </div>
     <div class="card">
-      <h3 style="margin-top:0;">📖 One-time full dictionary pass</h3>
-      <div class="muted" style="margin-bottom:10px;">Has Claude look at all ~4932 words once, adding a reviewed Turkish translation plus a register tag (neutral / formal / informal / colloquial / caution). Once a word has this, exercises use it directly — no more per-word AI call, and feedback can note "this sounds a bit formal" without judging that live. Runs in batches, saves progress as it goes — safe to close and resume later. Uses your Claude key; a full pass is roughly 200 batched calls.</div>
-      <div class="muted" id="bulk-translate-status" style="margin-bottom:8px;"></div>
-      <div style="height:8px;border-radius:4px;background:#0d1720;overflow:hidden;margin-bottom:10px;">
-        <div id="bulk-translate-bar" style="height:100%;width:0%;background:#2fae6a;transition:width .3s;"></div>
-      </div>
-      <button class="btn-secondary" id="btn-bulk-translate" style="width:100%;">▶️ Start / resume full pass</button>
-      <button class="btn-ghost hidden" id="btn-bulk-translate-cancel" style="width:100%;margin-top:8px;">⏸️ Pause</button>
-    </div>
-    <div class="card">
       <h3 style="margin-top:0;">☁️ Cloud sync (progress across devices)</h3>
       <div class="muted" style="margin-bottom:8px;">Your progress (levels, discovered words, disputed translations) is also stored in a private <a href="https://gist.github.com" target="_blank" rel="noopener">GitHub Gist</a> (free, same account as your repository), so you can use it on multiple devices. Without this, everything stays local to this device, as now.</div>
       <div class="muted" style="margin-bottom:4px;">GitHub Personal Access Token (scope: "gist")</div>
@@ -57215,6 +57205,13 @@ function loadJSON(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch(e){ return fallback; }
 }
+// Moet vóór de eerste saveJSON()-aanroep hieronder gedeclareerd zijn: saveJSON kan syncMaybePush()
+// triggeren, die deze variabele direct gebruikt. Stond voorheen pas veel verderop in het bestand
+// gedeclareerd (bij de andere sync-functies) -- met `let` geeft dat een "Cannot access before
+// initialization"-fout zodra er vroeg in de opstart al eens iets opgeslagen wordt (bv. een
+// eenmalige data-opschoning of instellingen-migratie, wat niet bij elke gebruiker even vaak voorkomt,
+// vandaar dat dit niet meteen opviel). `function`-declaraties worden wel volledig gehesen, `let` niet.
+let syncPushTimer = null;
 function saveJSON(key, val){
   localStorage.setItem(key, JSON.stringify(val));
   if(key === LS_PROGRESS || key === LS_CUSTOM || key === LS_NEWWORDS || key === LS_GRAMMAR || key === LS_TRCACHE || key === LS_LESSONS) syncMaybePush();
@@ -59757,7 +59754,6 @@ function recordGrammarResult(key, correct){
 // Gebruikt GitHub i.p.v. jsonbin.io: geen apart account nodig (je hebt al GitHub voor de app zelf),
 // en geen last van jsonbin's 100KB-limiet op het gratis plan.
 const GIST_FILENAME = "turks-app-voortgang.json";
-let syncPushTimer = null;
 let syncInProgress = false;
 
 function syncConfigured(){
@@ -60196,7 +60192,14 @@ Antwoord in JSON.`;
     }
   };
   const raw = await callAI("sentence", sys, `Niveau: ${cefrLabel(niveauIdx)} (niveau_index ${niveauIdx})`, 400, 0.5, schema);
-  const parsed = parseAIJson(raw);
+  let parsed = parseAIJson(raw);
+  if(!parsed.tr){
+    // Eén stille herkansing i.p.v. meteen een foutmelding tonen -- een enkele lege/onvolledige AI-respons
+    // (bv. DeepSeek's json_object-modus garandeert alleen geldige JSON, geen specifieke velden) hoeft de
+    // gebruiker niet te raken; pas als het twee keer op rij misgaat is er echt iets aan de hand.
+    const raw2 = await callAI("sentence", sys, `Niveau: ${cefrLabel(niveauIdx)} (niveau_index ${niveauIdx})`, 400, 0.5, schema);
+    parsed = parseAIJson(raw2);
+  }
   if(!parsed.tr) throw new Error("AI did not return a test item.");
   return parsed;
 }
@@ -60337,7 +60340,12 @@ ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>
     }
   };
   const raw = await callAI("sentence", sys, user, 4000, 0.3, schema);
-  const parsed = parseAIJson(raw);
+  let parsed = parseAIJson(raw);
+  if(!parsed.tr){
+    // Zelfde stille-herkansing-redenering als bij generateSingleTestItem/generateQuestionCandidate.
+    const raw2 = await callAI("sentence", sys, user, 4000, 0.3, schema);
+    parsed = parseAIJson(raw2);
+  }
   if(!parsed.tr) throw new Error("AI did not return a sentence.");
   parsed.words = filterWordsActuallyInSentence(parsed.tr, parsed.words);
   return parsed;
@@ -60492,7 +60500,13 @@ ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>
     }
   };
   const raw = await callAI("sentence", sys, user, 4000, 0.4, schema);
-  const parsed = parseAIJson(raw);
+  let parsed = parseAIJson(raw);
+  if(!parsed.tr){
+    // Zelfde stille-herkansing-redenering als bij generateSingleTestItem/generateSentenceCandidate --
+    // dit is precies de plek die eerder "AI did not return a question" liet zien zonder herkansing.
+    const raw2 = await callAI("sentence", sys, user, 4000, 0.4, schema);
+    parsed = parseAIJson(raw2);
+  }
   if(!parsed.tr) throw new Error("AI did not return a question.");
   parsed.words = filterWordsActuallyInSentence(parsed.tr, parsed.words);
   return parsed;
@@ -62044,27 +62058,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("sentence-model-select").addEventListener("change", ()=>{
     settings.sentenceModel = el("sentence-model-select").value;
     saveJSON(LS_SETTINGS, settings);
-  });
-  el("btn-bulk-translate").addEventListener("click", async ()=>{
-    if(!proxyConfigured() && !settings.anthropicApiKey){ alert("Set an Anthropic (Claude) API key (or shared proxy) first (above)."); return; }
-    el("btn-bulk-translate").disabled = true;
-    el("btn-bulk-translate-cancel").classList.remove("hidden");
-    try{
-      await runBulkTranslate((done, total)=>{
-        el("bulk-translate-status").textContent = `Running… ${done}/${total} words done (${Math.round(100*done/total)}%)`;
-        el("bulk-translate-bar").style.width = Math.round(100*done/total) + "%";
-      });
-    }catch(e){
-      alert("Bulk pass stopped: " + e.message);
-    }
-    el("btn-bulk-translate").disabled = false;
-    el("btn-bulk-translate-cancel").classList.add("hidden");
-    updateBulkTranslateStatus();
-    syncMaybePush();
-  });
-  el("btn-bulk-translate-cancel").addEventListener("click", ()=>{
-    bulkTranslateCancelled = true;
-    el("btn-bulk-translate-cancel").classList.add("hidden");
   });
   el("btn-fetch-balance").addEventListener("click", ()=> fetchDeepSeekBalance(false));
   el("sentence-percent").addEventListener("input", ()=>{
