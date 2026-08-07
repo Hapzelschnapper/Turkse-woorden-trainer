@@ -122,7 +122,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 21:08</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 21:18</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -57626,14 +57626,36 @@ const CEFR_MAJOR = ["A1","A1","A1","A2","A2","A2","B1","B1","B1","B2","B2","B2",
 const CEFR_SUB   = ["start","mid","end","start","mid","end","start","mid","end","start","mid","end","start","mid","end","start","mid","end"];
 function cefrLabel(idx){ return CEFR_MAJOR[idx] + " " + CEFR_SUB[idx]; }
 
-const CEFR_BASE_GUIDANCE = {
-  A1: "EXTREEM eenvoudig: bijna uitsluitend een KAAL onderwerp + werkwoord, zonder iets extra's — bijvoorbeeld \"Kedi yürüyor.\" (de kat loopt), \"Adam koşuyor.\" (de man rent), \"Köpek içiyor.\" (de hond drinkt). Maximaal 2-3 woorden, uitsluitend tegenwoordige tijd, GEEN lijdend voorwerp, GEEN bijvoeglijke naamwoorden of bijwoorden, GEEN bijzinnen, GEEN naamvallen buiten een kale onderwerpsvorm. Vereist het opgegeven grammaticale onderwerp iets dat niet in 2-3 kale woorden past (bv. een naamval of vraagpartikel): gebruik dan de kortst mogelijke, kaalste vorm ervan (bv. \"Kedi evde.\" voor locatief) — nooit meer woorden dan strikt nodig voor dat ene grammaticapunt.",
-  A2: "Gebruik veelvoorkomende dagelijkse woorden in korte zinnen (ca. 4-7 woorden): een kaal onderwerp + werkwoord mag nu een lijdend voorwerp, een simpele bijvoeglijke bepaling, of een tijd-/plaatsbepaling erbij krijgen, en eenvoudige verleden/toekomende tijd en basale voegwoorden (ve, ama, çünkü) zijn toegestaan. Nog steeds precies één idee per zin, geen bijzinnen.",
-  B1: "Gebruik gangbare maar iets minder frequente woorden, zinnen van ca. 7-12 woorden met precies één eenvoudige bijzin (bv. çünkü/ki/dat-achtige constructies) en gevarieerde werkwoordstijden.",
-  B2: "Gebruik minder frequente, iets abstractere woordenschat, langere zinnen (ca. 10-15 woorden) met twee gekoppelde ideeën/bijzinnen en af en toe een idiomatische uitdrukking.",
-  C1: "Gebruik genuanceerde, minder frequente woordenschat en idiomatiek, complexe zinnen (ca. 13-20 woorden) met meerdere bijzinnen en gevarieerde, geavanceerde grammaticale constructies.",
-  C2: "Gebruik zeldzame, literaire of zeer genuanceerde woordkeuze, spreekwoorden en idiomatische uitdrukkingen, en complexe, vloeiende zinsbouw op vrijwel moedertaalniveau — lengte volgt puur uit wat natuurlijk is, geen kunstmatige beperking."
-};
+// Eén expliciete richtlijn per van de 18 sub-niveaus (i.p.v. een grof major-niveau + generieke
+// sub-notitie) -- nodig voor een echt geleidelijke opbouw, met name onderaan: A1-start moet HARD op
+// 2 woorden blijven (znw+ww, niets anders), niet "2-3 woorden, meestal kaal" zoals de vorige versie
+// toestond, want dat liet net genoeg ruimte voor de AI om af te wijken naar iets complexers.
+const CEFR_LEVEL_GUIDANCE = [
+  // A1
+  "EXACT 2 woorden: een kaal zelfstandig naamwoord + een werkwoord in de tegenwoordige tijd, niets anders. Bijvoorbeeld \"Kedi yürüyor.\" (de kat loopt), \"Adam koşuyor.\" (de man rent), \"Köpek içiyor.\" (de hond drinkt). GEEN lijdend voorwerp, GEEN bijvoeglijk naamwoord/bijwoord, GEEN naamval, GEEN bijzin, GEEN voegwoord. Vereist het opgegeven grammaticale onderwerp per se iets extra's (bv. een naamval): voeg dan precies dat ene woord toe en niets meer (dus 3 woorden max, alleen dan).",
+  "3 woorden: zelfstandig naamwoord + werkwoord, met precies ÉÉN toevoeging — óf een kort lijdend voorwerp, óf één simpel bijvoeglijk naamwoord, óf één eenvoudige plaatsbepaling (bv. \"evde\"). Bijvoorbeeld \"Kedi süt içiyor.\" (de kat drinkt melk), \"Büyük köpek koşuyor.\" (de grote hond rent). Uitsluitend tegenwoordige tijd, geen bijzin, geen voegwoord.",
+  "3-4 woorden: zelfstandig naamwoord + werkwoord + maximaal twee eenvoudige toevoegingen (object, bijvoeglijk naamwoord, of plaats-/tijdsbepaling). Nog steeds uitsluitend tegenwoordige tijd, geen bijzin. Bijvoorbeeld \"Kedi mutfakta süt içiyor.\" (de kat drinkt melk in de keuken).",
+  // A2
+  "4-5 woorden. Verleden of toekomende tijd mag nu naast de tegenwoordige tijd voorkomen (niet gemengd binnen één zin). Eén object/bijvoeglijk naamwoord/bepaling is prima, nog geen bijzin of voegwoord.",
+  "5-6 woorden. Verleden/toekomende tijd, en nu mag er precies één basaal voegwoord bij (ve, ama) om twee korte, simpele ideeën te verbinden.",
+  "6-7 woorden. Zoals hierboven, plus çünkü (omdat) is nu ook toegestaan. Dit is de bovenkant van A2 — net onder de eerste echte bijzin.",
+  // B1
+  "7-9 woorden, met precies één eenvoudige bijzin (bv. een çünkü-, ki-, of dat-achtige constructie). Gevarieerde werkwoordstijden mogen gemengd worden binnen de zin (bv. hoofdzin verleden tijd + bijzin tegenwoordige tijd).",
+  "9-11 woorden, met één bijzin, iets gangbare maar minder hoogfrequente woordenschat toegestaan.",
+  "10-12 woorden. Bovenkant van B1: de bijzin mag iets uitgebreider, en een tweede, korte gekoppelde gedachte mag er losjes bij (nog geen twee volwaardige bijzinnen).",
+  // B2
+  "10-13 woorden met twee gekoppelde ideeën/bijzinnen. Minder frequente, iets abstractere woordenschat toegestaan.",
+  "12-14 woorden, twee bijzinnen, af en toe een idiomatische uitdrukking.",
+  "13-15 woorden. Bovenkant van B2: complexere zinsbouw, meerdere gekoppelde ideeën, natuurlijke idiomatiek.",
+  // C1
+  "13-16 woorden met meerdere bijzinnen, genuanceerde en minder frequente woordenschat.",
+  "15-18 woorden, gevarieerde geavanceerde grammaticale constructies, idiomatiek.",
+  "17-20 woorden. Bovenkant van C1: complexe, vloeiende zinsbouw met meerdere ineengevlochten bijzinnen.",
+  // C2
+  "Zeldzame, literaire of zeer genuanceerde woordkeuze; lengte volgt puur uit wat natuurlijk is (geen kunstmatige ondergrens), doorgaans een complexe zin met meerdere bijzinnen.",
+  "Zoals hierboven, met spreekwoorden/idiomatische uitdrukkingen waar natuurlijk.",
+  "Vrijwel moedertaalniveau: volledig natuurlijke, vloeiende zinsbouw en woordkeuze, geen enkele kunstmatige beperking meer.",
+];
 const CEFR_SUB_NOTE = {
   start: "Blijf aan de eenvoudige kant van dit niveau.",
   mid: "Dit is het kernniveau, gemiddeld voor dit niveau.",
@@ -57641,7 +57663,7 @@ const CEFR_SUB_NOTE = {
 };
 function cefrGuidance(idx){
   const major = CEFR_MAJOR[idx], sub = CEFR_SUB[idx];
-  return `Niveau ${major} (${sub}) van het Europese CEFR-referentiekader: ${CEFR_BASE_GUIDANCE[major]} ${CEFR_SUB_NOTE[sub]}`;
+  return `Niveau ${major} (${sub}) van het Europese CEFR-referentiekader: ${CEFR_LEVEL_GUIDANCE[idx]} ${CEFR_SUB_NOTE[sub]}`;
 }
 
 const GRAMMAR_LESSONS = [
@@ -60909,16 +60931,20 @@ function pickNextItem(){
   const words = allWords().filter(w => unlockedEns.has(w.en));
   const now = Date.now();
 
-  // due-voor-herhaling (al eerder getoond) blijft ongefilterd binnen wat ontgrendeld is; nog-nooit-getoonde
-  // woorden komen alleen uit de huidige/ontgrendelde les(sen) (zie getIntroducibleWords) — dit ÍS de cursus nu,
-  // er is geen los "vrij oefenen" meer los van de lessenstructuur.
-  // Woordniveau: geeft voorrang aan woorden binnen het ingestelde CEFR-bereik (Instellingen); als dat
-  // niets due oplevert, valt het terug op due woorden ongeacht bereik, zodat oefenen nooit stokt.
+  // due-voor-herhaling en nog-nooit-getoonde woorden worden nu ALTIJD eerst als gecombineerde pool
+  // binnen het ingestelde CEFR-bereik geprobeerd -- pas als die gecombineerde pool ECHT helemaal leeg
+  // is (geen enkel due-woord én geen enkel introduceerbaar woord binnen bereik) wordt er breder gezocht.
+  // De vorige versie viel al terug op "elk due woord, ongeacht bereik" zodra er specifiek niets due was
+  // BINNEN bereik, ook als er nog volop introduceerbare woorden binnen bereik lagen -- juist vlak nadat
+  // je de sliders aanpast (nog niets van het nieuwe bereik is "due") was dat de meest voorkomende situatie.
   const reviewDueAll = words.filter(it => { const p = getProgress(it.en); return p.reps > 0 && p.due <= now; });
   const reviewDueInRange = reviewDueAll.filter(inRange);
-  const introducibleEns = new Set(getIntroducibleWords().map(w=>w.en));
+  const introducibleWordsList = getIntroducibleWords(); // al gescoped op de huidige/ontgrendelde les(sen) + CEFR-bereik
+  const introducibleEns = new Set(introducibleWordsList.map(w=>w.en));
   const introducibleAsWords = allWords().filter(it => introducibleEns.has(it.en));
-  const dueWords = reviewDueInRange.length ? [...reviewDueInRange, ...introducibleAsWords] : [...reviewDueAll, ...introducibleAsWords];
+  const introducibleInRange = introducibleAsWords.filter(inRange);
+  const inRangePool = [...reviewDueInRange, ...introducibleInRange];
+  const dueWords = inRangePool.length ? inRangePool : [...reviewDueAll, ...introducibleAsWords];
 
   // Bepaal of we een zin of TR-vraag willen (streef-verhoudingen), alleen mogelijk met API-sleutel
   const sentenceRatio = Math.max(0, Math.min(1, (settings.sentencePercent ?? 20) / 100));
