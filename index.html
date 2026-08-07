@@ -57354,19 +57354,10 @@ async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temp
   const attempt = _attempt || 0;
   const useProxy = proxyConfigured();
   if(!useProxy && !settings.apiKey) throw new Error("No DeepSeek API key set (Settings).");
-  
-  // OPLOSSING: We controleren en dwingen het woord 'json' af in de systeemprompt vÓÓrdat we de array bouwen
-  let finalSystemPrompt = systemPrompt || "";
-  if (schema && !finalSystemPrompt.toLowerCase().includes("json")) {
-    finalSystemPrompt += " Return the output as a valid JSON object.";
-  }
-
-  // Bouw nu de messages array op met de gecorrigeerde systeemprompt
   const messages = Array.isArray(userContentOrMessages)
-    ? [{role:"system", content:finalSystemPrompt}, ...userContentOrMessages]
-    : [{role:"system", content:finalSystemPrompt}, {role:"user", content:userContentOrMessages}];
-
-  const url = useProxy ? (settings.proxyUrl.replace(/\/$/,"") + "/deepseek") : "https://deepseek.com";
+    ? [{role:"system", content:systemPrompt}, ...userContentOrMessages]
+    : [{role:"system", content:systemPrompt}, {role:"user", content:userContentOrMessages}];
+  const url = useProxy ? (settings.proxyUrl.replace(/\/$/,"") + "/deepseek") : "https://api.deepseek.com/chat/completions";
   const headers = useProxy
     ? {"Content-Type":"application/json", "X-Proxy-Token": settings.proxyToken}
     : {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey};
@@ -57375,10 +57366,11 @@ async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temp
     messages,
     thinking: {"type":"disabled"}
   };
-  
-  // Activeer het JSON response format
+  // DeepSeek kent geen tool-schema-afdwinging zoals Claude's tool_choice -- de systeemprompt moet dus
+  // (in tegenstelling tot bij Claude) wél zelf blijven uitleggen welke velden verwacht worden. Wat
+  // response_format WEL garandeert: altijd geldige, kale JSON (nooit binnen ```json ... ``` verpakt,
+  // nooit met verdwaalde tekst ervoor/erna) -- dus geen losse regex-opschoning meer nodig voor dat deel.
   if(schema) body.response_format = {type: "json_object"};
-
   const res = await fetchWithTimeout(url, {
     method: "POST",
     headers,
@@ -57387,6 +57379,8 @@ async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temp
   if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
+  // Zelfde afkap-bescherming als bij callClaude: DeepSeek geeft finish_reason:"length" als de
+  // tokenlimiet geraakt werd vóórdat de JSON afgesloten was.
   if(data.choices?.[0]?.finish_reason === "length" && attempt < 2){
     const nextBudget = Math.max((maxTokens || 500) * 2, 900);
     return callDeepSeek(systemPrompt, userContentOrMessages, nextBudget, temperature, attempt + 1, schema);
@@ -57394,6 +57388,31 @@ async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temp
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   return raw;
+}
+
+/* Dispatcher: kiest op basis van de instelling per taakcategorie ("word" = vertaling/woordbeoordeling,
+   "sentence" = zin/vraag-generatie, -beoordeling, grammatica-oefeningen, taaltoets, "vraag aan AI")
+   welke provider de aanroep daadwerkelijk uitvoert. De aanroepende functies hoeven zelf niets van dit
+   onderscheid te weten — die roepen altijd gewoon callAI(categorie, ...) aan. */
+function preferredModelFor(category){
+  const setting = category === "word" ? settings.wordModel : settings.sentenceModel;
+  return setting === "deepseek" || setting === "claude" ? setting : (category === "word" ? "deepseek" : "claude");
+}
+function proxyConfigured(){
+  return !!(settings.proxyUrl && settings.proxyToken);
+}
+function hasKeyFor(category){
+  if(proxyConfigured()) return true; // de gedeelde tussenserver dekt beide categorieën, geen eigen sleutel nodig
+  return preferredModelFor(category) === "claude" ? !!settings.anthropicApiKey : !!settings.apiKey;
+}
+function keyNameFor(category){
+  return preferredModelFor(category) === "claude" ? "Anthropic (Claude)" : "DeepSeek";
+}
+async function callAI(category, systemPrompt, userContentOrMessages, maxTokens, temperature, schema){
+  const model = preferredModelFor(category);
+  return model === "claude"
+    ? callClaude(systemPrompt, userContentOrMessages, maxTokens, temperature, 0, schema)
+    : callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temperature, 0, schema);
 }
 
 async function callClaude(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt, schema){
@@ -58264,10 +58283,24 @@ IMPORTANT FOR TOPICS WITH "RELATIONAL NOUNS" (preposition-like constructions usi
 STRICT REQUIREMENT: the base word MUST come literally from the list given to you for this call, no other word whatsoever. Pick whichever one best fits the topic (a verb for verb conjugation topics, a noun for case topics, etc.) — do not invent a different word yourself, even if you think you could come up with a "better" example.
 NOTE — THE ENGLISH GLOSS IN PARENTHESES IS ONLY A MEMORY AID, NOT AN INSTRUCTION TO RE-TRANSLATE IT YOURSELF: each item in the list is formatted as "TURKISH_WORD (english meaning)" — use the GIVEN Turkish word literally as written. Do NOT re-translate the English gloss yourself, because English words are often ambiguous (e.g. "like" can mean either "to like" (beğenmek) or "similar to" (gibi)) — if the list contains "gibi (like)", the intended word is ALWAYS "gibi", never a self-invented translation of "like" such as "beğenmek".
 Write everything in English and Turkish ONLY — never any other language.
-Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the English phrase (for en-tr) or the Turkish form (for tr-en) shown to the user", "correct": "the correct answer in the OTHER language than prompt", "baseWord": "the chosen base word, taken literally from the given list"}`;
+Respond in JSON.`;
   const userMsg = `Topic: "${topic.label}" (${topic.hint})
 Allowed base words (pick exactly one): ${wordList}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
-  const raw = await callAI("sentence", sys, userMsg, 2500, 0.4);
+  const schema = {
+    name: "grammar_drill",
+    description: "Een geïsoleerde grammatica-oefening: een concrete zin/frase, geen abstracte regelvraag.",
+    input_schema: {
+      type: "object",
+      properties: {
+        direction: {type:"string", enum:["en-tr","tr-en"]},
+        prompt: {type:"string", description:"De Engelse frase (en-tr) of Turkse vorm (tr-en) die aan de gebruiker getoond wordt."},
+        correct: {type:"string", description:"Het correcte antwoord, in de andere taal dan prompt."},
+        baseWord: {type:"string", description:"Het gekozen basiswoord, letterlijk overgenomen uit de gegeven lijst."},
+      },
+      required: ["direction","prompt","correct","baseWord"]
+    }
+  };
+  const raw = await callAI("sentence", sys, userMsg, 2500, 0.4, schema);
   return parseAIJson(raw);
 }
 
@@ -58327,7 +58360,14 @@ const GRAMMAR_TOPIC_FRAMEWORK = {
   belirtme_hali:"noun", iyelik_ekleri:"noun", cogul_eki:"noun", kucultme_eki:"noun", hitap_bicimleri:"noun",
   sayilar_siralar:"noun", copula_basic:"noun", copula_plural:"noun", copula_soru_olumsuz:"noun",
   // twee zelfstandige naamwoorden nodig
-  tamlayan_hali:"noun2", isim_tamlamasi:"noun2", karsilastirma:"noun2", ki_eki:"noun2",
+  // isim_tamlamasi (onbepaalde/belirtisiz compound, bv. "araba anahtarı") werkt met VRIJWEL elk
+  // willekeurig naamwoordpaar, want het is een "type/categorie"-relatie -- eigen framework.
+  // tamlayan_hali (bepaalde/belirtili compound + genitief, bv. "arabanın anahtarı") vereist ECHTE
+  // bezitsrelatie -- twee volledig willekeurige naamwoorden (bv. "lepel" + "olifant") leverden hier
+  // geforceerde/rare voorbeelden op, dus dat krijgt een aparte curated "bezitter"-pool (zie
+  // POSSESSOR_NOUNS/pickMasteredPossessorWords) i.p.v. de brede, willekeurige Nouns-pool.
+  isim_tamlamasi:"noun_compound_indefinite", tamlayan_hali:"noun_compound_definite",
+  karsilastirma:"noun2", ki_eki:"noun2",
   // rest: geen duidelijke woordsoort-voorkeur, gebruikt de brede gemengde pool (bestaand gedrag)
 };
 
@@ -58366,6 +58406,36 @@ async function pickMasteredPoolWords(category, count){
   return pairs;
 }
 
+// Naamwoorden die zinvol als "bezitter" in een BEPAALDE naamwoordgroep (belirtili isim tamlaması/
+// genitief) kunnen optreden: levende wezens, organisaties, plekken -- dingen die daadwerkelijk iets
+// kunnen "hebben". Een volledig willekeurig abstract naamwoord (bv. "lepel", "banaan") kan dat niet,
+// wat eerder tot geforceerde/rare voorbeelden leidde (zie noun_compound_definite hierboven).
+const POSSESSOR_NOUNS = new Set([
+  "mother","father","teacher","dog","cat","king","queen","doctor","family","sister","brother",
+  "student","friend","man","woman","child","boy","girl","president","company","city","country",
+  "school","team","government","nurse","farmer","driver","police","army","church","university","hospital",
+  "village","town","house","office","shop","store","bird","horse","cow","lion","elephant","baby","parent",
+  "grandmother","grandfather","husband","wife","son","daughter","uncle","aunt","cousin","worker","manager",
+  "boss","owner","customer","client","leader","captain","soldier","lawyer","judge","priest","prince","princess",
+]);
+async function pickMasteredPossessorWords(count){
+  const allEn = baseWordList().map(w=>w.en).filter(en => POSSESSOR_NOUNS.has(en));
+  const level8 = allEn.filter(en => getProgress(en).level >= 8);
+  const level7 = allEn.filter(en => getProgress(en).level >= 7);
+  let pool = level8.length >= count ? level8 : level7;
+  if(!pool.length) pool = allEn; // nog geen enkele possessor-noun op niveau 7+: pak elk bekend exemplaar
+  if(!pool.length) pool = [...POSSESSOR_NOUNS]; // allerlaatste redmiddel: de curated lijst zelf (nog niet vertaald)
+  const shuffled = [...pool];
+  for(let i=shuffled.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]; }
+  const picks = shuffled.slice(0, count);
+  const pairs = [];
+  for(const en of picks){
+    try{ const tr = await getOrFetchTranslation(en); pairs.push({en, tr:tr[0]}); }
+    catch(e){ /* deze overslaan als vertalen mislukt */ }
+  }
+  return pairs;
+}
+
 const FRAMEWORK_INSTRUCTIONS = {
   spatial: {needCategory:["Nouns","Nouns"], needCount:[1,1],
     instr: (w1,w2) => `Build one short, natural sentence using EXACTLY these two nouns: "${w1.tr}" (${w1.en}) as the subject, and "${w2.tr}" (${w2.en}) as the location/reference noun that the grammar point attaches to.\nIllustration only (build your OWN sentence with the given words/topic, don't just copy this): "Kedi masanın üstünde." (The cat is on the table.)\nKeep it SHORT (3-6 words) and use no other nouns besides the two given.`},
@@ -58377,6 +58447,17 @@ const FRAMEWORK_INSTRUCTIONS = {
     instr: (w1) => `Build one short, natural sentence or short phrase applying the grammar point to EXACTLY this noun: "${w1.tr}" (${w1.en}). Keep it SHORT (2-5 words) and use no other noun besides the one given.`},
   noun2: {needCategory:["Nouns","Nouns"], needCount:[1,1],
     instr: (w1,w2) => `Build one short, natural phrase or sentence that relates EXACTLY these two nouns using the grammar point: "${w1.tr}" (${w1.en}) and "${w2.tr}" (${w2.en}). Keep it SHORT and use no other nouns besides the two given.`},
+  // Onbepaalde naamwoordgroep (belirtisiz isim tamlaması): eerste naamwoord blijft KAAL (geen
+  // achtervoegsel), tweede krijgt de 3e-persoons bezittelijke uitgang -(s)I. Dit is een "type/categorie"-
+  // relatie (bv. "araba anahtarı" = auto-sleutel/soort sleutel), die met vrijwel ELK naamwoordpaar werkt.
+  noun_compound_indefinite: {needCategory:["Nouns","Nouns"], needCount:[1,1],
+    instr: (w1,w2) => `Build a Turkish INDEFINITE noun compound (belirtisiz isim tamlaması) using EXACTLY these two nouns in this order: "${w1.tr}" (${w1.en}) + "${w2.tr}" (${w2.en}). The first noun stays in its bare dictionary form (no suffix); only the second noun takes the 3rd-person possessive suffix -(s)I. This construction expresses a category/type relation ("a ${w2.en} of/for/made-of ${w1.en}-type"), similar to "araba anahtarı" (car key) — it works naturally even for an unusual pair, since it just names a type/category, not literal ownership. Build a short, natural phrase (2-4 words).`},
+  // Bepaalde naamwoordgroep (belirtili isim tamlaması) + genitief: eerste naamwoord krijgt de genitief
+  // -(n)In, tweede weer de bezittelijke uitgang -(s)I (bv. "okulun bahçesi" = de tuin VAN de school).
+  // Vereist een ECHTE bezitsrelatie -- daarom komt het eerste woord uit een curated pool van "bezitter"-
+  // achtige naamwoorden (mensen, dieren, organisaties, plekken) i.p.v. een volledig willekeurig naamwoord.
+  noun_compound_definite: {needCategory:["PossessorNouns","Nouns"], needCount:[1,1],
+    instr: (w1,w2) => `Build a Turkish DEFINITE noun compound (belirtili isim tamlaması) expressing genuine, specific possession, using EXACTLY these two nouns: "${w1.tr}" (${w1.en}) as the possessor, and "${w2.tr}" (${w2.en}) as the thing possessed. The first noun takes the genitive suffix -(n)In; the second noun takes the 3rd-person possessive suffix -(s)I — e.g. "okulun bahçesi" (the school's garden, okul+un + bahçe+si). Build a short, natural phrase or short sentence (2-5 words) using exactly these two nouns.`},
 };
 
 /* Voor de "Prepositions"-vocabulairelessen: verpakt een specifiek voorzetsel-woord in een kort,
@@ -58413,8 +58494,21 @@ async function generateContextualVocabDrill(en){
 Build one short sentence using this noun somewhere in it: "${helper.tr}" (${helper.en}). Keep it SHORT (3-6 words) and natural.
 Randomly choose the test direction: en-tr (show the English sentence, ask for the Turkish translation) or tr-en (show the Turkish sentence, ask for the English translation).
 Write everything in English and Turkish ONLY — never any other language.
-Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the sentence shown to the user, in the language matching direction", "correct": "the correct translation in the other language"}`;
-  const raw = await callAI("sentence", sys, `Word: ${tr[0]} (${en})`, 2500, 0.5);
+Respond in JSON.`;
+  const schema = {
+    name: "vocab_drill",
+    description: "Een kort zinnetje dat een specifiek Turks woord in context demonstreert.",
+    input_schema: {
+      type: "object",
+      properties: {
+        direction: {type:"string", enum:["en-tr","tr-en"]},
+        prompt: {type:"string", description:"De zin die aan de gebruiker getoond wordt, in de taal die bij direction hoort."},
+        correct: {type:"string", description:"De correcte vertaling in de andere taal."},
+      },
+      required: ["direction","prompt","correct"]
+    }
+  };
+  const raw = await callAI("sentence", sys, `Word: ${tr[0]} (${en})`, 2500, 0.5, schema);
   return parseAIJson(raw);
 }
 
@@ -58422,16 +58516,34 @@ async function generateFrameworkDrillCandidate(topic, framework, correctionNote)
   const cfg = FRAMEWORK_INSTRUCTIONS[framework];
   const words = [];
   for(let i=0;i<cfg.needCategory.length;i++){
-    const picked = await pickMasteredPoolWords(cfg.needCategory[i], 1);
-    words.push(picked[0] || {en:"school", tr:"okul"}); // veiligheidsnet als de pool leeg is
+    // "PossessorNouns" is geen echte vocab-categorie maar de curated bezitter-pool (zie
+    // POSSESSOR_NOUNS hierboven) -- alleen relevant voor noun_compound_definite (genitief).
+    const picked = cfg.needCategory[i] === "PossessorNouns"
+      ? await pickMasteredPossessorWords(1)
+      : await pickMasteredPoolWords(cfg.needCategory[i], 1);
+    words.push(picked[0] || (cfg.needCategory[i] === "PossessorNouns" ? {en:"teacher", tr:"öğretmen"} : {en:"school", tr:"okul"})); // veiligheidsnet als de pool leeg is
   }
   const sys = `You create a SHORT, concrete example testing a given Turkish grammar topic, isolated to that one skill but applied PRACTICALLY (a real short sentence/phrase, never an abstract rule question), using only the word(s) given to you for that call.
 Randomly choose the test direction: en-tr (show the English version, ask for the Turkish translation) or tr-en (show the Turkish version, ask for the English translation).
 Write everything in English and Turkish ONLY — never any other language.
-Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the sentence/phrase shown to the user, in the language matching direction", "correct": "the correct translation in the other language", "baseWord": "the word(s) you were given, as used"}`;
+Respond in JSON.`;
   const userMsg = `Topic: "${topic.label}" (${topic.hint})
 ${cfg.instr(...words)}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
-  const raw = await callAI("sentence", sys, userMsg, 2500, 0.5);
+  const schema = {
+    name: "grammar_drill",
+    description: "Een geïsoleerde grammatica-oefening: een concrete zin/frase, geen abstracte regelvraag.",
+    input_schema: {
+      type: "object",
+      properties: {
+        direction: {type:"string", enum:["en-tr","tr-en"]},
+        prompt: {type:"string", description:"De zin/frase die aan de gebruiker getoond wordt, in de taal die bij direction hoort."},
+        correct: {type:"string", description:"De correcte vertaling in de andere taal."},
+        baseWord: {type:"string", description:"Het/de gegeven woord(en), zoals gebruikt."},
+      },
+      required: ["direction","prompt","correct","baseWord"]
+    }
+  };
+  const raw = await callAI("sentence", sys, userMsg, 2500, 0.5, schema);
   return parseAIJson(raw);
 }
 
@@ -58471,8 +58583,20 @@ async function generateGrammarDrill(topic){
 
 async function gradeGrammarDrillAnswer(drill, answer){
   const isTrEn = drill.direction === "tr-en";
-  const sys = `Je beoordeelt of het ${isTrEn ? "Engelse" : "Turkse"} antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (${isTrEn ? "gebruiker moest de Turkse vorm naar het Engels vertalen" : "gebruiker moest de Engelse frase naar het Turks vertalen"}). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat de zin fout wordt (bv. "et" en "O et" zijn beide correct voor "it is meat"). Reken dit soort verschil dus NOOIT fout. ${isTrEn ? "" : "NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en"} kleine tikfouten met een ondubbelzinnige bedoeling reken je goed. Geef ook een korte (max 2 zinnen) uitleg in het Engels, rechtstreeks tegen de gebruiker gericht (spreek de gebruiker aan met "you") — vooral nuttig als het antwoord fout is, om te laten zien waarom. Antwoord ALLEEN met geldige JSON: {"correct": true of false, "uitleg": "korte uitleg in het Engels"}`;
-  const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 300, 0);
+  const sys = `Je beoordeelt of het ${isTrEn ? "Engelse" : "Turkse"} antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (${isTrEn ? "gebruiker moest de Turkse vorm naar het Engels vertalen" : "gebruiker moest de Engelse frase naar het Turks vertalen"}). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat de zin fout wordt (bv. "et" en "O et" zijn beide correct voor "it is meat"). Reken dit soort verschil dus NOOIT fout. ${isTrEn ? "" : "NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en"} kleine tikfouten met een ondubbelzinnige bedoeling reken je goed. Geef ook een korte (max 2 zinnen) uitleg in het Engels, rechtstreeks tegen de gebruiker gericht (spreek de gebruiker aan met "you") — vooral nuttig als het antwoord fout is, om te laten zien waarom. Antwoord in JSON.`;
+  const schema = {
+    name: "beoordeel_antwoord",
+    description: "Beoordeling van een grammatica-oefening.",
+    input_schema: {
+      type: "object",
+      properties: {
+        correct: {type:"boolean"},
+        uitleg: {type:"string", description:"Korte uitleg in het Engels, rechtstreeks tegen de gebruiker gericht."},
+      },
+      required: ["correct","uitleg"]
+    }
+  };
+  const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 300, 0, schema);
   return parseAIJson(raw);
 }
 
@@ -59321,11 +59445,34 @@ Voor elk gegeven Engels woord geef je:
 - de 1-2 meest gangbare Turkse vertaling(en), in de basisvorm (infinitief bij werkwoorden, bv. "gitmek" niet "gider")
 - een registerclassificatie: "neutral" (standaard, in vrijwel elke context bruikbaar/correct), "formal" (formeel, ongebruikelijk in casual spraak), "informal" (informeel/spreektaal, prima onder vrienden maar niet formeel/schriftelijk), "colloquial" (heel informeel/straattaal/jargon), of "caution" (verouderd, zeldzaam, dialectisch, of makkelijk verward met een ander woord)
 - ALLEEN als het register NIET "neutral" is: een korte toelichting in het Engels (max 8 woorden), gericht aan een taalstudent (bv. "more formal than everyday 'gitmek'")
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"words": [{"en": "...", "tr": ["..."], "register": "neutral|formal|informal|colloquial|caution", "note": ""}]}
-De volgorde en het aantal items in "words" moet EXACT overeenkomen met de gegeven lijst, in dezelfde volgorde.`;
+Antwoord in JSON. De volgorde en het aantal items in "words" moet EXACT overeenkomen met de gegeven lijst, in dezelfde volgorde.`;
     const userMsg = "Woorden: " + batch.map(w=>w.en).join(", ");
+    const schema = {
+      name: "vertaal_batch",
+      description: "Vertalingen + registerclassificatie voor een batch Engelse woorden.",
+      input_schema: {
+        type: "object",
+        properties: {
+          words: {
+            type: "array",
+            minItems: batch.length, maxItems: batch.length,
+            items: {
+              type: "object",
+              properties: {
+                en: {type:"string"},
+                tr: {type:"array", items:{type:"string"}, minItems:1, maxItems:2},
+                register: {type:"string", enum:["neutral","formal","informal","colloquial","caution"]},
+                note: {type:"string", description:"Alleen bij een niet-neutraal register: max 8 woorden toelichting in het Engels."},
+              },
+              required: ["en","tr","register","note"]
+            }
+          }
+        },
+        required: ["words"]
+      }
+    };
     try{
-      const raw = await callClaude(sys, userMsg, 3500, 0.2);
+      const raw = await callClaude(sys, userMsg, 3500, 0.2, 0, schema);
       const parsed = parseAIJson(raw);
       for(const item of (parsed.words || [])){
         if(item.en && Array.isArray(item.tr) && item.tr.length){
@@ -59353,11 +59500,20 @@ async function getOrFetchTranslation(en){
   if(cached && cached.length) return cached;
   if(!hasKeyFor("word")) throw new Error(`No ${preferredModelFor("word") === "claude" ? "Anthropic" : "DeepSeek"} API key (or shared proxy) set — needed to generate Turkish translations.`);
 
-  const sys = `Je bent een Engels-Turks vertaler voor een taalleerapp. Geef de meest gangbare Turkse vertaling(en) van een Engels woord.
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"tr": ["vertaling1", "vertaling2"]}
-Geef 1-3 veelgebruikte Turkse vertalingen (synoniemen/varianten), in de basisvorm (infinitief bij werkwoorden, bv. "gitmek" niet "gider").`;
+  const sys = `Je bent een Engels-Turks vertaler voor een taalleerapp. Geef de meest gangbare Turkse vertaling(en) van een Engels woord, in de basisvorm (infinitief bij werkwoorden, bv. "gitmek" niet "gider"). Geef 1-3 veelgebruikte vertalingen (synoniemen/varianten). Antwoord in JSON.`;
   const user = `Engels woord: "${en}"`;
-  const raw = await callAI("word", sys, user, 400, 0);
+  const schema = {
+    name: "vertaling",
+    description: "Turkse vertaling(en) van een Engels woord.",
+    input_schema: {
+      type: "object",
+      properties: {
+        tr: {type:"array", items:{type:"string"}, minItems:1, maxItems:3, description:"1-3 Turkse vertalingen, basisvorm."},
+      },
+      required: ["tr"]
+    }
+  };
+  const raw = await callAI("word", sys, user, 400, 0, schema);
   const parsed = parseAIJson(raw);
   const tr = Array.isArray(parsed.tr) && parsed.tr.length ? parsed.tr : [String(parsed.tr || "")];
   trCache[en] = {tr, fetchedAt: Date.now()};
@@ -59429,8 +59585,21 @@ function pickNextItem(){
 async function generateSingleTestItem(niveauIdx){
   const sys = `Je maakt één item voor een Turkse taaltoets, CEFR-niveau ${cefrLabel(niveauIdx)}. ${cefrGuidance(niveauIdx)}
 Bij lagere niveaus (A1/A2): een los, hoogfrequent Turks woord. Bij hogere niveaus (B1 en hoger): een korte tot langere Turkse zin, met toenemende complexiteit/idiomatiek naarmate het niveau stijgt.
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"tr": "Turks woord of zin", "type": "word of sentence", "correct_en": "de meest gangbare, correcte Engelse vertaling"}`;
-  const raw = await callAI("sentence", sys, `Niveau: ${cefrLabel(niveauIdx)} (niveau_index ${niveauIdx})`, 400, 0.5);
+Antwoord in JSON.`;
+  const schema = {
+    name: "toets_item",
+    description: "Eén item voor een adaptieve Turkse taaltoets.",
+    input_schema: {
+      type: "object",
+      properties: {
+        tr: {type:"string", description:"Turks woord of zin."},
+        type: {type:"string", enum:["word","sentence"]},
+        correct_en: {type:"string", description:"De meest gangbare, correcte Engelse vertaling."},
+      },
+      required: ["tr","type","correct_en"]
+    }
+  };
+  const raw = await callAI("sentence", sys, `Niveau: ${cefrLabel(niveauIdx)} (niveau_index ${niveauIdx})`, 400, 0.5, schema);
   const parsed = parseAIJson(raw);
   if(!parsed.tr) throw new Error("AI did not return a test item.");
   return parsed;
@@ -59439,9 +59608,18 @@ Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"tr": "Turks woord of
 async function gradeSingleTestItem(item, answer){
   if(!answer) return false;
   if(normalize(answer) === normalize(item.correct_en || "")) return true;
-  const sys = `Je beoordeelt of het Engelse antwoord van een gebruiker een acceptabele vertaling is van het Turkse item "${item.tr}". De meest gangbare vertaling is "${item.correct_en}", maar legitieme synoniemen/kleine varianten mogen ook goed zijn. Antwoord ALLEEN met geldige JSON: {"correct": true of false}`;
+  const sys = `Je beoordeelt of het Engelse antwoord van een gebruiker een acceptabele vertaling is van het Turkse item "${item.tr}". De meest gangbare vertaling is "${item.correct_en}", maar legitieme synoniemen/kleine varianten mogen ook goed zijn. Antwoord in JSON.`;
+  const schema = {
+    name: "toets_antwoord",
+    description: "Of een Engels antwoord een acceptabele vertaling is.",
+    input_schema: {
+      type: "object",
+      properties: { correct: {type:"boolean"} },
+      required: ["correct"]
+    }
+  };
   try{
-    const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 150, 0);
+    const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 150, 0, schema);
     return !!(parseAIJson(raw).correct);
   }catch(e){ return false; }
 }
@@ -59534,13 +59712,35 @@ Vermijd zinnen die zichzelf tegenspreken of onlogisch klinken (bv. een vraag en 
 Als een grammaticaal onderwerp is opgegeven: bouw de zin zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
 Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde niveau. Gebruik voor de OVERIGE woorden in de zin (naast het doelwoord) zoveel mogelijk ALLEEN woorden uit die lijst. Bouw de zin dus vooral op met simpele functiewoorden (voornaamwoorden, is/zijn, veelvoorkomende bijwoorden) en woorden uit die lijst — vermijd onnodige extra zelfstandige naamwoorden/werkwoorden/bijvoeglijke naamwoorden die niet in de lijst staan en niet het doelwoord zijn.
 Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin.
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"tr": "Turkse zin", "words": [{"tr": "basisvorm1", "en": "translation", "cefr": 0}, {"tr": "basisvorm2", "en": "translation", "cefr": 0}]}`;
+Antwoord in JSON.`;
   const user = `Niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
 Doelwoord: "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als het niveau dat vraagt).
 ${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
 ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}`;
-  const raw = await callAI("sentence", sys, user, 4000, 0.3);
+  const schema = {
+    name: "zin_kandidaat",
+    description: "Een Turkse oefenzin plus de betekenisvolle woorden erin.",
+    input_schema: {
+      type: "object",
+      properties: {
+        tr: {type:"string", description:"De Turkse zin."},
+        words: {
+          type:"array",
+          items: {
+            type:"object",
+            properties: {
+              tr: {type:"string", description:"Woordenboek-basisvorm."},
+              en: {type:"string", description:"Meest gangbare Engelse vertaling."},
+              cefr: {type:"integer", minimum:0, maximum:17},
+            },
+            required: ["tr","en","cefr"]
+          }
+        },
+      },
+      required: ["tr","words"]
+    }
+  };
+  const raw = await callAI("sentence", sys, user, 4000, 0.3, schema);
   const parsed = parseAIJson(raw);
   if(!parsed.tr) throw new Error("AI did not return a sentence.");
   parsed.words = filterWordsActuallyInSentence(parsed.tr, parsed.words);
@@ -59550,10 +59750,19 @@ ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>
 /* Aparte, gerichte controle: zou een moedertaalspreker deze zin echt zo zeggen? */
 async function checkSentenceNatural(sentenceTr){
   const sys = `Je bent een kritische moedertaalspreker Turks. Beoordeel of onderstaande zin grammaticaal correct is EN natuurlijk klinkt — dus niet geforceerd, niet zichzelf tegensprekend, geen rare combinatie van woorden die een moedertaalspreker nooit zo zou zeggen.
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"natuurlijk": true of false}`;
+Antwoord in JSON.`;
   const user = `Zin: "${sentenceTr}"`;
+  const schema = {
+    name: "natuurlijkheid_check",
+    description: "Of een Turkse zin grammaticaal correct en natuurlijk klinkt.",
+    input_schema: {
+      type: "object",
+      properties: { natuurlijk: {type:"boolean"} },
+      required: ["natuurlijk"]
+    }
+  };
   try{
-    const raw = await callAI("sentence", sys, user, 150, 0);
+    const raw = await callAI("sentence", sys, user, 150, 0, schema);
     const parsed = parseAIJson(raw);
     return parsed.natuurlijk !== false;
   }catch(e){ return true; } // check zelf mislukt -> kandidaat gewoon accepteren, niet blokkeren
@@ -59657,13 +59866,36 @@ Als een grammaticaal onderwerp is opgegeven: bouw de vraag zodanig dat die daar 
 De vraag moet grammaticaal correct en natuurlijk klinken voor een moedertaalspreker.
 Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde niveau. Gebruik voor de OVERIGE woorden in de vraag (naast het doelwoord) zoveel mogelijk ALLEEN woorden uit die lijst — vermijd onnodige extra zelfstandige naamwoorden/werkwoorden/bijvoeglijke naamwoorden die niet in de lijst staan en niet het doelwoord zijn.
 Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"tr": "Turkse vraag", "feitelijk": true of false, "words": [{"tr": "basisvorm1", "en": "translation", "cefr": 0}]}`;
+Antwoord in JSON.`;
   const user = `Niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
 Doelwoord: "${targetWord}" (vervoegd/verbogen mag).
 ${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
 ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}`;
-  const raw = await callAI("sentence", sys, user, 4000, 0.4);
+  const schema = {
+    name: "vraag_kandidaat",
+    description: "Een Turkse oefenvraag plus de betekenisvolle woorden erin.",
+    input_schema: {
+      type: "object",
+      properties: {
+        tr: {type:"string", description:"De Turkse vraag (eindigt op een vraagteken)."},
+        feitelijk: {type:"boolean", description:"Feitelijke vraag (true) of open/persoonlijke vraag (false)."},
+        words: {
+          type:"array",
+          items: {
+            type:"object",
+            properties: {
+              tr: {type:"string", description:"Woordenboek-basisvorm."},
+              en: {type:"string", description:"Meest gangbare Engelse vertaling."},
+              cefr: {type:"integer", minimum:0, maximum:17},
+            },
+            required: ["tr","en","cefr"]
+          }
+        },
+      },
+      required: ["tr","feitelijk","words"]
+    }
+  };
+  const raw = await callAI("sentence", sys, user, 4000, 0.4, schema);
   const parsed = parseAIJson(raw);
   if(!parsed.tr) throw new Error("AI did not return a question.");
   parsed.words = filterWordsActuallyInSentence(parsed.tr, parsed.words);
@@ -59742,15 +59974,34 @@ Als een grammaticaal onderwerp is opgegeven waar de vraag bewust rond gebouwd is
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je"), in het Engels. Structuur: begin met het oordeel, en bij fout kort en concreet wat er niet klopte.
 Geef ook altijd een Engelse vertaling van de Turkse vraag, EN een Engelse vertaling van wat de gebruiker met zijn Turkse antwoord daadwerkelijk heeft gezegd (ook als dat inhoudelijk niet klopt — vertaal gewoon wat er staat, zodat de gebruiker kan zien wat hij eigenlijk zei).
 Als vermeld staat dat de gebruiker het niet eens is met een eerder oordeel: kijk extra kritisch of het antwoord (of delen ervan) toch correct kunnen zijn.
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"correct": true of false, "uitleg": "korte uitleg in het Engels, max 2 zinnen", "referentie": "een voorbeeld van een goed Turks antwoord op deze vraag", "vraag_en": "Engelse vertaling van de Turkse vraag", "antwoord_en": "Engelse vertaling van wat de gebruiker letterlijk heeft geantwoord", "grammar_correct": true of false, "words": [true of false, ...]}
-BELANGRIJK: "words" moet exact evenveel waarden bevatten als er genummerde woorden zijn, in dezelfde volgorde als hieronder genummerd.`;
+Geef terug: correct (bool), uitleg (tekst), referentie (tekst), vraag_en (tekst), antwoord_en (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
   const user = `Turkse vraag: "${item.tr}"
 Genummerde woorden in de vraag (basisvorm, ${item.words.length} in totaal): ${item.words.map((w,i)=>`${i+1}. ${w.tr} (${w.en})`).join(", ")}
 Antwoord van gebruiker (in het Turks): "${answer}"
 ${gTopic ? `Deze vraag is bewust gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}).` : ""}
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling." : ""}`;
-  const raw = await callAI("sentence", sys, user, 3000, 0);
+  const schema = {
+    name: "beoordeel_vraag",
+    description: "Beoordeling van een Turks antwoord op een Turkse oefenvraag, inclusief per-woord score.",
+    input_schema: {
+      type: "object",
+      properties: {
+        correct: {type:"boolean", description:"Is het antwoord een gepast, correct Turks antwoord op de vraag?"},
+        uitleg: {type:"string", description:"Korte uitleg in het Engels, rechtstreeks tegen de gebruiker gericht."},
+        referentie: {type:"string", description:"Een voorbeeld van een goed Turks antwoord op deze vraag."},
+        vraag_en: {type:"string", description:"Engelse vertaling van de Turkse vraag."},
+        antwoord_en: {type:"string", description:"Engelse vertaling van wat de gebruiker letterlijk heeft geantwoord."},
+        grammar_correct: {type:"boolean", description:"Of het specifiek opgegeven grammaticale aspect correct is toegepast (true als er geen onderwerp is opgegeven)."},
+        words: {
+          type:"array", items:{type:"boolean"},
+          minItems: item.words.length, maxItems: item.words.length,
+          description:"Per genummerd woord (zelfde volgorde als de lijst), of de gebruiker begrip daarvan toont.",
+        },
+      },
+      required: ["correct","uitleg","referentie","vraag_en","antwoord_en","grammar_correct","words"]
+    }
+  };
+  const raw = await callAI("sentence", sys, user, 3000, 0, schema);
   const parsed = parseAIJson(raw);
   if(!Array.isArray(parsed.words)) parsed.words = [];
   while(parsed.words.length < item.words.length) parsed.words.push(!!parsed.correct);
@@ -59773,7 +60024,7 @@ Als een grammaticaal onderwerp is opgegeven waar de zin bewust rond gebouwd is: 
 BELANGRIJK OVER TYPEFOUTEN: als een woord duidelijk een tikfout is (bv. verwisselde letters zoals "eht" i.p.v. "het", een ontbrekende/dubbele letter) en de bedoelde vertaling ondubbelzinnig duidelijk is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", zodat de gebruiker het weet, maar laat dit "correct" niet naar false zetten. Wees hierin coulanter dan bij een woord dat écht een andere/verkeerde vertaling is.
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"). Structuur: begin met het oordeel (goed/fout), en bij fout kort en concreet wat er niet klopte — de correcte vertaling zelf hoeft niet in de uitleg herhaald te worden, die staat al apart in "referentie".
 Als vermeld staat dat de gebruiker het niet eens is met een eerder oordeel: kijk extra kritisch of het antwoord (of delen ervan) toch correct kunnen zijn.
-Geef terug: correct (bool), uitleg (tekst), referentie (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst.`;
+Geef terug: correct (bool), uitleg (tekst), referentie (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
   const user = `Turkse zin: "${item.tr}"
 Genummerde woorden in de zin (basisvorm, ${item.words.length} in totaal):
 ${wordContext}
@@ -59945,12 +60196,24 @@ BELANGRIJK OVER TYPEFOUTEN: als het antwoord duidelijk een tikfout bevat en de b
 ALS HET ANTWOORD FOUT IS: geef in "betekenis_antwoord" aan wat het door de gebruiker ingevoerde woord ZELF betekent, VERTAALD NAAR ${isTrEn ? "het Turks" : "het Engels"} (dus NIET in dezelfde taal als het antwoord zelf — dat zou zinloos zijn, bv. nooit "great means great"), mits het een bestaand, betekenisvol woord is — dit helpt de gebruiker begrijpen welk ander woord hij in gedachten had. Is het antwoord geen bestaand woord, laat "betekenis_antwoord" dan leeg (""). Bij een GOED antwoord laat je "betekenis_antwoord" ook leeg.
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"), in het Engels. Bij een fout antwoord hoeft "uitleg" niet meer te herhalen wat het antwoord betekent (dat staat al in "betekenis_antwoord") — een korte aanvullende opmerking is genoeg, of laat leeg.
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder 'onjuist'-oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord toch (gedeeltelijk) correct kan zijn, bijvoorbeeld als minder gangbaar synoniem of alternatieve vorm." : ""}
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak: {"correct": true of false, "uitleg": "korte uitleg in het Engels, max 1 zin, rechtstreeks tegen de gebruiker gericht, mag leeg zijn", "betekenis_antwoord": "betekenis van het antwoord van de gebruiker, vertaald naar de ANDERE taal dan waarin het antwoord zelf is getypt, indien fout en een bestaand woord, anders leeg"}`;
+Antwoord in JSON.`;
   const user = isTrEn
     ? `Turks woord: "${item.tr}"\nCorrecte Engelse vertaling: "${item.en}"\nAntwoord van gebruiker: "${answer}"`
     : `Engels woord: "${item.en}"\nBekende Turkse vertaling(en): ${tr.join(", ") || "(geen)"}\nAntwoord van gebruiker: "${answer}"`;
-
-  const raw = await callAI("word", sys, user, 1000, 0);
+  const schema = {
+    name: "woord_oordeel",
+    description: "Beoordeling van een los vertaal-antwoord.",
+    input_schema: {
+      type: "object",
+      properties: {
+        correct: {type:"boolean"},
+        uitleg: {type:"string", description:"Korte uitleg in het Engels, max 1 zin, rechtstreeks tegen de gebruiker gericht, mag leeg zijn."},
+        betekenis_antwoord: {type:"string", description:"Betekenis van het antwoord van de gebruiker (vertaald naar de andere taal), indien fout en een bestaand woord; anders leeg."},
+      },
+      required: ["correct","uitleg","betekenis_antwoord"]
+    }
+  };
+  const raw = await callAI("word", sys, user, 1000, 0, schema);
   try{
     return parseAIJson(raw);
   }catch(e){
