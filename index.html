@@ -122,7 +122,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 21:18</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 21:40</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -59515,6 +59515,7 @@ function showCheckupResumeNotice(){
 
 async function startCheckup(){
   if(!hasKeyFor("word") || !hasKeyFor("sentence")){ alert("Both a " + keyNameFor("word") + " and a " + keyNameFor("sentence") + " API key are needed for the knowledge check (Settings)."); return; }
+  recentGrammarDrillWords = new Set(); // nieuwe sessie -> geen woorden van een vorige sessie meer vermijden
   checkupState = {
     phase: "vocab",
     vocabLevel: 0, vocabLevelResults: [], vocabCeiling: -1,
@@ -59759,7 +59760,7 @@ function categoryWordSet(category){
 /* Trekt `count` VERSCHILLENDE woorden van een bepaalde woordsoort, bij voorkeur al goed beheerste
    woorden (op elk ontgrendeld niveau) — dat geeft variatie (i.p.v. steeds dezelfde 2 vaste woorden)
    en dus meer blootstelling aan verschillende klinkerharmonie-patronen. */
-async function pickMasteredPoolWords(category, count){
+async function pickMasteredPoolWords(category, count, avoidEn){
   const catWords = categoryWordSet(category); // per-woordsoort set, over alle niveaus
   const allInCat = [...catWords];
   const level8 = allInCat.filter(en => getProgress(en).level >= 8);
@@ -59768,6 +59769,12 @@ async function pickMasteredPoolWords(category, count){
   if(!pool.length){
     // allerlaatste redmiddel: nog helemaal geen woord van deze woordsoort op niveau 7+
     pool = allInCat.filter(en => { const w = EN_WORDS_DATA.find(x=>x.en===en); return w && w.cefr <= 2; });
+  }
+  // Recent-binnen-deze-sessie-gebruikte woorden vermijden (voorkomt "steeds hetzelfde zinnetje" bij
+  // grammatica-oefeningen) -- maar alleen als dat niet de hele pool leegveegt.
+  if(avoidEn && avoidEn.size){
+    const filtered = pool.filter(en => !avoidEn.has(en));
+    if(filtered.length) pool = filtered;
   }
   const shuffled = [...pool];
   for(let i=shuffled.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]; }
@@ -59792,13 +59799,17 @@ const POSSESSOR_NOUNS = new Set([
   "grandmother","grandfather","husband","wife","son","daughter","uncle","aunt","cousin","worker","manager",
   "boss","owner","customer","client","leader","captain","soldier","lawyer","judge","priest","prince","princess",
 ]);
-async function pickMasteredPossessorWords(count){
+async function pickMasteredPossessorWords(count, avoidEn){
   const allEn = baseWordList().map(w=>w.en).filter(en => POSSESSOR_NOUNS.has(en));
   const level8 = allEn.filter(en => getProgress(en).level >= 8);
   const level7 = allEn.filter(en => getProgress(en).level >= 7);
   let pool = level8.length >= count ? level8 : level7;
   if(!pool.length) pool = allEn; // nog geen enkele possessor-noun op niveau 7+: pak elk bekend exemplaar
   if(!pool.length) pool = [...POSSESSOR_NOUNS]; // allerlaatste redmiddel: de curated lijst zelf (nog niet vertaald)
+  if(avoidEn && avoidEn.size){
+    const filtered = pool.filter(en => !avoidEn.has(en));
+    if(filtered.length) pool = filtered;
+  }
   const shuffled = [...pool];
   for(let i=shuffled.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]; }
   const picks = shuffled.slice(0, count);
@@ -59895,16 +59906,23 @@ Respond in JSON.`;
   return parseAIJson(raw);
 }
 
-async function generateFrameworkDrillCandidate(topic, framework, correctionNote){
+async function generateFrameworkDrillCandidate(topic, framework, correctionNote, avoidEn){
   const cfg = FRAMEWORK_INSTRUCTIONS[framework];
   const words = [];
   for(let i=0;i<cfg.needCategory.length;i++){
     // "PossessorNouns" is geen echte vocab-categorie maar de curated bezitter-pool (zie
     // POSSESSOR_NOUNS hierboven) -- alleen relevant voor noun_compound_definite (genitief).
     const picked = cfg.needCategory[i] === "PossessorNouns"
-      ? await pickMasteredPossessorWords(1)
-      : await pickMasteredPoolWords(cfg.needCategory[i], 1);
+      ? await pickMasteredPossessorWords(1, avoidEn)
+      : await pickMasteredPoolWords(cfg.needCategory[i], 1, avoidEn);
     words.push(picked[0] || (cfg.needCategory[i] === "PossessorNouns" ? {en:"teacher", tr:"öğretmen"} : {en:"school", tr:"okul"})); // veiligheidsnet als de pool leeg is
+  }
+  // Bijhouden voor de "vermijd recent gebruikte woorden"-check bij de volgende drill in dezelfde sessie.
+  for(const w of words){
+    recentGrammarDrillWords.add(w.en);
+    while(recentGrammarDrillWords.size > RECENT_GRAMMAR_DRILL_WORDS_MAX){
+      recentGrammarDrillWords.delete(recentGrammarDrillWords.values().next().value); // oudste (eerst toegevoegde) eruit
+    }
   }
   const sys = `You create a SHORT, concrete example testing a given Turkish grammar topic, isolated to that one skill but applied PRACTICALLY (a real short sentence/phrase, never an abstract rule question), using only the word(s) given to you for that call.
 Randomly choose the test direction: en-tr (show the English version, ask for the Turkish translation) or tr-en (show the Turkish version, ask for the English translation).
@@ -59935,17 +59953,17 @@ ${cfg.instr(...words)}` + (correctionNote ? `\n\nNOTE: your previous attempt was
 function drillTurkishText(drill){
   return drill.direction === "tr-en" ? drill.prompt : drill.correct;
 }
-async function generateGrammarDrill(topic){
+async function generateGrammarDrill(topic, avoidEn){
   const framework = GRAMMAR_TOPIC_FRAMEWORK[topic.key];
   if(framework){
-    let drill = await generateFrameworkDrillCandidate(topic, framework);
+    let drill = await generateFrameworkDrillCandidate(topic, framework, undefined, avoidEn);
     let attempts = 1;
     // Structuurcheck (kale uitgang/metavraag/functiewoord) ÉN natuurlijkheidscheck (klinkt de zin echt
     // als iets een moedertaalspreker zou zeggen, i.p.v. een geforceerde combinatie van twee willekeurig
     // gekozen woorden -- zie de "kupadaki başarı"-klasse problemen die hiermee opgevangen worden,
     // ook voor topic-combinaties die niet apart met een eigen framework gecureerd zijn).
     while(attempts < 3 && (drillLooksInvalid(drill, []) || !(await checkSentenceNatural(drillTurkishText(drill))))){
-      drill = await generateFrameworkDrillCandidate(topic, framework, "make sure it's a real short sentence/phrase using only the given word(s), never a bare suffix or standalone preposition/function word, and make sure the result sounds genuinely natural to a native speaker -- not a forced or nonsensical combination of the two given words.");
+      drill = await generateFrameworkDrillCandidate(topic, framework, "make sure it's a real short sentence/phrase using only the given word(s), never a bare suffix or standalone preposition/function word, and make sure the result sounds genuinely natural to a native speaker -- not a forced or nonsensical combination of the two given words.", avoidEn);
       attempts++;
     }
     return drill;
@@ -60035,7 +60053,7 @@ async function nextCheckupQuestion(){
     el("checkup-progress").textContent = `${topic.label} · question ${checkupState.grammarTopicResults.length+1}/${CHECKUP_QUESTIONS_PER_GRAMMAR_TOPIC}`;
     el("checkup-word").textContent = "🤖 …";
     try{
-      const drill = await generateGrammarDrill(topic);
+      const drill = await generateGrammarDrill(topic, recentGrammarDrillWords);
       checkupState.current = {type:"grammar", topic, drill};
       checkupState.consecutiveFailures = 0; // gelukte generatie -> teller resetten
       el("checkup-word").textContent = drill.prompt;
@@ -60123,6 +60141,8 @@ async function submitCheckupAnswer(){
   advanceCheckupStaircase();
   persistCheckupState();
   el("btn-checkup-close").textContent = checkupState.phase === "done" ? "See results" : "Continue";
+  el("checkup-answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken
+  if(hasLikelyPhysicalKeyboard()) el("checkup-answer-input").focus(); // alleen auto-focus bij laptop/desktop, niet bij touch
 }
 
 /* Bepaalt of het huidige niveau/onderwerp-batch compleet is, en zo ja: of de trap omhoog gaat (batch
@@ -60219,6 +60239,7 @@ let lastSkillPracticeScore = loadJSON(LS_SKILL_SCORES, {}); // { [lessonId]: {co
 
 async function startSkillPractice(lesson){
   if(!hasKeyFor("word") || !hasKeyFor("sentence")){ alert("Both a " + keyNameFor("word") + " and a " + keyNameFor("sentence") + " API key are needed to practise (Settings)."); return; }
+  recentGrammarDrillWords = new Set(); // nieuwe sessie -> geen woorden van een vorige sessie meer vermijden
   skillPracticeState = {lesson, roundResults: [], current: null};
   el("modal-lesson").classList.add("hidden");
   el("modal-checkup").classList.remove("hidden");
@@ -60292,7 +60313,7 @@ async function nextSkillPracticeQuestion(){
     badgeEl.textContent = "grammar"; badgeEl.className = "badge badge-sentence";
     const topic = grammarTopicByKey(lesson.grammarTopics[0]);
     try{
-      const drill = await generateGrammarDrill(topic);
+      const drill = await generateGrammarDrill(topic, recentGrammarDrillWords);
       skillPracticeState.current = {type:"grammar", topic, drill};
       el("checkup-word").textContent = drill.prompt;
       el("checkup-word").className = "tr-word sentence";
@@ -60372,6 +60393,8 @@ async function submitSkillPracticeAnswer(){
   el("checkup-result-text").innerHTML = `<div class="muted" style="margin-bottom:6px;">${escapeHtml(promptShown)}</div>` +
     (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
   el("btn-checkup-close").textContent = roundJustCompleted ? "OK" : "Continue";
+  el("checkup-answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken, net als het hoofdscherm
+  if(hasLikelyPhysicalKeyboard()) el("checkup-answer-input").focus(); // alleen auto-focus bij laptop/desktop, niet bij touch
 
   // dezelfde post-actions als het reguliere oefenscherm: uitleg, vraag-aan-AI, dispuut
   el("checkup-post-actions").classList.remove("hidden");
@@ -61127,8 +61150,8 @@ function filterWordsActuallyInSentence(sentenceTr, words){
   return filtered.length ? filtered : words;
 }
 
-async function generateSentenceCandidate(targetWord, grammarTopic){
-  const level = pickLevelInRange();
+async function generateSentenceCandidate(targetWord, grammarTopic, _levelOverride, _correctionNote){
+  const level = _levelOverride ?? pickLevelInRange();
   const knownSample = pickKnownVocabSample(35);
   // Systeeminstructie bevat GEEN enkele per-aanroep-variabele meer (geen niveau, geen woord, geen
   // willekeurige woordsteekproef) -- dat is precies wat prompt-caching effectief maakt: deze tekst is
@@ -61138,13 +61161,14 @@ async function generateSentenceCandidate(targetWord, grammarTopic){
 De zin moet vooral grammaticaal correct en natuurlijk klinken voor een moedertaalspreker — dat weegt zwaarder dan het geforceerd verwerken van het opgegeven doelwoord.
 Vermijd zinnen die zichzelf tegenspreken of onlogisch klinken (bv. een vraag en het antwoord daarop in één zin proppen).
 Als een grammaticaal onderwerp is opgegeven: bouw de zin zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
-Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde niveau. Gebruik voor de OVERIGE woorden in de zin (naast het doelwoord) zoveel mogelijk ALLEEN woorden uit die lijst. Bouw de zin dus vooral op met simpele functiewoorden (voornaamwoorden, is/zijn, veelvoorkomende bijwoorden) en woorden uit die lijst — vermijd onnodige extra zelfstandige naamwoorden/werkwoorden/bijvoeglijke naamwoorden die niet in de lijst staan en niet het doelwoord zijn.
+Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde niveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de zin buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven niveau. Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger niveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken -- eenvoud weegt hier zwaarder dan een verfraaiing.
 Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin.
 Antwoord in JSON.`;
   const user = `Niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
 Doelwoord: "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als het niveau dat vraagt).
 ${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
-${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}`;
+${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}
+${_correctionNote || ""}`;
   const schema = {
     name: "zin_kandidaat",
     description: "Een Turkse oefenzin plus de betekenisvolle woorden erin.",
@@ -61177,6 +61201,7 @@ ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>
   }
   if(!parsed.tr) throw new Error("AI did not return a sentence.");
   parsed.words = filterWordsActuallyInSentence(parsed.tr, parsed.words);
+  parsed._level = level; // nodig voor de vocab-niveau-check in generateSentence()
   return parsed;
 }
 
@@ -61256,10 +61281,26 @@ async function generateSentence(){
   try{
     const natural = await checkSentenceNatural(parsed.tr);
     if(!natural){
-      parsed = await generateSentenceCandidate(targetWord, grammarTopic); // één herkansing, daarna gewoon accepteren
+      parsed = await generateSentenceCandidate(targetWord, grammarTopic, parsed._level); // één herkansing, zelfde niveau, daarna gewoon accepteren
     }
   }catch(e){
     // controle mislukt: geen probleem, ga door met de eerste kandidaat
+  }
+
+  // Vocab-niveau-check: ondanks de (nu harde) instructie kan de AI alsnog een te zwaar woord verzinnen
+  // voor iets anders dan het doelwoord (bv. "köylüler" in een A1-zin) -- dat repareert de instructie
+  // zelf niet altijd, dus hier een code-level controle met één gerichte herkansing.
+  if(Array.isArray(parsed.words)){
+    const targetEnLower = target ? target.en.toLowerCase() : null;
+    const violations = parsed.words.filter(w =>
+      w.en && w.en.toLowerCase() !== targetEnLower &&
+      typeof w.cefr === "number" && w.cefr > parsed._level
+    );
+    if(violations.length){
+      const note = `LET OP: je vorige poging bevatte ${violations.length > 1 ? "woorden" : "een woord"} die te zwaar zijn voor het gevraagde niveau: ${violations.map(v=>`"${v.tr}" (${v.en}, niveau ${cefrLabel(v.cefr)})`).join(", ")}. Vervang deze door een eenvoudiger woord dat past bij het niveau (of laat het weg als het niet strikt nodig is voor de zin).`;
+      const retried = await generateSentenceCandidate(targetWord, grammarTopic, parsed._level, note);
+      if(retried.tr) parsed = retried; // bij een tweede mislukking (geen tr): gewoon de eerste kandidaat behouden
+    }
   }
 
   const wordList = Array.isArray(parsed.words) ? parsed.words : [];
@@ -61292,21 +61333,22 @@ async function generateSentence(){
 }
 
 /* ===================== TR-VRAAG / TR-ANTWOORD (begrip zonder vertaling) ===================== */
-async function generateQuestionCandidate(targetWord, grammarTopic){
-  const level = pickLevelInRange();
+async function generateQuestionCandidate(targetWord, grammarTopic, _levelOverride, _correctionNote){
+  const level = _levelOverride ?? pickLevelInRange();
   const knownSample = pickKnownVocabSample(35);
   const sys = `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
 Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv. rekenen, geografie, een feit uit de zin zelf), ofwel een PERSOONLIJKE/OPEN vraag waarop elk contextueel passend Turks antwoord goed is (bv. "Bugün ne yaptın?").
 KRITIEK: het resultaat MOET een echte vraag zijn, GEEN mededelende stelling. Eindig ALTIJD met een vraagteken, en gebruik een vraagwoord (ne, nasıl, kim, nerede, kaç, hangi, neden, niçin, ...) of het vraagpartikel (mi/mı/mu/mü). Een zin als "Hava soğuktu ama dışarı çıktık." is FOUT (dat is een stelling); "Hava soğuk olmasına rağmen neden dışarı çıktınız?" is GOED (dat is een echte vraag).
 Als een grammaticaal onderwerp is opgegeven: bouw de vraag zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
 De vraag moet grammaticaal correct en natuurlijk klinken voor een moedertaalspreker.
-Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde niveau. Gebruik voor de OVERIGE woorden in de vraag (naast het doelwoord) zoveel mogelijk ALLEEN woorden uit die lijst — vermijd onnodige extra zelfstandige naamwoorden/werkwoorden/bijvoeglijke naamwoorden die niet in de lijst staan en niet het doelwoord zijn.
+Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde niveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de vraag buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven niveau. Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger niveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken -- eenvoud weegt hier zwaarder dan een verfraaiing.
 Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
 Antwoord in JSON.`;
   const user = `Niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
 Doelwoord: "${targetWord}" (vervoegd/verbogen mag).
 ${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
-${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}`;
+${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}
+${_correctionNote || ""}`;
   const schema = {
     name: "vraag_kandidaat",
     description: "Een Turkse oefenvraag plus de betekenisvolle woorden erin.",
@@ -61341,6 +61383,7 @@ ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>
   }
   if(!parsed.tr) throw new Error("AI did not return a question.");
   parsed.words = filterWordsActuallyInSentence(parsed.tr, parsed.words);
+  parsed._level = level;
   return parsed;
 }
 
@@ -61363,7 +61406,7 @@ async function generateQuestion(){
 
   let parsed = await generateQuestionCandidate(targetWord, grammarTopic);
   if(!looksLikeQuestion(parsed.tr)){
-    parsed = await generateQuestionCandidate(targetWord, grammarTopic); // herkansing: AI maakte een stelling i.p.v. een vraag
+    parsed = await generateQuestionCandidate(targetWord, grammarTopic, parsed._level); // herkansing: AI maakte een stelling i.p.v. een vraag
   }
   if(!looksLikeQuestion(parsed.tr)){
     // nog steeds geen echte vraag na de herkansing: forceer een vraagteken zodat het UI-onderscheid
@@ -61373,10 +61416,25 @@ async function generateQuestion(){
   try{
     const natural = await checkSentenceNatural(parsed.tr); // generieke check, werkt ook prima voor vragen
     if(!natural){
-      parsed = await generateQuestionCandidate(targetWord, grammarTopic); // één herkansing
+      parsed = await generateQuestionCandidate(targetWord, grammarTopic, parsed._level); // één herkansing
       if(!looksLikeQuestion(parsed.tr)) parsed.tr = parsed.tr.replace(/[.!]+\s*$/, "") + "?";
     }
   }catch(e){ /* controle mislukt: gewoon doorgaan met de eerste kandidaat */ }
+
+  // Vocab-niveau-check: zelfde redenering als bij generateSentence -- de AI kan ondanks de harde
+  // instructie alsnog een te zwaar woord verzinnen voor iets anders dan het doelwoord.
+  if(Array.isArray(parsed.words)){
+    const targetEnLower = target ? target.en.toLowerCase() : null;
+    const violations = parsed.words.filter(w =>
+      w.en && w.en.toLowerCase() !== targetEnLower &&
+      typeof w.cefr === "number" && w.cefr > parsed._level
+    );
+    if(violations.length){
+      const note = `LET OP: je vorige poging bevatte ${violations.length > 1 ? "woorden" : "een woord"} die te zwaar zijn voor het gevraagde niveau: ${violations.map(v=>`"${v.tr}" (${v.en}, niveau ${cefrLabel(v.cefr)})`).join(", ")}. Vervang deze door een eenvoudiger woord dat past bij het niveau (of laat het weg als het niet strikt nodig is voor de vraag).`;
+      const retried = await generateQuestionCandidate(targetWord, grammarTopic, parsed._level, note);
+      if(retried.tr && looksLikeQuestion(retried.tr)) parsed = retried;
+    }
+  }
 
   const wordList = Array.isArray(parsed.words) ? parsed.words : [];
   const items = [];
@@ -61682,6 +61740,12 @@ let currentCorrect = null;
 let chatMsgs = []; // voor de "vraag aan AI"-modal, per huidige item
 let revealedWords = new Set(); // woorden waarvan de gebruiker binnen deze oefening de vertaling heeft opgevraagd -> tellen als fout
 let lastExplanation = "";
+// Onthoudt de laatste paar woorden die als basis voor een grammatica-drill zijn gebruikt (binnen de
+// huidige skill-practice/kennischeck-sessie), zodat pickMasteredPoolWords/pickMasteredPossessorWords
+// ze kan vermijden -- voorkomt dat je bij een klein "beheerst"-pool telkens (bijna) dezelfde zin krijgt.
+// Gereset bij het starten van een nieuwe sessie (startSkillPractice/startCheckup).
+let recentGrammarDrillWords = new Set();
+const RECENT_GRAMMAR_DRILL_WORDS_MAX = 5;
 
 const el = id => document.getElementById(id);
 
@@ -62988,7 +63052,20 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-start-checkup").addEventListener("click", startCheckup);
   el("btn-checkup-next").addEventListener("click", ()=> skillPracticeState ? submitSkillPracticeAnswer() : submitCheckupAnswer());
   el("checkup-answer-input").addEventListener("keydown", e=>{
-    if(e.key === "Enter"){ e.preventDefault(); if(!el("btn-checkup-next").disabled) el("btn-checkup-next").click(); }
+    if(e.key === "Enter"){
+      e.preventDefault();
+      // Twee losse fasen met elk hun eigen knop: tijdens het beantwoorden is btn-checkup-next de
+      // relevante actie (antwoord indienen); zodra de feedback getoond wordt (checkup-result-box
+      // zichtbaar) is btn-checkup-close de zichtbare "Continue"-knop -- de oude listener keek altijd
+      // naar btn-checkup-next, die tijdens de feedback-fase juist disabled blijft, dus Enter deed daar
+      // niets (naast dat het invoerveld zelf ook disabled was -- zie de fix in submit*Answer hierboven).
+      const feedbackShown = !el("checkup-result-box").classList.contains("hidden");
+      if(feedbackShown){
+        if(!el("btn-checkup-close").disabled) el("btn-checkup-close").click();
+      } else {
+        if(!el("btn-checkup-next").disabled) el("btn-checkup-next").click();
+      }
+    }
   });
   el("btn-checkup-skip").addEventListener("click", ()=>{ if(skillPracticeState) skipSkillPracticeQuestion(); });
   el("btn-checkup-show-explanation").addEventListener("click", toggleSkillPracticeExplanation);
