@@ -122,7 +122,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 09:00</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 16:35</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -57350,7 +57350,7 @@ function maxCostUsage(a, b){
    — dat is hoogvolume en simpel genoeg dat het prijsverschil daar niet opweegt tegen de kwaliteitswinst. */
 /* Generieke aanroep naar DeepSeek — analoog aan callClaude() hierboven, zodat beide providers
    via dezelfde soort interface (systeemprompt + gebruikersinhoud, evt. berichtenreeks) bruikbaar zijn. */
-async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt){
+async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt, schema){
   const attempt = _attempt || 0;
   const useProxy = proxyConfigured();
   if(!useProxy && !settings.apiKey) throw new Error("No DeepSeek API key set (Settings).");
@@ -57361,14 +57361,20 @@ async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temp
   const headers = useProxy
     ? {"Content-Type":"application/json", "X-Proxy-Token": settings.proxyToken}
     : {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey};
+  const body = {
+    model: "deepseek-v4-pro", max_tokens: maxTokens || 500, temperature: temperature ?? 0,
+    messages,
+    thinking: {"type":"disabled"}
+  };
+  // DeepSeek kent geen tool-schema-afdwinging zoals Claude's tool_choice -- de systeemprompt moet dus
+  // (in tegenstelling tot bij Claude) wél zelf blijven uitleggen welke velden verwacht worden. Wat
+  // response_format WEL garandeert: altijd geldige, kale JSON (nooit binnen ```json ... ``` verpakt,
+  // nooit met verdwaalde tekst ervoor/erna) -- dus geen losse regex-opschoning meer nodig voor dat deel.
+  if(schema) body.response_format = {type: "json_object"};
   const res = await fetchWithTimeout(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({
-      model: "deepseek-v4-pro", max_tokens: maxTokens || 500, temperature: temperature ?? 0,
-      messages,
-      thinking: {"type":"disabled"}
-    })
+    body: JSON.stringify(body)
   });
   if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
   const data = await res.json();
@@ -57377,7 +57383,7 @@ async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temp
   // tokenlimiet geraakt werd vóórdat de JSON afgesloten was.
   if(data.choices?.[0]?.finish_reason === "length" && attempt < 2){
     const nextBudget = Math.max((maxTokens || 500) * 2, 900);
-    return callDeepSeek(systemPrompt, userContentOrMessages, nextBudget, temperature, attempt + 1);
+    return callDeepSeek(systemPrompt, userContentOrMessages, nextBudget, temperature, attempt + 1, schema);
   }
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
@@ -57402,14 +57408,14 @@ function hasKeyFor(category){
 function keyNameFor(category){
   return preferredModelFor(category) === "claude" ? "Anthropic (Claude)" : "DeepSeek";
 }
-async function callAI(category, systemPrompt, userContentOrMessages, maxTokens, temperature){
+async function callAI(category, systemPrompt, userContentOrMessages, maxTokens, temperature, schema){
   const model = preferredModelFor(category);
   return model === "claude"
-    ? callClaude(systemPrompt, userContentOrMessages, maxTokens, temperature)
-    : callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temperature);
+    ? callClaude(systemPrompt, userContentOrMessages, maxTokens, temperature, 0, schema)
+    : callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temperature, 0, schema);
 }
 
-async function callClaude(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt){
+async function callClaude(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt, schema){
   const attempt = _attempt || 0;
   const useProxy = proxyConfigured();
   if(!useProxy && !settings.anthropicApiKey) throw new Error("No Anthropic API key set (Settings).");
@@ -57425,20 +57431,31 @@ async function callClaude(systemPrompt, userContentOrMessages, maxTokens, temper
         "content-type": "application/json",
         "anthropic-dangerous-direct-browser-access": "true",
       };
+  const body = {
+    model: "claude-sonnet-5",
+    max_tokens: maxTokens || 500,
+    // De systeeminstructie is bij elke aanroep woordelijk hetzelfde (alleen het gebruikersbericht
+    // verschilt) -- ideaal voor prompt-caching: cache_control markeert 'm als cachebaar, zodat
+    // herhaalde aanroepen met dezelfde instructie tegen het veel lagere cache-hit-tarief draaien
+    // i.p.v. steeds als nieuwe input te worden gefactureerd.
+    system: [{type: "text", text: systemPrompt, cache_control: {type: "ephemeral"}}],
+    messages,
+    thinking: {"type": "disabled"}, // geen redenering nodig voor gestructureerde JSON-output; voorkomt ook dat de tekst in een 2e blok terechtkomt achter een thinking-blok
+  };
+  // Optioneel: een JSON-schema afdwingen via tool use i.p.v. het schema als platte tekst in de
+  // systeemprompt uit te schrijven ("Antwoord ALLEEN met geldige JSON: {...}"). Dat scheelt tokens
+  // (dus geld, ook al is de systeemprompt zelf al gecached) EN is betrouwbaarder: Claude kan het
+  // schema dan niet meer per ongeluk lichtjes anders invullen (verkeerd aantal array-items, een
+  // object i.p.v. een boolean, etc.) -- precies de klasse fouten waar parseAIJson() nu achteraf
+  // gaten in probeert te repareren.
+  if(schema){
+    body.tools = [{name: schema.name, description: schema.description || "", input_schema: schema.input_schema}];
+    body.tool_choice = {type: "tool", name: schema.name};
+  }
   const res = await fetchWithTimeout(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({
-      model: "claude-sonnet-5",
-      max_tokens: maxTokens || 500,
-      // De systeeminstructie is bij elke aanroep woordelijk hetzelfde (alleen het gebruikersbericht
-      // verschilt) -- ideaal voor prompt-caching: cache_control markeert 'm als cachebaar, zodat
-      // herhaalde aanroepen met dezelfde instructie tegen het veel lagere cache-hit-tarief draaien
-      // i.p.v. steeds als nieuwe input te worden gefactureerd.
-      system: [{type: "text", text: systemPrompt, cache_control: {type: "ephemeral"}}],
-      messages,
-      thinking: {"type": "disabled"}, // geen redenering nodig voor gestructureerde JSON-output; voorkomt ook dat de tekst in een 2e blok terechtkomt achter een thinking-blok
-    })
+    body: JSON.stringify(body)
   });
   if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("Claude API error (" + res.status + "): " + txt.slice(0,200)); }
   const data = await res.json();
@@ -57453,7 +57470,16 @@ async function callClaude(systemPrompt, userContentOrMessages, maxTokens, temper
   // want bij sommige (langere) oefeningen bleek 1x verdubbelen soms nog niet genoeg.
   if(data.stop_reason === "max_tokens" && attempt < 2){
     const nextBudget = Math.max((maxTokens || 500) * 2, 900);
-    return callClaude(systemPrompt, userContentOrMessages, nextBudget, temperature, attempt + 1);
+    return callClaude(systemPrompt, userContentOrMessages, nextBudget, temperature, attempt + 1, schema);
+  }
+  if(schema){
+    // Bij tool use zit het (al gestructureerde, gegarandeerd geldige) resultaat in een "tool_use"-blok
+    // i.p.v. een tekstblok -- terug-serialiseren naar een JSON-string zodat parseAIJson() bij de
+    // aanroepende functie ongewijzigd kan blijven werken, ongeacht of schema gebruikt werd of niet.
+    const toolBlock = (data.content || []).find(b => b.type === "tool_use");
+    if(toolBlock) return JSON.stringify(toolBlock.input);
+    // Geen tool_use-blok gevonden (zou niet moeten gebeuren bij tool_choice:"tool", maar voor de
+    // zekerheid): val terug op eventuele tekst, net als het niet-schema-pad hieronder.
   }
   // Claude kan een "thinking"-blok VOOR het eigenlijke tekstblok plaatsen (interne redenering);
   // ervan uitgaan dat content[0] altijd het tekstblok is, is dus niet veilig. Zoek expliciet naar
@@ -59766,19 +59792,42 @@ Als een grammaticaal onderwerp is opgegeven waar de zin bewust rond gebouwd is: 
 BELANGRIJK OVER TYPEFOUTEN: als een woord duidelijk een tikfout is (bv. verwisselde letters zoals "eht" i.p.v. "het", een ontbrekende/dubbele letter) en de bedoelde vertaling ondubbelzinnig duidelijk is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", zodat de gebruiker het weet, maar laat dit "correct" niet naar false zetten. Wees hierin coulanter dan bij een woord dat écht een andere/verkeerde vertaling is.
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"). Structuur: begin met het oordeel (goed/fout), en bij fout kort en concreet wat er niet klopte — de correcte vertaling zelf hoeft niet in de uitleg herhaald te worden, die staat al apart in "referentie".
 Als vermeld staat dat de gebruiker het niet eens is met een eerder oordeel: kijk extra kritisch of het antwoord (of delen ervan) toch correct kunnen zijn.
-Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"correct": true of false, "uitleg": "korte uitleg in het Engels, max 2 zinnen, rechtstreeks tegen de gebruiker gericht", "referentie": "correcte vertaling van de hele zin", "grammar_correct": true of false, "words": [true of false, true of false, ...]}
-BELANGRIJK: "words" moet exact evenveel waarden bevatten als er genummerde woorden zijn, in dezelfde volgorde als de genummerde lijst (waarde 1 = woord 1, waarde 2 = woord 2, enz.). Gebruik GEEN objecten, alleen een platte lijst van true/false.`;
+Geef terug: correct (bool), uitleg (tekst), referentie (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst.`;
   const user = `Turkse zin: "${item.tr}"
 Genummerde woorden in de zin (basisvorm, ${item.words.length} in totaal):
 ${wordContext}
 Vertaling van gebruiker: "${answer}"
 ${gTopic ? `Deze zin is bewust gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}).` : ""}
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling." : ""}`;
-  const raw = await callAI("sentence", sys, user, 3000, 0);
+  // Schema wordt via tool use aan Claude meegegeven (dwingt de structuur af, i.p.v. erop te vertrouwen
+  // dat het model de tekstuele JSON-beschrijving hierboven exact volgt) -- scheelt zowel tokens
+  // (de uitgeschreven voorbeeld-JSON die hier vroeger stond) als parse-fouten. Dit schema-object zelf
+  // is GEEN onderdeel van de gecachte systeemprompt (het gaat via een apart "tools"-veld in de
+  // aanroep), dus het per-aanroep-variabele item.words.length hierin breekt de prompt-cache niet.
+  const schema = {
+    name: "beoordeel_zin",
+    description: "Beoordeling van de vertaling van een Turkse zin naar het Engels, inclusief per-woord score.",
+    input_schema: {
+      type: "object",
+      properties: {
+        correct: {type:"boolean", description:"Is de vertaling van de hele zin correct?"},
+        uitleg: {type:"string", description:"Korte uitleg in het Engels, max 2 zinnen, rechtstreeks tegen de gebruiker gericht."},
+        referentie: {type:"string", description:"Correcte Engelse referentievertaling van de hele zin."},
+        grammar_correct: {type:"boolean", description:"Of het specifiek opgegeven grammaticale aspect correct is toegepast (true als er geen onderwerp is opgegeven)."},
+        words: {
+          type:"array", items:{type:"boolean"},
+          minItems: item.words.length, maxItems: item.words.length,
+          description:"Per genummerd woord (zelfde volgorde als de lijst), of de gebruiker dat woord correct heeft verwerkt."
+        },
+      },
+      required: ["correct","uitleg","referentie","grammar_correct","words"]
+    }
+  };
+  const raw = await callAI("sentence", sys, user, 3000, 0, schema);
   const parsed = parseAIJson(raw);
   // Verwacht: parsed.words = [true, false, ...] met exact item.words.length entries, op volgorde.
-  // Robuust tegen afwijkingen: te kort/lang/ontbrekend -> aanvullen met het algemene oordeel.
+  // Bij Claude dwingt het schema dit al af; deze robuustheid blijft als vangnet voor DeepSeek (dat
+  // alleen "geldige JSON" garandeert, geen exacte lengte/vorm) en voor eventuele toekomstige afwijkingen.
   if(!Array.isArray(parsed.words)) parsed.words = [];
   while(parsed.words.length < item.words.length) parsed.words.push(!!parsed.correct);
   parsed.words = parsed.words.slice(0, item.words.length).map(v=>{
