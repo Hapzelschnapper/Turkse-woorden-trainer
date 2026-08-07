@@ -122,7 +122,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 21:42</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 21:47</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -61169,6 +61169,7 @@ async function generateSentenceCandidate(targetWord, grammarTopic, _levelOverrid
   const sys = `Je maakt korte, natuurlijke Turkse oefenzinnen voor een taalleerapp, afgestemd op een specifiek taalniveau dat per aanroep wordt meegegeven.
 De zin moet vooral grammaticaal correct en natuurlijk klinken voor een moedertaalspreker — dat weegt zwaarder dan het geforceerd verwerken van het opgegeven doelwoord.
 Vermijd zinnen die zichzelf tegenspreken of onlogisch klinken (bv. een vraag en het antwoord daarop in één zin proppen).
+Let op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Is een naamwoord in de zin bedoeld als lijdend voorwerp van een overgankelijk werkwoord, geef het dan de juiste accusatief-uitgang (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü) — anders verandert de betekenis van de zin ongemerkt (bv. "Kitaplar tanıyor" betekent "de boeken kennen [iets]", niet "hij/zij kent de boeken"; dat laatste vereist "Kitapları tanıyor").
 Als een grammaticaal onderwerp is opgegeven: bouw de zin zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
 Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde niveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de zin buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven niveau. Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger niveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken -- eenvoud weegt hier zwaarder dan een verfraaiing.
 Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin.
@@ -61217,6 +61218,7 @@ ${_correctionNote || ""}`;
 /* Aparte, gerichte controle: zou een moedertaalspreker deze zin echt zo zeggen? */
 async function checkSentenceNatural(sentenceTr){
   const sys = `Je bent een kritische moedertaalspreker Turks. Beoordeel of onderstaande zin grammaticaal correct is EN natuurlijk klinkt — dus niet geforceerd, niet zichzelf tegensprekend, geen rare combinatie van woorden die een moedertaalspreker nooit zo zou zeggen.
+Let hierbij SPECIFIEK op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Als de zin een naamwoord kennelijk als lijdend voorwerp bedoelt (bv. bij een overgankelijk werkwoord met maar één passend naamwoord in de zin), moet dat naamwoord de accusatief-uitgang dragen (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü); ontbreekt die waar hij nodig is, dan verandert het onderwerp/lijdend-voorwerp van de zin en is dat een echte fout, ook al is de zin op zichzelf (met de ANDERE, onbedoelde lezing) grammaticaal geldig Turks. Reken dit soort naamvalfout net zo hard aan als een overduidelijke spelfout.
 Antwoord in JSON.`;
   const user = `Zin: "${sentenceTr}"`;
   const schema = {
@@ -61350,6 +61352,7 @@ Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv
 KRITIEK: het resultaat MOET een echte vraag zijn, GEEN mededelende stelling. Eindig ALTIJD met een vraagteken, en gebruik een vraagwoord (ne, nasıl, kim, nerede, kaç, hangi, neden, niçin, ...) of het vraagpartikel (mi/mı/mu/mü). Een zin als "Hava soğuktu ama dışarı çıktık." is FOUT (dat is een stelling); "Hava soğuk olmasına rağmen neden dışarı çıktınız?" is GOED (dat is een echte vraag).
 Als een grammaticaal onderwerp is opgegeven: bouw de vraag zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
 De vraag moet grammaticaal correct en natuurlijk klinken voor een moedertaalspreker.
+Let op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Is een naamwoord bedoeld als lijdend voorwerp van een overgankelijk werkwoord, geef het dan de juiste accusatief-uitgang (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü) — anders verandert de betekenis van de zin ongemerkt.
 Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde niveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de vraag buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven niveau. Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger niveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken -- eenvoud weegt hier zwaarder dan een verfraaiing.
 Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
 Antwoord in JSON.`;
