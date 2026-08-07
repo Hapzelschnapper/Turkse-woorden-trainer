@@ -121,7 +121,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-06 19:00</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-06 20:35</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -131,6 +131,7 @@
         <span class="muted" id="due-count">— items ready to practise</span>
       </div>
       <div id="tr-word" class="tr-word">…</div>
+      <div class="muted" id="word-meta" style="font-size:.78rem;margin-top:2px;"></div>
       <div class="level-bar"><div class="level-bar-fill" id="level-fill" style="width:0%"></div></div>
       <div class="muted" id="level-label" style="margin-top:4px;">level 0 / 10</div>
 
@@ -389,7 +390,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-06 19:00</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-06 20:35</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
   </section>
@@ -438,6 +439,7 @@
     <span id="checkup-badge" class="badge badge-word hidden" style="margin-bottom:8px;display:inline-block;">word</span>
     <div id="checkup-question-box">
       <div class="tr-word" id="checkup-word">…</div>
+      <div class="muted" id="checkup-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
       <input type="text" id="checkup-answer-input" placeholder="Type your answer…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-top:10px;">
       <div class="row" style="margin-top:10px;">
         <button class="btn-primary" id="btn-checkup-next" style="flex:1;">Check</button>
@@ -58179,6 +58181,14 @@ function wordCategoryOf(en){
   }
   return _wordCategoryMap[en] || "";
 }
+let _wordCefrMap = null;
+function wordCefrOf(en){
+  if(!_wordCefrMap){
+    _wordCefrMap = {};
+    for(const w of EN_WORDS_DATA) _wordCefrMap[w.en] = w.cefr;
+  }
+  return _wordCefrMap[en];
+}
 
 /* Toont een Engels woord zoals het aan de gebruiker gepresenteerd wordt: werkwoorden krijgen een
    "to" ervoor (bv. "to meet" i.p.v. kaal "meet"), duidelijker herkenbaar als werkwoord — net als in
@@ -58458,6 +58468,7 @@ async function nextCheckupQuestion(){
     checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: tr ? tr[0] : null, direction};
     el("checkup-word").textContent = direction === "tr-en" ? checkupState.current.tr : displayEnglishWord(checkupState.current.en);
     el("checkup-word").className = "tr-word";
+    el("checkup-word-meta").textContent = [cefrLabel(word.cefr), wordCategoryOf(word.en) || null].filter(Boolean).join(" · ");
     el("checkup-answer-input").placeholder = direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
     const topics = sortedGrammarTopicsByLevel();
@@ -58545,7 +58556,11 @@ async function submitCheckupAnswer(){
   el("checkup-question-box").classList.add("hidden");
   el("checkup-result-box").classList.remove("hidden");
   el("checkup-result-text").className = "feedback " + (correct ? "correct" : "wrong");
-  el("checkup-result-text").innerHTML = (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`);
+  const promptShown = cur.type === "word"
+    ? (cur.sentenceDrill ? cur.sentenceDrill.prompt : (cur.direction === "tr-en" ? cur.tr : displayEnglishWord(cur.en)))
+    : cur.drill.prompt;
+  el("checkup-result-text").innerHTML = `<div class="muted" style="margin-bottom:6px;">${escapeHtml(promptShown)}</div>` +
+    (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`);
 
   advanceCheckupStaircase();
   persistCheckupState();
@@ -58666,6 +58681,7 @@ async function nextSkillPracticeQuestion(){
   el("checkup-modal-title").textContent = `🎯 Practice: ${lesson.title}`;
   el("checkup-progress").textContent = `Question ${skillPracticeState.roundResults.length+1}/${SKILL_PRACTICE_ROUND_SIZE}`;
   el("checkup-word").textContent = "🤖 …";
+  el("checkup-word-meta").textContent = "";
   const badgeEl = el("checkup-badge");
   badgeEl.classList.remove("hidden");
 
@@ -58694,6 +58710,7 @@ async function nextSkillPracticeQuestion(){
     skillPracticeState.current = {type:"word", en, tr: tr ? tr[0] : null, direction};
     el("checkup-word").textContent = direction === "tr-en" ? skillPracticeState.current.tr : displayEnglishWord(en);
     el("checkup-word").className = "tr-word";
+    el("checkup-word-meta").textContent = [typeof wordCefrOf(en) === "number" ? cefrLabel(wordCefrOf(en)) : null, wordCategoryOf(en) || null].filter(Boolean).join(" · ");
     el("checkup-answer-input").placeholder = direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
     badgeEl.textContent = "grammar"; badgeEl.className = "badge badge-sentence";
@@ -58756,6 +58773,11 @@ async function submitSkillPracticeAnswer(){
   skillPracticeState.roundResults.push(correct);
   skillPracticeState.lastAnswer = {answer, correctAnswerTxt};
 
+  // de opgave-tekst die getoond werd, zodat je 'm terugziet in de feedback (niet alleen je eigen antwoord)
+  const promptShown = cur.type === "word"
+    ? (cur.sentenceDrill ? cur.sentenceDrill.prompt : (cur.direction === "tr-en" ? cur.tr : displayEnglishWord(cur.en)))
+    : cur.drill.prompt;
+
   el("checkup-question-box").classList.add("hidden");
   el("checkup-result-box").classList.remove("hidden");
   el("checkup-result-text").className = "feedback " + (correct ? "correct" : "wrong");
@@ -58768,7 +58790,8 @@ async function submitSkillPracticeAnswer(){
     skillPracticeState.roundResults = [];
     extra = `<br><br>📊 <b>Round complete: ${roundCorrect}/${SKILL_PRACTICE_ROUND_SIZE} correct.</b> Saved as this lesson's score — keep going for another round, or close whenever you like.`;
   }
-  el("checkup-result-text").innerHTML = (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
+  el("checkup-result-text").innerHTML = `<div class="muted" style="margin-bottom:6px;">${escapeHtml(promptShown)}</div>` +
+    (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
   el("btn-checkup-close").textContent = "Continue";
 
   // dezelfde post-actions als het reguliere oefenscherm: uitleg, vraag-aan-AI, dispuut
@@ -59979,6 +60002,14 @@ async function renderPractice(){
   wordEl.textContent = (isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || currentItem.en);
   wordEl.className = "tr-word" + ((isSentence||isQuestion) ? " sentence" : "");
 
+  if(isWord){
+    const cefr18 = wordCefrOf(currentItem.en);
+    const pos = wordCategoryOf(currentItem.en);
+    el("word-meta").textContent = [typeof cefr18 === "number" ? cefrLabel(cefr18) : null, pos || null].filter(Boolean).join(" · ");
+  } else {
+    el("word-meta").textContent = "";
+  }
+
   el("answer-input").placeholder = isQuestion
     ? "Type your answer in Turkish…"
     : (isTrEn ? "Type the English translation…" : "Type the Turkish translation…");
@@ -60618,7 +60649,7 @@ function renderCourseColumn(containerEl, items, currentMacro){
   }
   containerEl.innerHTML = CEFR_MACRO_ORDER.filter(m=>groups[m] && groups[m].length).map(macro=>{
     const list = groups[macro];
-    const doneInGroup = list.filter(({l})=>isLessonCompleted(l.id)).length;
+    const doneInGroup = list.filter(({l})=>{ const p = lessonProficiency(l); return p !== null && p >= CHECKUP_PASS_LEVEL; }).length;
     const openAttr = macro === currentMacro ? " open" : "";
     return `<details class="cefr-section" data-macro="${macro}"${openAttr}>
       <summary>${macro} <span class="muted" style="font-weight:400;">(${doneInGroup}/${list.length} · ${list.length} lessons)</span></summary>
@@ -60632,7 +60663,7 @@ function renderCourseColumn(containerEl, items, currentMacro){
 }
 
 function renderCourseTab(){
-  const doneCount = LESSONS.filter(l=>isLessonCompleted(l.id)).length;
+  const doneCount = LESSONS.filter(l=>{ const p = lessonProficiency(l); return p !== null && p >= CHECKUP_PASS_LEVEL; }).length;
   el("course-progress-count").textContent = `${doneCount} / ${LESSONS.length} lessons complete`;
 
   const curGrammarMacro = macroCefrOfLesson(currentGrammarLesson());
@@ -61128,7 +61159,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     else checkupContinue();
   });
   el("btn-checkup-cancel").addEventListener("click", ()=>{
-    if(skillPracticeState){ skillPracticeState = null; el("modal-checkup").classList.add("hidden"); return; }
+    if(skillPracticeState){ skillPracticeState = null; el("modal-checkup").classList.add("hidden"); renderCourseTab(); return; }
     cancelCheckup();
   });
   el("btn-test-next").addEventListener("click", handleTestNext);
