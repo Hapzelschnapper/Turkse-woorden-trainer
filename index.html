@@ -122,7 +122,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 16:35</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 21:08</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -59577,6 +59577,20 @@ function wordCefrOf(en){
   }
   return _wordCefrMap[en];
 }
+/* Cefr van een los Engels woord, inclusief dynamisch-ontdekte woorden (newWords) -- wordCefrOf zelf
+   kent alleen de vaste Oxford-lijst. Gedeelde basis voor alle onderstaande CEFR-bereik-filters. */
+function cefrOfEn(en){
+  const known = wordCefrOf(en);
+  return typeof known === "number" ? known : newWords[en]?.cefr;
+}
+/* Of een los Engels woord (op basis van zijn cefr-niveau) binnen het ingestelde bereik valt. Woorden
+   zonder bekend niveau tellen als "binnen bereik" (kunnen niet uitgesloten worden op iets wat er niet is). */
+function inCefrRangeEn(en){
+  const cefr = cefrOfEn(en);
+  if(typeof cefr !== "number") return true;
+  const lo = Math.min(settings.cefrMin, settings.cefrMax), hi = Math.max(settings.cefrMin, settings.cefrMax);
+  return cefr >= lo && cefr <= hi;
+}
 
 /* Toont een Engels woord zoals het aan de gebruiker gepresenteerd wordt: werkwoorden krijgen een
    "to" ervoor (bv. "to meet" i.p.v. kaal "meet"), duidelijker herkenbaar als werkwoord — net als in
@@ -60735,7 +60749,9 @@ function getIntroducibleWords(){
       .filter(w => getProgress(w.en).reps === 0);
     const poolInRange = pool.filter(inRange);
     if(poolInRange.length) return poolInRange;
-    if(pool.length) return pool; // niets in bereik binnen deze les: liever buiten bereik dan de les blokkeren
+    // niets in bereik binnen deze specifieke les: NIET de buiten-bereik pool van deze les forceren
+    // (dat was de eerdere, onvolledige versie van deze fix) -- val door naar de bredere terugvaloptie
+    // hieronder, die zelf ook eerst binnen bereik zoekt over ALLE ontgrendelde lessen heen.
   }
   // val terug op eventuele nog niet geïntroduceerde woorden uit eerder al ontgrendelde lessen
   const unlocked = unlockedWordSet();
@@ -61010,22 +61026,30 @@ function pickEnglishWordForSentence(){
   const wantNew = Math.random() * 100 < (settings.newWordPercent ?? 50);
 
   if(wantNew){
-    const introducible = getIntroducibleWords(); // al gescoped op de huidige/ontgrendelde les(sen)
+    const introducible = getIntroducibleWords(); // al gescoped op de huidige/ontgrendelde les(sen) + CEFR-bereik
     if(introducible.length) return introducible[Math.floor(Math.random()*introducible.length)].en;
   }
 
-  // herhalingspad: alleen al eerder getoonde woorden die nu due zijn, laagste niveau eerst
-  const dueShown = words.filter(en => { const p = getProgress(en); return p.reps > 0 && p.due <= now; });
+  // herhalingspad: alleen al eerder getoonde woorden die nu due zijn, laagste niveau eerst -- eerst
+  // binnen het ingestelde CEFR-bereik proberen (dit pad negeerde het bereik voorheen volledig, dus een
+  // ver-gevorderd due woord kon zomaar als doelwoord in een A1-zin belanden), met terugval naar buiten
+  // bereik zodat herhaling nooit stokt.
+  const dueShownAll = words.filter(en => { const p = getProgress(en); return p.reps > 0 && p.due <= now; });
+  const dueShownInRange = dueShownAll.filter(inCefrRangeEn);
+  const dueShown = dueShownInRange.length ? dueShownInRange : dueShownAll;
   if(dueShown.length){
     const minLevel = Math.min(...dueShown.map(en=>getProgress(en).level));
     const pool = dueShown.filter(en=>getProgress(en).level === minLevel);
     return pool[Math.floor(Math.random()*pool.length)];
   }
 
-  // niets is due (of "nieuwe woorden" gewenst maar geen meer over) -> val terug op absoluut laagste niveau
+  // niets is due (of "nieuwe woorden" gewenst maar geen meer over) -> val terug op absoluut laagste
+  // niveau, ook hier eerst binnen bereik proberen.
   if(!words.length) return null;
-  const minLevel = Math.min(...words.map(en=>getProgress(en).level));
-  const pool = words.filter(en=>getProgress(en).level === minLevel);
+  const wordsInRange = words.filter(inCefrRangeEn);
+  const rankPool = wordsInRange.length ? wordsInRange : words;
+  const minLevel = Math.min(...rankPool.map(en=>getProgress(en).level));
+  const pool = rankPool.filter(en=>getProgress(en).level === minLevel);
   return pool.length ? pool[Math.floor(Math.random()*pool.length)] : null;
 }
 
@@ -61053,8 +61077,10 @@ async function pickTurkishTargetForSentence(){
    van de cursus) -- gebruikt om aan de AI expliciet mee te geven welke "vulwoorden" veilig zijn, zodat
    een zin niet stiekem onbekende woorden binnensmokkelt enkel omdat ze "bij het niveau passen". */
 function pickKnownVocabSample(count){
-  const mastered = baseWordList().map(w=>w.en).filter(en => getProgress(en).level >= 7);
-  const shuffled = [...mastered];
+  const allMastered = baseWordList().map(w=>w.en).filter(en => getProgress(en).level >= 7);
+  const mastered = allMastered.filter(inCefrRangeEn);
+  const pool = mastered.length ? mastered : allMastered;
+  const shuffled = [...pool];
   for(let i=shuffled.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]; }
   return shuffled.slice(0, count);
 }
@@ -61153,7 +61179,9 @@ Antwoord in JSON.`;
    wanneer een oefening juist gericht is op een zwak grammatica-onderwerp, zodat niet twee onbekende
    dingen tegelijk getest worden. */
 function pickWellKnownWord(){
-  const words = [...unlockedWordSet()].filter(en => { const p = getProgress(en); return p.reps > 0 && p.level >= 7; });
+  const allKnown = [...unlockedWordSet()].filter(en => { const p = getProgress(en); return p.reps > 0 && p.level >= 7; });
+  const inRange = allKnown.filter(inCefrRangeEn);
+  const words = inRange.length ? inRange : allKnown;
   if(!words.length) return null;
   return words[Math.floor(Math.random()*words.length)];
 }
