@@ -57350,86 +57350,45 @@ function maxCostUsage(a, b){
    — dat is hoogvolume en simpel genoeg dat het prijsverschil daar niet opweegt tegen de kwaliteitswinst. */
 /* Generieke aanroep naar DeepSeek — analoog aan callClaude() hierboven, zodat beide providers
    via dezelfde soort interface (systeemprompt + gebruikersinhoud, evt. berichtenreeks) bruikbaar zijn. */
-
-
-//
-//
-//
-//
-//
-
-
-
-sync function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt, schema){
+async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt, schema){
   const attempt = _attempt || 0;
   const useProxy = proxyConfigured();
   if(!useProxy && !settings.apiKey) throw new Error("No DeepSeek API key set (Settings).");
-
-  // Als schema is meegegeven → verplicht JSON instructie toevoegen
-  const systemPromptWithJson = schema
-    ? systemPrompt + "\n\nYou must respond in valid JSON."
-    : systemPrompt;
-
   const messages = Array.isArray(userContentOrMessages)
-    ? [{role:"system", content:systemPromptWithJson}, ...userContentOrMessages]
-    : [{role:"system", content:systemPromptWithJson}, {role:"user", content:userContentOrMessages}];
-
-  const url = useProxy
-    ? (settings.proxyUrl.replace(/\/$/,"") + "/deepseek")
-    : "https://api.deepseek.com/chat/completions";
-
+    ? [{role:"system", content:systemPrompt}, ...userContentOrMessages]
+    : [{role:"system", content:systemPrompt}, {role:"user", content:userContentOrMessages}];
+  const url = useProxy ? (settings.proxyUrl.replace(/\/$/,"") + "/deepseek") : "https://api.deepseek.com/chat/completions";
   const headers = useProxy
     ? {"Content-Type":"application/json", "X-Proxy-Token": settings.proxyToken}
     : {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey};
-
   const body = {
-    model: "deepseek-v4-pro",
-    max_tokens: maxTokens || 500,
-    temperature: temperature ?? 0,
+    model: "deepseek-v4-pro", max_tokens: maxTokens || 500, temperature: temperature ?? 0,
     messages,
     thinking: {"type":"disabled"}
   };
-
-  // Alleen toevoegen als schema is meegegeven
-  if(schema) {
-    body.response_format = {type: "json_object"};
-  }
-
+  // DeepSeek kent geen tool-schema-afdwinging zoals Claude's tool_choice -- de systeemprompt moet dus
+  // (in tegenstelling tot bij Claude) wél zelf blijven uitleggen welke velden verwacht worden. Wat
+  // response_format WEL garandeert: altijd geldige, kale JSON (nooit binnen ```json ... ``` verpakt,
+  // nooit met verdwaalde tekst ervoor/erna) -- dus geen losse regex-opschoning meer nodig voor dat deel.
+  if(schema) body.response_format = {type: "json_object"};
   const res = await fetchWithTimeout(url, {
     method: "POST",
     headers,
     body: JSON.stringify(body)
   });
-
-  if(!res.ok){
-    const txt = await res.text().catch(()=>"");
-    throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200));
-  }
-
+  if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
   const data = await res.json();
   recordUsage("deepseek-v4-pro", data.usage);
-
-  // Retry bij afgekapt JSON
+  // Zelfde afkap-bescherming als bij callClaude: DeepSeek geeft finish_reason:"length" als de
+  // tokenlimiet geraakt werd vóórdat de JSON afgesloten was.
   if(data.choices?.[0]?.finish_reason === "length" && attempt < 2){
     const nextBudget = Math.max((maxTokens || 500) * 2, 900);
     return callDeepSeek(systemPrompt, userContentOrMessages, nextBudget, temperature, attempt + 1, schema);
   }
-
   let raw = data.choices?.[0]?.message?.content || "";
   raw = raw.replace(/```json|```/g,"").trim();
   return raw;
 }
-
-
-
-//
-//
-//
-//
-//
-
-
-
 
 /* Dispatcher: kiest op basis van de instelling per taakcategorie ("word" = vertaling/woordbeoordeling,
    "sentence" = zin/vraag-generatie, -beoordeling, grammatica-oefeningen, taaltoets, "vraag aan AI")
