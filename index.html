@@ -57627,12 +57627,12 @@ const CEFR_SUB   = ["start","mid","end","start","mid","end","start","mid","end",
 function cefrLabel(idx){ return CEFR_MAJOR[idx] + " " + CEFR_SUB[idx]; }
 
 const CEFR_BASE_GUIDANCE = {
-  A1: "gebruik uitsluitend de meest basale, hoogfrequente woorden en zeer eenvoudige, korte zinnen (ca. 3-6 woorden) in de tegenwoordige tijd, zonder bijzinnen.",
-  A2: "gebruik veelvoorkomende dagelijkse woorden en iets langere zinnen (ca. 5-9 woorden), met eenvoudige verleden/toekomende tijd en basale voegwoorden (ve, ama, çünkü).",
-  B1: "gebruik gangbare maar iets minder frequente woorden, zinnen van ca. 8-13 woorden met eenvoudige bijzinnen en gevarieerde werkwoordstijden.",
-  B2: "gebruik minder frequente, iets abstractere woordenschat, langere zinnen (ca. 10-16 woorden) met complexere zinsbouw en af en toe een idiomatische uitdrukking.",
-  C1: "gebruik genuanceerde, minder frequente woordenschat en idiomatiek, complexe zinnen met meerdere bijzinnen en gevarieerde, geavanceerde grammaticale constructies.",
-  C2: "gebruik zeldzame, literaire of zeer genuanceerde woordkeuze, spreekwoorden en idiomatische uitdrukkingen, en complexe, vloeiende zinsbouw op vrijwel moedertaalniveau."
+  A1: "EXTREEM eenvoudig: bijna uitsluitend een KAAL onderwerp + werkwoord, zonder iets extra's — bijvoorbeeld \"Kedi yürüyor.\" (de kat loopt), \"Adam koşuyor.\" (de man rent), \"Köpek içiyor.\" (de hond drinkt). Maximaal 2-3 woorden, uitsluitend tegenwoordige tijd, GEEN lijdend voorwerp, GEEN bijvoeglijke naamwoorden of bijwoorden, GEEN bijzinnen, GEEN naamvallen buiten een kale onderwerpsvorm. Vereist het opgegeven grammaticale onderwerp iets dat niet in 2-3 kale woorden past (bv. een naamval of vraagpartikel): gebruik dan de kortst mogelijke, kaalste vorm ervan (bv. \"Kedi evde.\" voor locatief) — nooit meer woorden dan strikt nodig voor dat ene grammaticapunt.",
+  A2: "Gebruik veelvoorkomende dagelijkse woorden in korte zinnen (ca. 4-7 woorden): een kaal onderwerp + werkwoord mag nu een lijdend voorwerp, een simpele bijvoeglijke bepaling, of een tijd-/plaatsbepaling erbij krijgen, en eenvoudige verleden/toekomende tijd en basale voegwoorden (ve, ama, çünkü) zijn toegestaan. Nog steeds precies één idee per zin, geen bijzinnen.",
+  B1: "Gebruik gangbare maar iets minder frequente woorden, zinnen van ca. 7-12 woorden met precies één eenvoudige bijzin (bv. çünkü/ki/dat-achtige constructies) en gevarieerde werkwoordstijden.",
+  B2: "Gebruik minder frequente, iets abstractere woordenschat, langere zinnen (ca. 10-15 woorden) met twee gekoppelde ideeën/bijzinnen en af en toe een idiomatische uitdrukking.",
+  C1: "Gebruik genuanceerde, minder frequente woordenschat en idiomatiek, complexe zinnen (ca. 13-20 woorden) met meerdere bijzinnen en gevarieerde, geavanceerde grammaticale constructies.",
+  C2: "Gebruik zeldzame, literaire of zeer genuanceerde woordkeuze, spreekwoorden en idiomatische uitdrukkingen, en complexe, vloeiende zinsbouw op vrijwel moedertaalniveau — lengte volgt puur uit wat natuurlijk is, geen kunstmatige beperking."
 };
 const CEFR_SUB_NOTE = {
   start: "Blijf aan de eenvoudige kant van dit niveau.",
@@ -59433,15 +59433,22 @@ function markLessonComplete(id){
 }
 /* Grammatica-onderwerp kiezen binnen een actieve les (of het normale gedrag als er geen les actief is) */
 function pickLessonGrammarTopic(){
+  const cefrCeiling = Math.max(settings.cefrMin, settings.cefrMax);
   const cur = currentGrammarLesson();
-  // voorkeur: het grammaticale onderwerp van de HUIDIGE les (in het grammatica-spoor), zolang dat nog niet volledig beheerst is
+  // voorkeur: het grammaticale onderwerp van de HUIDIGE les (in het grammatica-spoor), zolang dat nog
+  // niet volledig beheerst is -- EN zolang het niet zwaarder is dan het ingestelde CEFR-plafond. Zonder
+  // die laatste check kon een ver-gevorderd grammatica-onderwerp (bv. madan_once, B1) geforceerd in een
+  // zin verschijnen terwijl de moeilijkheidssliders op A1 stonden, gewoon omdat de lessenvoortgang daar
+  // toevallig staat -- de twee systemen (lesvoortgang vs. CEFR-slider) hielden geen rekening met elkaar.
   if(cur && cur.grammarTopics && cur.grammarTopics.length){
     const topic = grammarTopicByKey(cur.grammarTopics[0]);
-    if(topic && getGrammarProgress(topic.key).level < 10) return topic;
+    if(topic && topic.minCefr <= cefrCeiling && getGrammarProgress(topic.key).level < 10) return topic;
   }
-  // anders: herhaling — zwakste onderwerp binnen alles wat al ontgrendeld is
+  // anders: herhaling — zwakste onderwerp binnen alles wat al ontgrendeld is, EN binnen het CEFR-plafond
   const unlockedKeys = [...unlockedGrammarTopicSet()];
-  const topics = (unlockedKeys.length ? unlockedKeys : GRAMMAR_TOPICS.map(t=>t.key)).map(grammarTopicByKey);
+  const candidateKeys = unlockedKeys.length ? unlockedKeys : GRAMMAR_TOPICS.map(t=>t.key);
+  let topics = candidateKeys.map(grammarTopicByKey).filter(t => t.minCefr <= cefrCeiling);
+  if(!topics.length) topics = candidateKeys.map(grammarTopicByKey); // veiligheidsnet: nooit een lege pool
   const minLevel = Math.min(...topics.map(t=>getGrammarProgress(t.key).level));
   const pool = topics.filter(t=>getGrammarProgress(t.key).level === minLevel);
   return pool[Math.floor(Math.random()*pool.length)];
@@ -61153,9 +61160,10 @@ function pickWellKnownWord(){
 /* Zelfde idee, maar dan een goed beheerst grammatica-onderwerp — gebruikt als "veilige" grammatica
    wanneer een oefening juist gericht is op een nog niet goed gekend woord. */
 function pickWellKnownGrammarTopic(){
+  const cefrCeiling = Math.max(settings.cefrMin, settings.cefrMax);
   const unlockedKeys = [...unlockedGrammarTopicSet()];
   const keys = unlockedKeys.length ? unlockedKeys : GRAMMAR_TOPICS.map(t=>t.key);
-  const topics = keys.map(grammarTopicByKey);
+  const topics = keys.map(grammarTopicByKey).filter(t => t.minCefr <= cefrCeiling);
   const known = topics.filter(t => getGrammarProgress(t.key).level >= 7);
   return known.length ? known[Math.floor(Math.random()*known.length)] : null;
 }
