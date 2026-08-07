@@ -59957,18 +59957,28 @@ function unlockedGrammarTopicSet(){
 
 function getIntroducibleWords(){
   const words = baseWordList();
+  const lo = Math.min(settings.cefrMin, settings.cefrMax), hi = Math.max(settings.cefrMin, settings.cefrMax);
+  const inRange = w => typeof w.cefr !== "number" || (w.cefr >= lo && w.cefr <= hi);
   const cur = currentVocabLesson();
-  // voorkeur: nog-nooit-getoonde woorden uit de HUIDIGE les van het vocabulaire-spoor
+  // voorkeur: nog-nooit-getoonde woorden uit de HUIDIGE les van het vocabulaire-spoor, binnen het
+  // ingestelde CEFR-bereik. Dit veld checkte het bereik voorheen helemaal niet -- nieuwe woorden
+  // buiten je ingestelde niveau werden dus net zo makkelijk geïntroduceerd als woorden erbinnen, en
+  // omdat een nooit-geoefend woord altijd het laagste "level" heeft, werden ze door pickNextItem()
+  // zelfs vaker gekozen dan woorden die wél in bereik lagen.
   if(cur && cur.words && cur.words.length){
     const pool = cur.words
       .map(en => words.find(w=>w.en===en))
       .filter(Boolean)
       .filter(w => getProgress(w.en).reps === 0);
-    if(pool.length) return pool;
+    const poolInRange = pool.filter(inRange);
+    if(poolInRange.length) return poolInRange;
+    if(pool.length) return pool; // niets in bereik binnen deze les: liever buiten bereik dan de les blokkeren
   }
   // val terug op eventuele nog niet geïntroduceerde woorden uit eerder al ontgrendelde lessen
   const unlocked = unlockedWordSet();
-  return words.filter(w => unlocked.has(w.en) && getProgress(w.en).reps === 0);
+  const fallback = words.filter(w => unlocked.has(w.en) && getProgress(w.en).reps === 0);
+  const fallbackInRange = fallback.filter(inRange);
+  return fallbackInRange.length ? fallbackInRange : fallback;
 }
 
 /* Bewaakt tegen AI-fouten waarbij het "en"-veld eigenlijk geen Engels woord is (bv. per ongeluk een
@@ -60164,8 +60174,12 @@ function pickNextItem(){
 
   if(dueWords.length) return pickRandomAmongLowest(dueWords);
 
-  // niets is nu due: kies willekeurig uit de woorden die het eerst weer aan de beurt zijn
-  const sorted = [...words].sort((a,b)=> getProgress(a.en).due - getProgress(b.en).due);
+  // niets is nu due: kies willekeurig uit de woorden die het eerst weer aan de beurt zijn -- ook hier
+  // eerst binnen het ingestelde bereik proberen (deze terugvaloptie negeerde cefrMin/cefrMax voorheen
+  // volledig), en pas als daar niets is, breder zoeken.
+  const wordsInRange = words.filter(inRange);
+  const rankPool = wordsInRange.length ? wordsInRange : words;
+  const sorted = [...rankPool].sort((a,b)=> getProgress(a.en).due - getProgress(b.en).due);
   const soonest = sorted.slice(0, Math.min(5, sorted.length));
   const chosen = soonest[Math.floor(Math.random()*soonest.length)];
   const direction = hasKeyFor("word") && Math.random() < 0.5 ? "tr-en" : "en-tr";
