@@ -38,6 +38,7 @@
   .select-input{padding:10px;border-radius:10px;border:1px solid var(--border);
     background:#0d1720;color:var(--text);font-size:.85rem;}
   .btn-ghost.lang-active{background:var(--accent2);color:#fff;border-color:var(--accent2);}
+  .settings-subtab-btn.active{background:var(--accent2);color:#fff;border-color:var(--accent2);}
   .word-row{display:flex;justify-content:space-between;align-items:center;
     padding:9px 0;border-bottom:1px solid var(--border);}
   .word-row:last-child{border-bottom:none;}
@@ -121,7 +122,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-06 20:35</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-06 23:15</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -260,6 +261,68 @@
 
   <!-- ===================== SETTINGS SCREEN ===================== -->
   <section id="screen-settings" class="hidden">
+    <div class="row" style="gap:8px;margin-bottom:14px;">
+      <button class="btn-secondary settings-subtab-btn active" id="settings-subtab-btn-practice" data-subtab="practice" style="flex:1;">📝 Practice</button>
+      <button class="btn-secondary settings-subtab-btn" id="settings-subtab-btn-technical" data-subtab="technical" style="flex:1;">🔧 Technical</button>
+    </div>
+    <div id="settings-subtab-practice">
+    <div class="card">
+      <h3 style="margin-top:0;">Practice settings</h3>
+      <div class="row space-between" style="margin-bottom:4px;">
+        <span>Share of sentences</span>
+        <span class="muted" id="sentence-percent-label">20%</span>
+      </div>
+      <input type="range" id="sentence-percent" min="0" max="100" step="5" value="20" style="width:100%;">
+      <div class="muted" style="margin-top:8px;margin-bottom:14px;">Sentences aren't pulled from a fixed list — every sentence is generated live by DeepSeek (requires an API key), using words you're learning.</div>
+      <div class="row space-between" style="margin-bottom:4px;">
+        <span>Percentage of new words (in sentences)</span>
+        <span class="muted" id="new-word-percent-label">50%</span>
+      </div>
+      <input type="range" id="new-word-percent" min="0" max="100" step="5" value="50" style="width:100%;">
+      <div class="muted" style="margin-top:8px;">How often a sentence is built around a never-shown word, versus a word you already know whose review is "due" again. Higher = more new material, lower = more focused review of your existing backlog.</div>
+      <div class="row space-between" style="margin-top:14px;margin-bottom:4px;">
+        <span>Share of Turkish question/answer</span>
+        <span class="muted" id="question-percent-label">0%</span>
+      </div>
+      <input type="range" id="question-percent" min="0" max="100" step="5" value="0" style="width:100%;">
+      <div class="muted" style="margin-top:8px;">You'll see a Turkish question and answer it yourself in Turkish (no translation) — trains direct comprehension without mentally switching to English. Special characters (ı/ş/ğ/ü/ö/ç) don't need to be typed correctly.</div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">Language level (CEFR range)</h3>
+      <div class="muted" style="margin-bottom:10px;">Determines the difficulty range for generated sentences/questions AND for which words come up in regular practice — each exercise picks a random level within this range. Which words/grammar you actually practise is still driven by your current position in the Course tab, this just sets the difficulty band.</div>
+      <div class="row space-between" style="margin-bottom:4px;">
+        <span>Minimum</span>
+        <span class="muted" id="cefr-min-label">A1 start</span>
+      </div>
+      <input type="range" id="cefr-min-slider" min="0" max="17" step="1" value="3" style="width:100%;">
+      <select id="cefr-min-select" style="width:100%;margin-top:6px;"></select>
+      <div class="row space-between" style="margin-top:16px;margin-bottom:4px;">
+        <span>Maximum</span>
+        <span class="muted" id="cefr-max-label">A2 mid</span>
+      </div>
+      <input type="range" id="cefr-max-slider" min="0" max="17" step="1" value="5" style="width:100%;">
+      <select id="cefr-max-select" style="width:100%;margin-top:6px;"></select>
+      <div class="muted" id="cefr-unlocked-info" style="margin-top:12px;"></div>
+      <button class="btn-secondary" id="btn-start-test" style="width:100%;margin-top:12px;">📝 Take a placement test to determine your level</button>
+      <div class="muted" id="test-result" style="margin-top:8px;"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">📊 Adaptive difficulty</h3>
+      <div class="muted" style="margin-bottom:10px;">Automatically nudges the level above up or down based on your recent performance in regular practice (not lessons or knowledge checks). Measured over your last 10 exercises, with a buffer zone around your target so it doesn't flip back and forth right at the edge.</div>
+      <div class="row space-between" style="margin-bottom:10px;">
+        <span>Enable adaptive difficulty</span>
+        <input type="checkbox" id="adaptive-enabled" style="width:20px;height:20px;">
+      </div>
+      <div class="row space-between" style="margin-bottom:4px;">
+        <span>Target success rate</span>
+        <span class="muted" id="adaptive-threshold-label">60%</span>
+      </div>
+      <input type="range" id="adaptive-threshold" min="30" max="90" step="5" value="60" style="width:100%;">
+      <div class="muted" style="margin-top:8px;">Score consistently above <b id="adaptive-upper-label">70%</b> → level goes up. Score consistently below <b id="adaptive-lower-label">50%</b> → level goes down. In between: no change.</div>
+      <div class="muted" id="adaptive-status" style="margin-top:8px;"></div>
+    </div>
+    </div>
+    <div id="settings-subtab-technical" class="hidden">
     <div class="card">
       <h3 style="margin-top:0;">🌐 Shared access (no personal API key needed)</h3>
       <div class="muted" style="margin-bottom:8px;">If someone gave you a proxy URL + access code instead of asking you to set up your own DeepSeek/Claude API keys, fill those in here — this replaces both key cards below entirely.</div>
@@ -284,6 +347,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">💰 Balance</h3>
+      <div class="muted" style="margin-bottom:8px;">DeepSeek balance refreshes automatically every minute once fetched once below (or fetch manually now).</div>
       <button class="btn-secondary" id="btn-fetch-balance" style="width:100%;">Fetch DeepSeek balance</button>
       <div class="muted" id="balance-status" style="margin-top:6px;"></div>
       <div class="muted" style="margin-top:12px;">Anthropic doesn't offer a way to check your balance from within an app — check it directly at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent2);">console.anthropic.com</a> → Billing.</div>
@@ -317,54 +381,6 @@
       <button class="btn-ghost hidden" id="btn-bulk-translate-cancel" style="width:100%;margin-top:8px;">⏸️ Pause</button>
     </div>
     <div class="card">
-      <h3 style="margin-top:0;">Practice settings</h3>
-      <div class="row space-between" style="margin-bottom:4px;">
-        <span>Share of sentences</span>
-        <span class="muted" id="sentence-percent-label">20%</span>
-      </div>
-      <input type="range" id="sentence-percent" min="0" max="100" step="5" value="20" style="width:100%;">
-      <div class="muted" style="margin-top:8px;margin-bottom:14px;">Sentences aren't pulled from a fixed list — every sentence is generated live by DeepSeek (requires an API key), using words you're learning.</div>
-      <div class="row space-between" style="margin-bottom:4px;">
-        <span>Percentage of new words (in sentences)</span>
-        <span class="muted" id="new-word-percent-label">50%</span>
-      </div>
-      <input type="range" id="new-word-percent" min="0" max="100" step="5" value="50" style="width:100%;">
-      <div class="muted" style="margin-top:8px;">How often a sentence is built around a never-shown word, versus a word you already know whose review is "due" again. Higher = more new material, lower = more focused review of your existing backlog.</div>
-      <div class="row space-between" style="margin-top:14px;margin-bottom:4px;">
-        <span>Share of Turkish question/answer</span>
-        <span class="muted" id="question-percent-label">0%</span>
-      </div>
-      <input type="range" id="question-percent" min="0" max="100" step="5" value="0" style="width:100%;">
-      <div class="muted" style="margin-top:8px;">You'll see a Turkish question and answer it yourself in Turkish (no translation) — trains direct comprehension without mentally switching to English. Special characters (ı/ş/ğ/ü/ö/ç) don't need to be typed correctly.</div>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;">Language level (CEFR)</h3>
-      <div class="row space-between" style="margin-bottom:4px;">
-        <span>Target level for generated sentences</span>
-        <span class="muted" id="cefr-label">A2 mid</span>
-      </div>
-      <input type="range" id="cefr-slider" min="0" max="17" step="1" value="4" style="width:100%;">
-      <div class="muted" style="margin-top:8px;">Determines the sentence length, grammatical complexity and word rarity <i>style</i> of generated sentences. Which words/grammar you actually practise is driven by your current position in the Course tab, not by this slider.</div>
-      <div class="muted" id="cefr-unlocked-info" style="margin-top:6px;"></div>
-      <button class="btn-secondary" id="btn-start-test" style="width:100%;margin-top:12px;">📝 Take a placement test to determine your level</button>
-      <div class="muted" id="test-result" style="margin-top:8px;"></div>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;">📊 Adaptive difficulty</h3>
-      <div class="muted" style="margin-bottom:10px;">Automatically nudges the level above up or down based on your recent performance in regular practice (not lessons or knowledge checks). Measured over your last 10 exercises, with a buffer zone around your target so it doesn't flip back and forth right at the edge.</div>
-      <div class="row space-between" style="margin-bottom:10px;">
-        <span>Enable adaptive difficulty</span>
-        <input type="checkbox" id="adaptive-enabled" style="width:20px;height:20px;">
-      </div>
-      <div class="row space-between" style="margin-bottom:4px;">
-        <span>Target success rate</span>
-        <span class="muted" id="adaptive-threshold-label">60%</span>
-      </div>
-      <input type="range" id="adaptive-threshold" min="30" max="90" step="5" value="60" style="width:100%;">
-      <div class="muted" style="margin-top:8px;">Score consistently above <b id="adaptive-upper-label">70%</b> → level goes up. Score consistently below <b id="adaptive-lower-label">50%</b> → level goes down. In between: no change.</div>
-      <div class="muted" id="adaptive-status" style="margin-top:8px;"></div>
-    </div>
-    <div class="card">
       <h3 style="margin-top:0;">☁️ Cloud sync (progress across devices)</h3>
       <div class="muted" style="margin-bottom:8px;">Your progress (levels, discovered words, disputed translations) is also stored in a private <a href="https://gist.github.com" target="_blank" rel="noopener">GitHub Gist</a> (free, same account as your repository), so you can use it on multiple devices. Without this, everything stays local to this device, as now.</div>
       <div class="muted" style="margin-bottom:4px;">GitHub Personal Access Token (scope: "gist")</div>
@@ -390,8 +406,9 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-06 20:35</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-06 23:15</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
+    </div>
     </div>
   </section>
 
@@ -57187,6 +57204,7 @@ const LS_TRCACHE   = "turks_trcache_v1";       // { [en]: {tr:[...], fetchedAt} 
 const LS_CURATED_TR = "turks_curated_tr_v1";   // { [en]: {tr:[...], register, note} } — eenmalige, grondige AI-doorloop van de hele woordenlijst incl. registermetadata; heeft voorrang boven trCache
 const LS_LESSONS   = "turks_lessons_v1";       // { [lessonId]: {completed:bool, done:n} } — voortgang door het gestructureerde lespad
 const LS_SKILL_SCORES = "turks_skill_scores_v1"; // { [lessonId]: {correct, total} } — score van de laatst afgeronde "Practice this skill"-ronde
+const LS_COURSE_SECTIONS = "turks_course_sections_v1"; // { grammar: {A1:bool,...}, vocab: {...} } — welke CEFR-secties in-/uitgeklapt staan
 const LS_ACTIVE_LESSON  = "turks_active_lesson_v1";   // { lessonId, sessionDone } — tussentijdse les-sessie, overleeft tabwissel/minimaliseren
 const LS_ACTIVE_CHECKUP = "turks_active_checkup_v1";  // volledige activeCheckup-state — tussentijdse kennischeck-sessie
 const LS_ADAPTIVE_WINDOW = "turks_adaptive_v1";        // array van laatste N correct/fout-uitkomsten (reguliere oefeningen)
@@ -57222,6 +57240,12 @@ async function fetchWithTimeout(url, opts, timeoutMs){
   }
 }
 if(settings.cefrLevel === undefined) settings.cefrLevel = 4;
+if(settings.cefrMin === undefined) settings.cefrMin = Math.max(0, settings.cefrLevel - 1);
+if(settings.cefrMax === undefined) settings.cefrMax = Math.min(17, settings.cefrLevel + 1);
+function pickLevelInRange(){
+  const lo = Math.min(settings.cefrMin, settings.cefrMax), hi = Math.max(settings.cefrMin, settings.cefrMax);
+  return lo + Math.floor(Math.random() * (hi - lo + 1));
+}
 if(settings.newWordPercent === undefined) settings.newWordPercent = 50;
 if(settings.questionPercent === undefined) settings.questionPercent = 0;
 if(settings.adaptiveEnabled === undefined) settings.adaptiveEnabled = false;
@@ -57238,6 +57262,16 @@ if(settings.sentencePercent === undefined){
 }
 let history  = loadJSON(LS_HISTORY, []);
 let newWords = loadJSON(LS_NEWWORDS, {});
+{
+  // Eenmalige opschoning van eerder al foutief geregistreerde "woorden" (zie looksLikeEnglishWord
+  // hieronder) -- deze functie zelf staat verderop gedefinieerd, maar dat is geen probleem: dit blok
+  // wordt pas bij paginalading UITGEVOERD, ver nadat de hele file (incl. de functiedefinitie) geladen is.
+  const badKeys = Object.keys(newWords).filter(en => !looksLikeEnglishWord(en));
+  if(badKeys.length){
+    for(const k of badKeys) delete newWords[k];
+    saveJSON(LS_NEWWORDS, newWords);
+  }
+}
 let grammar = loadJSON(LS_GRAMMAR, {});
 let trCache = loadJSON(LS_TRCACHE, {});
 let curatedTr = {...(typeof EMBEDDED_CURATED_TR !== "undefined" ? EMBEDDED_CURATED_TR : {}), ...loadJSON(LS_CURATED_TR, {})}; // ingebedde basis + lokale/gesyncte aanvullingen (die winnen bij overlap)
@@ -57457,13 +57491,13 @@ function updateCostDisplay(){}
 
 const LS_BALANCE = "turks_balance_v1"; // { total, granted, toppedUp, currency, fetchedAt } — laatst opgehaalde saldo (lokaal, niet gesynct)
 
-async function fetchDeepSeekBalance(){
+async function fetchDeepSeekBalance(silent){
   if(!settings.apiKey){
-    alert("Set your DeepSeek API key first.");
+    if(!silent) alert("Set your DeepSeek API key first.");
     return;
   }
   const statusEl = document.getElementById("balance-status");
-  if(statusEl) statusEl.textContent = "🔄 Fetching balance…";
+  if(statusEl && !silent) statusEl.textContent = "🔄 Fetching balance…";
   try{
     const res = await fetchWithTimeout("https://api.deepseek.com/user/balance", {
       headers: {"Authorization": "Bearer " + settings.apiKey, "Accept": "application/json"}
@@ -57477,7 +57511,7 @@ async function fetchDeepSeekBalance(){
       currency: info.currency, fetchedAt: Date.now()
     };
     localStorage.setItem(LS_BALANCE, JSON.stringify(balance));
-    if(statusEl) statusEl.textContent = `✅ Resterend saldo: ${balance.currency === "CNY" ? "¥" : "$"}${balance.total} (waarvan ${balance.currency === "CNY" ? "¥" : "$"}${balance.toppedUp} zelf opgeladen)`;
+    if(statusEl) statusEl.textContent = `✅ Resterend saldo: ${balance.currency === "CNY" ? "¥" : "$"}${balance.total} (waarvan ${balance.currency === "CNY" ? "¥" : "$"}${balance.toppedUp} zelf opgeladen) · ververst elke minuut, laatst om ${new Date(balance.fetchedAt).toLocaleTimeString()}`;
     updateCostDisplay();
   }catch(e){
     if(statusEl) statusEl.textContent = "⚠️ Fetching balance failed: " + e.message;
@@ -58211,7 +58245,7 @@ async function pickGrammarDrillBaseWords(){
 }
 
 async function generateGrammarDrillCandidate(topic, wordList, correctionNote){
-  const sys = `You create an ISOLATED grammar drill for the Turkish topic "${topic.label}" (${topic.hint}).
+  const sys = `You create an ISOLATED grammar drill for a given Turkish grammar topic.
 
 CRITICAL — TEST THE SKILL IN ACTUAL USE, NEVER ABSTRACTLY:
 WRONG (never do this): a meta-question about the rule itself, like "What does the suffix -e mean?" or "What is the dative case used for?", and absolutely NEVER show a bare, standalone suffix like "-e" or "-den" as the prompt or answer — that tests knowledge ABOUT the grammar, not actually APPLYING it.
@@ -58220,11 +58254,12 @@ RIGHT (always do this): have the student translate a concrete, real, complete wo
 - en-tr: give an English phrase that requires the skill to translate correctly — e.g. "on the table", "from home", "next to him" (a full phrase, never just "on"/"from"/"next to" alone) — and ask for the correct Turkish form.
 - tr-en: give a real, already correctly inflected/derived Turkish word or phrase (e.g. "okula", or "masanın üstünde"), and ask for the English meaning.
 IMPORTANT FOR TOPICS WITH "RELATIONAL NOUNS" (preposition-like constructions using üst/alt/ön/arka/yan etc.): occasionally also test the bare building-block word itself as plain vocabulary (e.g. "üst" -> top, "yan" -> side, with no further inflection) — that's just as important as the suffix mechanics itself, and may simply be asked as a word translation.
-STRICT REQUIREMENT: the base word MUST come literally from this list, no other word whatsoever: ${wordList}. Pick whichever one best fits this topic (a verb for verb conjugation topics, a noun for case topics, etc.) — do not invent a different word yourself, even if you think you could come up with a "better" example.
+STRICT REQUIREMENT: the base word MUST come literally from the list given to you for this call, no other word whatsoever. Pick whichever one best fits the topic (a verb for verb conjugation topics, a noun for case topics, etc.) — do not invent a different word yourself, even if you think you could come up with a "better" example.
 NOTE — THE ENGLISH GLOSS IN PARENTHESES IS ONLY A MEMORY AID, NOT AN INSTRUCTION TO RE-TRANSLATE IT YOURSELF: each item in the list is formatted as "TURKISH_WORD (english meaning)" — use the GIVEN Turkish word literally as written. Do NOT re-translate the English gloss yourself, because English words are often ambiguous (e.g. "like" can mean either "to like" (beğenmek) or "similar to" (gibi)) — if the list contains "gibi (like)", the intended word is ALWAYS "gibi", never a self-invented translation of "like" such as "beğenmek".
 Write everything in English and Turkish ONLY — never any other language.
 Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the English phrase (for en-tr) or the Turkish form (for tr-en) shown to the user", "correct": "the correct answer in the OTHER language than prompt", "baseWord": "the chosen base word, taken literally from the given list"}`;
-  const userMsg = `Topic: ${topic.label}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
+  const userMsg = `Topic: "${topic.label}" (${topic.hint})
+Allowed base words (pick exactly one): ${wordList}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
   const raw = await callAI("sentence", sys, userMsg, 2500, 0.4);
   return parseAIJson(raw);
 }
@@ -58383,12 +58418,12 @@ async function generateFrameworkDrillCandidate(topic, framework, correctionNote)
     const picked = await pickMasteredPoolWords(cfg.needCategory[i], 1);
     words.push(picked[0] || {en:"school", tr:"okul"}); // veiligheidsnet als de pool leeg is
   }
-  const sys = `You create a SHORT, concrete example testing the Turkish topic "${topic.label}" (${topic.hint}), isolated to this one skill but applied PRACTICALLY (a real short sentence/phrase, never an abstract rule question).
-${cfg.instr(...words)}
+  const sys = `You create a SHORT, concrete example testing a given Turkish grammar topic, isolated to that one skill but applied PRACTICALLY (a real short sentence/phrase, never an abstract rule question), using only the word(s) given to you for that call.
 Randomly choose the test direction: en-tr (show the English version, ask for the Turkish translation) or tr-en (show the Turkish version, ask for the English translation).
 Write everything in English and Turkish ONLY — never any other language.
-Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the sentence/phrase shown to the user, in the language matching direction", "correct": "the correct translation in the other language", "baseWord": "${words.map(w=>w.tr).join(" + ")}"}`;
-  const userMsg = `Topic: ${topic.label}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
+Respond ONLY with valid JSON, no markdown formatting: {"direction": "en-tr or tr-en", "prompt": "the sentence/phrase shown to the user, in the language matching direction", "correct": "the correct translation in the other language", "baseWord": "the word(s) you were given, as used"}`;
+  const userMsg = `Topic: "${topic.label}" (${topic.hint})
+${cfg.instr(...words)}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
   const raw = await callAI("sentence", sys, userMsg, 2500, 0.5);
   return parseAIJson(raw);
 }
@@ -58667,6 +58702,24 @@ async function startSkillPractice(lesson){
   await nextSkillPracticeQuestion();
 }
 
+/* Kiest een woord UIT een specifieke les volgens spaced repetition, i.p.v. willekeurig -- voorkomt dat
+   dezelfde paar woorden steeds terugkomen voordat de rest van de les ook maar één keer gezien is. */
+function pickSkillPracticeWord(words){
+  const now = Date.now();
+  // 1. voorkeur: woorden uit deze les die nog nooit getest zijn (garandeert volledige dekking eerst)
+  const untested = words.filter(en => getProgress(en).reps === 0);
+  if(untested.length) return untested[Math.floor(Math.random()*untested.length)];
+  // 2. anders: woorden die nu due zijn (hun herhalingsmoment is verstreken), laagste niveau eerst
+  const due = words.filter(en => getProgress(en).due <= now);
+  if(due.length){
+    const minLevel = Math.min(...due.map(en=>getProgress(en).level));
+    const lowest = due.filter(en=>getProgress(en).level === minLevel);
+    return lowest[Math.floor(Math.random()*lowest.length)];
+  }
+  // 3. niets is nu due: pak het woord dat het eerst weer aan de beurt is
+  return [...words].sort((a,b)=>getProgress(a).due - getProgress(b).due)[0];
+}
+
 async function nextSkillPracticeQuestion(){
   el("checkup-question-box").classList.remove("hidden");
   el("checkup-result-box").classList.add("hidden");
@@ -58686,7 +58739,7 @@ async function nextSkillPracticeQuestion(){
   badgeEl.classList.remove("hidden");
 
   if(lesson.words && lesson.words.length){
-    const en = lesson.words[Math.floor(Math.random()*lesson.words.length)];
+    const en = pickSkillPracticeWord(lesson.words);
     badgeEl.textContent = "word"; badgeEl.className = "badge badge-word";
     if(needsContextualDrill(en) || lesson.title.startsWith("Prepositions")){
       // voorzetsel-vocabulaire is inherent relationeel (bv. "under" = "altında", zelf al een naamval-
@@ -58783,16 +58836,19 @@ async function submitSkillPracticeAnswer(){
   el("checkup-result-text").className = "feedback " + (correct ? "correct" : "wrong");
 
   let extra = "";
+  let roundJustCompleted = false;
   if(skillPracticeState.roundResults.length >= SKILL_PRACTICE_ROUND_SIZE){
     const roundCorrect = skillPracticeState.roundResults.filter(Boolean).length;
     lastSkillPracticeScore[skillPracticeState.lesson.id] = {correct: roundCorrect, total: SKILL_PRACTICE_ROUND_SIZE};
     saveJSON(LS_SKILL_SCORES, lastSkillPracticeScore);
     skillPracticeState.roundResults = [];
-    extra = `<br><br>📊 <b>Round complete: ${roundCorrect}/${SKILL_PRACTICE_ROUND_SIZE} correct.</b> Saved as this lesson's score — keep going for another round, or close whenever you like.`;
+    roundJustCompleted = true;
+    extra = `<br><br>📊 <b>Round complete: ${roundCorrect}/${SKILL_PRACTICE_ROUND_SIZE} correct.</b> Saved as this lesson's score.`;
   }
+  skillPracticeState.roundJustCompleted = roundJustCompleted;
   el("checkup-result-text").innerHTML = `<div class="muted" style="margin-bottom:6px;">${escapeHtml(promptShown)}</div>` +
     (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
-  el("btn-checkup-close").textContent = "Continue";
+  el("btn-checkup-close").textContent = roundJustCompleted ? "OK" : "Continue";
 
   // dezelfde post-actions als het reguliere oefenscherm: uitleg, vraag-aan-AI, dispuut
   el("checkup-post-actions").classList.remove("hidden");
@@ -58863,6 +58919,12 @@ async function disputeSkillPracticeAnswer(){
 }
 
 function skillPracticeContinueOrClose(){
+  if(skillPracticeState.roundJustCompleted){
+    skillPracticeState = null;
+    el("modal-checkup").classList.add("hidden");
+    renderCourseTab();
+    return;
+  }
   nextSkillPracticeQuestion();
 }
 
@@ -58920,19 +58982,19 @@ function recordAdaptiveResult(correct){
   const upper = Math.min(100, threshold + ADAPTIVE_HYSTERESIS);
   const lower = Math.max(0, threshold - ADAPTIVE_HYSTERESIS);
 
-  if(pct >= upper && settings.cefrLevel < 17){
-    settings.cefrLevel++;
+  if(pct >= upper && settings.cefrMax < 17){
+    settings.cefrMin++; settings.cefrMax++;
     saveJSON(LS_SETTINGS, settings);
     adaptiveWindow = [];
     saveJSON(LS_ADAPTIVE_WINDOW, adaptiveWindow);
-    return `<br><br>📈 <b>Adaptive difficulty: level up!</b> ${pct}% correct over your last ${ADAPTIVE_WINDOW_SIZE} exercises — moving up to <b>${cefrLabel(settings.cefrLevel)}</b>.`;
+    return `<br><br>📈 <b>Adaptive difficulty: level up!</b> ${pct}% correct over your last ${ADAPTIVE_WINDOW_SIZE} exercises — moving your range up to <b>${cefrLabel(settings.cefrMin)} – ${cefrLabel(settings.cefrMax)}</b>.`;
   }
-  if(pct <= lower && settings.cefrLevel > 0){
-    settings.cefrLevel--;
+  if(pct <= lower && settings.cefrMin > 0){
+    settings.cefrMin--; settings.cefrMax--;
     saveJSON(LS_SETTINGS, settings);
     adaptiveWindow = [];
     saveJSON(LS_ADAPTIVE_WINDOW, adaptiveWindow);
-    return `<br><br>📉 <b>Adaptive difficulty: easing off.</b> ${pct}% correct over your last ${ADAPTIVE_WINDOW_SIZE} exercises — moving down to <b>${cefrLabel(settings.cefrLevel)}</b>.`;
+    return `<br><br>📉 <b>Adaptive difficulty: easing off.</b> ${pct}% correct over your last ${ADAPTIVE_WINDOW_SIZE} exercises — moving your range down to <b>${cefrLabel(settings.cefrMin)} – ${cefrLabel(settings.cefrMax)}</b>.`;
   }
   return ""; // binnen de hysteresemarge -> geen verandering
 }
@@ -59186,11 +59248,25 @@ function getIntroducibleWords(){
   return words.filter(w => unlocked.has(w.en) && getProgress(w.en).reps === 0);
 }
 
+/* Bewaakt tegen AI-fouten waarbij het "en"-veld eigenlijk geen Engels woord is (bv. per ongeluk een
+   Turks grammaticaal patroon zoals "ya ... ya da" in plaats van een vertaling) -- zonder deze check
+   belanden zulke strings alsnog als "nieuw Engels woord" in de trackinglijst, waar ze nooit een
+   zinnige vertaling krijgen en dus voor altijd op "nog niet vertaald" blijven staan. */
+function looksLikeEnglishWord(en){
+  if(!en || typeof en !== "string") return false;
+  if(en.includes("...") || en.includes("…")) return false; // grammaticaal patroon, geen los woord
+  if(en.includes("/")) return false; // AI die meerdere opties/vertalingen in één "woord" samenperst
+  if(/^to\s/i.test(en)) return false; // "to " hoort niet IN het en-veld te zitten -- de app voegt dat zelf toe voor werkwoorden
+  if(/[ışğüöçİŞĞÜÖÇ]/.test(en)) return false; // Turkse tekens horen niet in een Engels woord
+  if(en.length > 40) return false; // te lang om een plausibel woordenboek-lemma te zijn
+  return true;
+}
+
 /* Voegt een nieuw Engels woord toe aan de lijst (ontdekt via een zin), tenzij het al bestaat. */
 function ensureWordExists(en, cefr){
-  if(!en) return false;
+  if(!en || !looksLikeEnglishWord(en)) return false;
   if(EN_WORDS_DATA.some(w=>w.en===en) || newWords[en]) return false;
-  newWords[en] = {cefr: typeof cefr === "number" ? cefr : (settings.cefrLevel ?? 4)};
+  newWords[en] = {cefr: typeof cefr === "number" ? cefr : Math.round(((settings.cefrMin ?? 3) + (settings.cefrMax ?? 5)) / 2)};
   saveJSON(LS_NEWWORDS, newWords);
   return true;
 }
@@ -59284,16 +59360,21 @@ Geef 1-3 veelgebruikte Turkse vertalingen (synoniemen/varianten), in de basisvor
 
 function pickNextItem(){
   const unlockedEns = unlockedWordSet();
+  const lo = Math.min(settings.cefrMin, settings.cefrMax), hi = Math.max(settings.cefrMin, settings.cefrMax);
+  const inRange = w => typeof w.cefr !== "number" || (w.cefr >= lo && w.cefr <= hi);
   const words = allWords().filter(w => unlockedEns.has(w.en));
   const now = Date.now();
 
   // due-voor-herhaling (al eerder getoond) blijft ongefilterd binnen wat ontgrendeld is; nog-nooit-getoonde
   // woorden komen alleen uit de huidige/ontgrendelde les(sen) (zie getIntroducibleWords) — dit ÍS de cursus nu,
   // er is geen los "vrij oefenen" meer los van de lessenstructuur.
-  const reviewDue = words.filter(it => { const p = getProgress(it.en); return p.reps > 0 && p.due <= now; });
+  // Woordniveau: geeft voorrang aan woorden binnen het ingestelde CEFR-bereik (Instellingen); als dat
+  // niets due oplevert, valt het terug op due woorden ongeacht bereik, zodat oefenen nooit stokt.
+  const reviewDueAll = words.filter(it => { const p = getProgress(it.en); return p.reps > 0 && p.due <= now; });
+  const reviewDueInRange = reviewDueAll.filter(inRange);
   const introducibleEns = new Set(getIntroducibleWords().map(w=>w.en));
   const introducibleAsWords = allWords().filter(it => introducibleEns.has(it.en));
-  const dueWords = [...reviewDue, ...introducibleAsWords];
+  const dueWords = reviewDueInRange.length ? [...reviewDueInRange, ...introducibleAsWords] : [...reviewDueAll, ...introducibleAsWords];
 
   // Bepaal of we een zin of TR-vraag willen (streef-verhoudingen), alleen mogelijk met API-sleutel
   const sentenceRatio = Math.max(0, Math.min(1, (settings.sentencePercent ?? 20) / 100));
@@ -59434,19 +59515,24 @@ function filterWordsActuallyInSentence(sentenceTr, words){
 }
 
 async function generateSentenceCandidate(targetWord, grammarTopic){
-  const level = settings.cefrLevel ?? 4;
+  const level = pickLevelInRange();
   const knownSample = pickKnownVocabSample(35);
-  const sys = `Je maakt korte, natuurlijke Turkse oefenzinnen voor een taalleerapp, afgestemd op een specifiek taalniveau.
-Gewenst niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
-De zin moet vooral grammaticaal correct en natuurlijk klinken voor een moedertaalspreker — dat weegt zwaarder dan het geforceerd verwerken van het woord.
+  // Systeeminstructie bevat GEEN enkele per-aanroep-variabele meer (geen niveau, geen woord, geen
+  // willekeurige woordsteekproef) -- dat is precies wat prompt-caching effectief maakt: deze tekst is
+  // bij ELKE aanroep van deze functie letterlijk identiek, dus na de allereerste keer draait vrijwel
+  // elke volgende aanroep tegen het veel lagere cache-hit-tarief i.p.v. steeds als nieuwe input te tellen.
+  const sys = `Je maakt korte, natuurlijke Turkse oefenzinnen voor een taalleerapp, afgestemd op een specifiek taalniveau dat per aanroep wordt meegegeven.
+De zin moet vooral grammaticaal correct en natuurlijk klinken voor een moedertaalspreker — dat weegt zwaarder dan het geforceerd verwerken van het opgegeven doelwoord.
 Vermijd zinnen die zichzelf tegenspreken of onlogisch klinken (bv. een vraag en het antwoord daarop in één zin proppen).
-${grammarTopic ? `BELANGRIJK: bouw de zin zodanig dat die duidelijk en natuurlijk gebruikmaakt van dit grammaticale onderwerp: "${grammarTopic.label}" (${grammarTopic.hint}). Dit is het onderdeel waar de gebruiker extra oefening nodig heeft.` : ""}
-BELANGRIJK — woordkeuze: de gebruiker kent nog niet alle Turkse woorden op dit niveau. Gebruik voor de OVERIGE woorden in de zin (naast het opgegeven doelwoord) zoveel mogelijk ALLEEN woorden uit deze lijst van woorden die de gebruiker al aantoonbaar beheerst: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ") || "(nog geen woorden bekend)"}. Bouw de zin dus vooral op met simpele functiewoorden (voornaamwoorden, is/zijn, veelvoorkomende bijwoorden) en woorden uit deze lijst — vermijd onnodige extra zelfstandige naamwoorden/werkwoorden/bijvoeglijke naamwoorden die niet in deze lijst staan en niet het doelwoord zijn.
-Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm.
+Als een grammaticaal onderwerp is opgegeven: bouw de zin zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
+Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde niveau. Gebruik voor de OVERIGE woorden in de zin (naast het doelwoord) zoveel mogelijk ALLEEN woorden uit die lijst. Bouw de zin dus vooral op met simpele functiewoorden (voornaamwoorden, is/zijn, veelvoorkomende bijwoorden) en woorden uit die lijst — vermijd onnodige extra zelfstandige naamwoorden/werkwoorden/bijvoeglijke naamwoorden die niet in de lijst staan en niet het doelwoord zijn.
+Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"tr": "Turkse zin", "words": [{"tr": "basisvorm1", "en": "translation", "cefr": 0}, {"tr": "basisvorm2", "en": "translation", "cefr": 0}]}`;
-// "cefr" per woord: schat het CEFR-niveau van dat basiswoord zelf in op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin.
-  const user = `Maak een Turkse zin op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als het niveau dat vraagt).${grammarTopic ? ` Verwerk daarbij expliciet: ${grammarTopic.label}.` : ""}`;
+  const user = `Niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
+Doelwoord: "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als het niveau dat vraagt).
+${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
+${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}`;
   const raw = await callAI("sentence", sys, user, 4000, 0.3);
   const parsed = parseAIJson(raw);
   if(!parsed.tr) throw new Error("AI did not return a sentence.");
@@ -59555,20 +59641,21 @@ async function generateSentence(){
 
 /* ===================== TR-VRAAG / TR-ANTWOORD (begrip zonder vertaling) ===================== */
 async function generateQuestionCandidate(targetWord, grammarTopic){
-  const level = settings.cefrLevel ?? 4;
+  const level = pickLevelInRange();
   const knownSample = pickKnownVocabSample(35);
   const sys = `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
-Gewenst niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
 Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv. rekenen, geografie, een feit uit de zin zelf), ofwel een PERSOONLIJKE/OPEN vraag waarop elk contextueel passend Turks antwoord goed is (bv. "Bugün ne yaptın?").
 KRITIEK: het resultaat MOET een echte vraag zijn, GEEN mededelende stelling. Eindig ALTIJD met een vraagteken, en gebruik een vraagwoord (ne, nasıl, kim, nerede, kaç, hangi, neden, niçin, ...) of het vraagpartikel (mi/mı/mu/mü). Een zin als "Hava soğuktu ama dışarı çıktık." is FOUT (dat is een stelling); "Hava soğuk olmasına rağmen neden dışarı çıktınız?" is GOED (dat is een echte vraag).
-${grammarTopic ? `BELANGRIJK: bouw de vraag zodanig dat die duidelijk en natuurlijk gebruikmaakt van dit grammaticale onderwerp: "${grammarTopic.label}" (${grammarTopic.hint}). Dit is het onderdeel waar de gebruiker extra oefening nodig heeft.` : ""}
+Als een grammaticaal onderwerp is opgegeven: bouw de vraag zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
 De vraag moet grammaticaal correct en natuurlijk klinken voor een moedertaalspreker.
-BELANGRIJK — woordkeuze: de gebruiker kent nog niet alle Turkse woorden op dit niveau. Gebruik voor de OVERIGE woorden in de vraag (naast het opgegeven doelwoord) zoveel mogelijk ALLEEN woorden uit deze lijst van woorden die de gebruiker al aantoonbaar beheerst: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ") || "(nog geen woorden bekend)"}. Vermijd onnodige extra zelfstandige naamwoorden/werkwoorden/bijvoeglijke naamwoorden die niet in deze lijst staan en niet het doelwoord zijn.
-Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm.
+Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde niveau. Gebruik voor de OVERIGE woorden in de vraag (naast het doelwoord) zoveel mogelijk ALLEEN woorden uit die lijst — vermijd onnodige extra zelfstandige naamwoorden/werkwoorden/bijvoeglijke naamwoorden die niet in de lijst staan en niet het doelwoord zijn.
+Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
 {"tr": "Turkse vraag", "feitelijk": true of false, "words": [{"tr": "basisvorm1", "en": "translation", "cefr": 0}]}`;
-// "cefr" per woord: schat het CEFR-niveau van dat basiswoord zelf in op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
-  const user = `Maak een Turkse vraag op niveau ${cefrLabel(level)} met het woord "${targetWord}" (vervoegd/verbogen mag).${grammarTopic ? ` Verwerk daarbij expliciet: ${grammarTopic.label}.` : ""}`;
+  const user = `Niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
+Doelwoord: "${targetWord}" (vervoegd/verbogen mag).
+${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
+${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}`;
   const raw = await callAI("sentence", sys, user, 4000, 0.4);
   const parsed = parseAIJson(raw);
   if(!parsed.tr) throw new Error("AI did not return a question.");
@@ -59644,16 +59731,18 @@ BELANGRIJK OVER TYPEFOUTEN: duidelijke tikfouten (verwisselde letters e.d.) met 
 Beoordeel ook voor ELK genummerd woord uit de vraag, ONAFHANKELIJK EN KRITISCH, of de gebruiker begrip daarvan toont in zijn antwoord.
 BELANGRIJK ONDERSCHEID: "correct" gaat over of het antwoord een GEPAST ANTWOORD op de vraag is (vorm/pragmatiek); "words" gaat puur over WOORDBEGRIP. Die twee lopen NIET altijd gelijk op. Als "correct" false is omdat de gebruiker bijvoorbeeld reageert op de inhoud in plaats van de vraag direct te beantwoorden (maar wél overduidelijk laat zien dat hij/zij elk woord begrijpt, via een taalkundig kloppende en inhoudelijk relevante reactie), moeten de afzonderlijke woorden in "words" gewoon op true staan — bestraf woordbegrip niet voor een vorm-/pragmatiekfout.
 CONSISTENTIE-EIS geldt alleen andersom: als "correct" false is SPECIFIEK doordat de gebruiker een woord verkeerd heeft opgevat (bijvoorbeeld verward met een ander Turks woord, of totaal genegeerd), moet dát woord in "words" op false staan.
-${gTopic ? `Deze vraag is BEWUST gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}). Beoordeel apart, in "grammar_correct", of de gebruiker specifiek DIT grammaticale aspect correct begrijpt/gebruikt (in de vraag zelf herkend, en/of correct toegepast in het eigen antwoord) — los van of de rest verder klopt.` : ""}
+Als een grammaticaal onderwerp is opgegeven waar de vraag bewust rond gebouwd is: beoordeel apart, in "grammar_correct", of de gebruiker specifiek dat grammaticale aspect correct begrijpt/gebruikt (in de vraag zelf herkend, en/of correct toegepast in het eigen antwoord) — los van of de rest verder klopt. Is er geen onderwerp opgegeven, zet "grammar_correct" dan op true.
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je"), in het Engels. Structuur: begin met het oordeel, en bij fout kort en concreet wat er niet klopte.
 Geef ook altijd een Engelse vertaling van de Turkse vraag, EN een Engelse vertaling van wat de gebruiker met zijn Turkse antwoord daadwerkelijk heeft gezegd (ook als dat inhoudelijk niet klopt — vertaal gewoon wat er staat, zodat de gebruiker kan zien wat hij eigenlijk zei).
-${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling." : ""}
+Als vermeld staat dat de gebruiker het niet eens is met een eerder oordeel: kijk extra kritisch of het antwoord (of delen ervan) toch correct kunnen zijn.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"correct": true of false, "uitleg": "korte uitleg in het Engels, max 2 zinnen", "referentie": "een voorbeeld van een goed Turks antwoord op deze vraag", "vraag_en": "Engelse vertaling van de Turkse vraag", "antwoord_en": "Engelse vertaling van wat de gebruiker letterlijk heeft geantwoord"${gTopic ? ', "grammar_correct": true of false' : ""}, "words": [true of false, ...]}
-BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfde volgorde als hieronder genummerd.`;
+{"correct": true of false, "uitleg": "korte uitleg in het Engels, max 2 zinnen", "referentie": "een voorbeeld van een goed Turks antwoord op deze vraag", "vraag_en": "Engelse vertaling van de Turkse vraag", "antwoord_en": "Engelse vertaling van wat de gebruiker letterlijk heeft geantwoord", "grammar_correct": true of false, "words": [true of false, ...]}
+BELANGRIJK: "words" moet exact evenveel waarden bevatten als er genummerde woorden zijn, in dezelfde volgorde als hieronder genummerd.`;
   const user = `Turkse vraag: "${item.tr}"
-Genummerde woorden in de vraag (basisvorm): ${item.words.map((w,i)=>`${i+1}. ${w.tr} (${w.en})`).join(", ")}
-Antwoord van gebruiker (in het Turks): "${answer}"`;
+Genummerde woorden in de vraag (basisvorm, ${item.words.length} in totaal): ${item.words.map((w,i)=>`${i+1}. ${w.tr} (${w.en})`).join(", ")}
+Antwoord van gebruiker (in het Turks): "${answer}"
+${gTopic ? `Deze vraag is bewust gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}).` : ""}
+${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling." : ""}`;
   const raw = await callAI("sentence", sys, user, 3000, 0);
   const parsed = parseAIJson(raw);
   if(!Array.isArray(parsed.words)) parsed.words = [];
@@ -59673,17 +59762,19 @@ async function gradeSentenceTranslation(item, answer, isRecheck){
 Beoordeel of de vertaling van de HELE zin correct is, en beoordeel voor ELK genummerd woord apart, ONAFHANKELIJK EN KRITISCH, of de gebruiker dat specifieke woord (in welke vorm dan ook) correct heeft verwerkt — ga niet ervan uit dat een woord goed is enkel omdat de zin er ergens op lijkt.
 CONSISTENTIE-EIS: als de vertaling als geheel fout is doordat de gebruiker een specifiek woord verkeerd heeft begrepen (bijvoorbeeld verward met een ander, vergelijkbaar klinkend Turks woord), MOET dat woord in "words" op false staan. Het mag nooit zo zijn dat "correct" false is vanwege woord X, terwijl woord X zelf in "words" op true staat — controleer dit zelf voordat je antwoordt.
 Geef ook altijd een correcte Engelse referentievertaling van de hele zin.
-${gTopic ? `Deze zin is BEWUST gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}). Beoordeel apart, in "grammar_correct", of de gebruiker specifiek DIT grammaticale aspect correct heeft begrepen/verwerkt in zijn vertaling — los van of de rest van de zin verder klopt.` : ""}
+Als een grammaticaal onderwerp is opgegeven waar de zin bewust rond gebouwd is: beoordeel apart, in "grammar_correct", of de gebruiker specifiek DAT grammaticale aspect correct heeft begrepen/verwerkt in zijn vertaling — los van of de rest van de zin verder klopt. Is er geen onderwerp opgegeven, zet "grammar_correct" dan op true.
 BELANGRIJK OVER TYPEFOUTEN: als een woord duidelijk een tikfout is (bv. verwisselde letters zoals "eht" i.p.v. "het", een ontbrekende/dubbele letter) en de bedoelde vertaling ondubbelzinnig duidelijk is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", zodat de gebruiker het weet, maar laat dit "correct" niet naar false zetten. Wees hierin coulanter dan bij een woord dat écht een andere/verkeerde vertaling is.
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"). Structuur: begin met het oordeel (goed/fout), en bij fout kort en concreet wat er niet klopte — de correcte vertaling zelf hoeft niet in de uitleg herhaald te worden, die staat al apart in "referentie".
-${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord (of delen ervan) toch correct kunnen zijn." : ""}
+Als vermeld staat dat de gebruiker het niet eens is met een eerder oordeel: kijk extra kritisch of het antwoord (of delen ervan) toch correct kunnen zijn.
 Antwoord ALLEEN met geldige JSON, zonder markdown-opmaak:
-{"correct": true of false, "uitleg": "korte uitleg in het Engels, max 2 zinnen, rechtstreeks tegen de gebruiker gericht", "referentie": "correcte vertaling van de hele zin"${gTopic ? ', "grammar_correct": true of false' : ""}, "words": [true of false, true of false, ...]}
-BELANGRIJK: "words" moet EXACT ${item.words.length} waarden bevatten, in dezelfde volgorde als de genummerde lijst hierboven (waarde 1 = woord 1, waarde 2 = woord 2, enz.). Gebruik GEEN objecten, alleen een platte lijst van true/false.`;
+{"correct": true of false, "uitleg": "korte uitleg in het Engels, max 2 zinnen, rechtstreeks tegen de gebruiker gericht", "referentie": "correcte vertaling van de hele zin", "grammar_correct": true of false, "words": [true of false, true of false, ...]}
+BELANGRIJK: "words" moet exact evenveel waarden bevatten als er genummerde woorden zijn, in dezelfde volgorde als de genummerde lijst (waarde 1 = woord 1, waarde 2 = woord 2, enz.). Gebruik GEEN objecten, alleen een platte lijst van true/false.`;
   const user = `Turkse zin: "${item.tr}"
-Genummerde woorden in de zin (basisvorm):
+Genummerde woorden in de zin (basisvorm, ${item.words.length} in totaal):
 ${wordContext}
-Vertaling van gebruiker: "${answer}"`;
+Vertaling van gebruiker: "${answer}"
+${gTopic ? `Deze zin is bewust gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}).` : ""}
+${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling." : ""}`;
   const raw = await callAI("sentence", sys, user, 3000, 0);
   const parsed = parseAIJson(raw);
   // Verwacht: parsed.words = [true, false, ...] met exact item.words.length entries, op volgorde.
@@ -60614,6 +60705,11 @@ function lessonProficiency(l){
   return null;
 }
 
+function isLessonDone(l){
+  const p = lessonProficiency(l);
+  return p !== null ? p >= CHECKUP_PASS_LEVEL : isLessonCompleted(l.id);
+}
+
 function renderCourseLessonRow(l, idx){
   const level = lessonProficiency(l);
   const lastScore = lastSkillPracticeScore[l.id];
@@ -60621,7 +60717,7 @@ function renderCourseLessonRow(l, idx){
   let rightHtml, sub;
   if(level === null){
     rightHtml = `<div style="font-size:1.1rem;">📖</div>`;
-    sub = "Reference — tap to read";
+    sub = isLessonCompleted(l.id) ? "✅ Read" : "Reference — tap to read";
   } else {
     const color = level<=3 ? "#e0333f" : level<=6 ? "#e0a733" : level<9 ? "#2fae6a" : "#4fd88a";
     rightHtml = `<div style="font-size:1rem;font-weight:700;color:${color};">${level}/10</div>`;
@@ -60641,7 +60737,18 @@ function renderCourseLessonRow(l, idx){
 // Rendert één kolom (grammatica óf vocabulaire) als in-/uitklapbare A1-C2-secties, om te veel
 // scrollen door 500+ lessen te voorkomen -- alleen de sectie waar de gebruiker nu daadwerkelijk
 // zit staat standaard open, de rest is ingeklapt maar wel altijd bereikbaar.
-function renderCourseColumn(containerEl, items, currentMacro){
+let courseSectionOpen = loadJSON(LS_COURSE_SECTIONS, {grammar:{}, vocab:{}});
+function isMacroOpen(track, macro, defaultVal){
+  const trackState = courseSectionOpen[track];
+  return (trackState && macro in trackState) ? trackState[macro] : defaultVal;
+}
+function setMacroOpen(track, macro, val){
+  if(!courseSectionOpen[track]) courseSectionOpen[track] = {};
+  courseSectionOpen[track][macro] = val;
+  saveJSON(LS_COURSE_SECTIONS, courseSectionOpen);
+}
+
+function renderCourseColumn(containerEl, items, currentMacro, track){
   const groups = {};
   for(const item of items){
     const macro = macroCefrOfLesson(item.l);
@@ -60649,8 +60756,8 @@ function renderCourseColumn(containerEl, items, currentMacro){
   }
   containerEl.innerHTML = CEFR_MACRO_ORDER.filter(m=>groups[m] && groups[m].length).map(macro=>{
     const list = groups[macro];
-    const doneInGroup = list.filter(({l})=>{ const p = lessonProficiency(l); return p !== null && p >= CHECKUP_PASS_LEVEL; }).length;
-    const openAttr = macro === currentMacro ? " open" : "";
+    const doneInGroup = list.filter(({l})=>isLessonDone(l)).length;
+    const openAttr = isMacroOpen(track, macro, macro === currentMacro) ? " open" : "";
     return `<details class="cefr-section" data-macro="${macro}"${openAttr}>
       <summary>${macro} <span class="muted" style="font-weight:400;">(${doneInGroup}/${list.length} · ${list.length} lessons)</span></summary>
       <div class="cefr-section-body">${list.map(({l,idx})=>renderCourseLessonRow(l, idx)).join("")}</div>
@@ -60660,10 +60767,14 @@ function renderCourseColumn(containerEl, items, currentMacro){
     const idx = parseInt(row.dataset.idx, 10);
     row.addEventListener("click", ()=> openLessonModal(idx));
   });
+  // Onthoud in-/uitklappen: de native <details>-"toggle"-event vuurt zowel bij open- als dichtklikken
+  containerEl.querySelectorAll(".cefr-section").forEach(det=>{
+    det.addEventListener("toggle", ()=> setMacroOpen(track, det.dataset.macro, det.open));
+  });
 }
 
 function renderCourseTab(){
-  const doneCount = LESSONS.filter(l=>{ const p = lessonProficiency(l); return p !== null && p >= CHECKUP_PASS_LEVEL; }).length;
+  const doneCount = LESSONS.filter(l=>isLessonDone(l)).length;
   el("course-progress-count").textContent = `${doneCount} / ${LESSONS.length} lessons complete`;
 
   const curGrammarMacro = macroCefrOfLesson(currentGrammarLesson());
@@ -60676,8 +60787,8 @@ function renderCourseTab(){
     else grammarItems.push({l, idx});
   });
 
-  renderCourseColumn(el("grammar-tree"), grammarItems, curGrammarMacro);
-  renderCourseColumn(el("vocab-tree"), vocabItems, curVocabMacro);
+  renderCourseColumn(el("grammar-tree"), grammarItems, curGrammarMacro, "grammar");
+  renderCourseColumn(el("vocab-tree"), vocabItems, curVocabMacro, "vocab");
 }
 
 async function openLessonModal(idx){
@@ -60690,8 +60801,15 @@ async function openLessonModal(idx){
   const lastScore = lastSkillPracticeScore[l.id];
   el("lesson-modal-progress").innerHTML = level !== null
     ? `<div class="muted">Current proficiency: <b>${level}/10</b>` + (lastScore ? ` · Last practice round: <b>${lastScore.correct}/${lastScore.total}</b>` : "") + `</div>`
-    : "";
-  el("btn-lesson-action").classList.add("hidden"); // geen apart "Go to practice" meer nodig -- "Practice this skill" hieronder is nu altijd de weg
+    : (isLessonCompleted(l.id) ? `<div class="muted">✅ Marked as read.</div>` : "");
+  if(needsPractice){
+    el("btn-lesson-action").classList.add("hidden"); // "Practice this skill" hieronder is de weg
+  } else {
+    // zuivere leesles zonder eigen oefenstof (bv. "How Turkish Works") -- heeft geen cijfer, dus kan
+    // alleen via een expliciete "gelezen"-markering meetellen als voltooid
+    el("btn-lesson-action").textContent = isLessonCompleted(l.id) ? "Mark as unread" : "Got it — mark as read";
+    el("btn-lesson-action").classList.remove("hidden");
+  }
   el("btn-practice-skill").classList.toggle("hidden", !needsPractice);
   el("modal-lesson").classList.remove("hidden");
 
@@ -60724,21 +60842,15 @@ async function openLessonModal(idx){
 function startLessonAction(){
   const l = LESSONS[openLessonIdx];
   if(!l) return;
+  // Alleen zuivere leeslessen (geen eigen oefenstof) hebben deze knop -- toggle gelezen/ongelezen
   if(isLessonCompleted(l.id)){
-    el("modal-lesson").classList.add("hidden");
-    return;
-  }
-  if(!l.grammarTopics.length && !(l.words && l.words.length)){
-    // pure leesles: meteen afronden, geen oefensessie nodig
+    lessonProgress[l.id] = {completed:false, done:0};
+    saveJSON(LS_LESSONS, lessonProgress);
+  } else {
     markLessonComplete(l.id);
-    el("modal-lesson").classList.add("hidden");
-    renderCourseTab();
-    return;
   }
-  // gewone les: gewoon naar Oefenen — die pakt automatisch de HUIDIGE (eerst niet-voltooide) les op,
-  // er is geen aparte "sessie" meer nodig om te starten
-  el("modal-lesson").classList.add("hidden");
-  switchTab("practice");
+  openLessonModal(openLessonIdx); // ververst de knoptekst en het "✅ Marked as read"-label
+  renderCourseTab();
 }
 
 function switchTab(tab){
@@ -60846,7 +60958,8 @@ function finishPlacementTest(){
   // schatting: het hoogste niveau waar de zoekstrategie nog aantoonbaar succes vond
   const estimated = Math.max(0, Math.min(17, placementState.high));
   const roundsUsed = placementState.rounds;
-  settings.cefrLevel = estimated;
+  settings.cefrMin = Math.max(0, estimated - 1);
+  settings.cefrMax = Math.min(17, estimated + 1);
   saveJSON(LS_SETTINGS, settings);
   initSettingsUI();
   const skipped = skipLessonsToLevel(estimated);
@@ -60918,8 +61031,18 @@ function initSettingsUI(){
   el("new-word-percent-label").textContent = (settings.newWordPercent ?? 50) + "%";
   el("question-percent").value = settings.questionPercent ?? 0;
   el("question-percent-label").textContent = (settings.questionPercent ?? 0) + "%";
-  el("cefr-slider").value = settings.cefrLevel ?? 4;
-  el("cefr-label").textContent = cefrLabel(settings.cefrLevel ?? 4);
+  if(!el("cefr-min-select").options.length){
+    for(let i=0;i<18;i++){
+      el("cefr-min-select").add(new Option(cefrLabel(i), i));
+      el("cefr-max-select").add(new Option(cefrLabel(i), i));
+    }
+  }
+  el("cefr-min-slider").value = settings.cefrMin;
+  el("cefr-max-slider").value = settings.cefrMax;
+  el("cefr-min-select").value = settings.cefrMin;
+  el("cefr-max-select").value = settings.cefrMax;
+  el("cefr-min-label").textContent = cefrLabel(settings.cefrMin);
+  el("cefr-max-label").textContent = cefrLabel(settings.cefrMax);
   updateCefrUnlockedInfo();
   el("adaptive-enabled").checked = !!settings.adaptiveEnabled;
   el("adaptive-threshold").value = settings.adaptiveThreshold ?? 60;
@@ -61003,6 +61126,13 @@ document.addEventListener("DOMContentLoaded", ()=>{
     if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); sendChat(); }
   });
 
+  document.querySelectorAll(".settings-subtab-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".settings-subtab-btn").forEach(b=>b.classList.toggle("active", b===btn));
+      el("settings-subtab-practice").classList.toggle("hidden", btn.dataset.subtab !== "practice");
+      el("settings-subtab-technical").classList.toggle("hidden", btn.dataset.subtab !== "technical");
+    });
+  });
   el("btn-save-proxy").addEventListener("click", ()=>{
     settings.proxyUrl = el("proxy-url-input").value.trim();
     settings.proxyToken = el("proxy-token-input").value.trim();
@@ -61049,7 +61179,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     bulkTranslateCancelled = true;
     el("btn-bulk-translate-cancel").classList.add("hidden");
   });
-  el("btn-fetch-balance").addEventListener("click", fetchDeepSeekBalance);
+  el("btn-fetch-balance").addEventListener("click", ()=> fetchDeepSeekBalance(false));
   el("sentence-percent").addEventListener("input", ()=>{
     el("sentence-percent-label").textContent = el("sentence-percent").value + "%";
   });
@@ -61071,14 +61201,22 @@ document.addEventListener("DOMContentLoaded", ()=>{
     settings.questionPercent = parseInt(el("question-percent").value, 10) || 0;
     saveJSON(LS_SETTINGS, settings);
   });
-  el("cefr-slider").addEventListener("input", ()=>{
-    el("cefr-label").textContent = cefrLabel(parseInt(el("cefr-slider").value, 10));
-  });
-  el("cefr-slider").addEventListener("change", ()=>{
-    settings.cefrLevel = parseInt(el("cefr-slider").value, 10);
+  function applyCefrRange(newMin, newMax, source){
+    // min mag nooit boven max uitkomen en andersom -- duw de andere kant mee als dat gebeurt
+    if(newMin > newMax){ if(source === "min") newMax = newMin; else newMin = newMax; }
+    settings.cefrMin = newMin;
+    settings.cefrMax = newMax;
     saveJSON(LS_SETTINGS, settings);
+    el("cefr-min-slider").value = newMin; el("cefr-max-slider").value = newMax;
+    el("cefr-min-select").value = newMin; el("cefr-max-select").value = newMax;
+    el("cefr-min-label").textContent = cefrLabel(newMin);
+    el("cefr-max-label").textContent = cefrLabel(newMax);
     updateCefrUnlockedInfo();
-  });
+  }
+  el("cefr-min-slider").addEventListener("input", ()=> applyCefrRange(parseInt(el("cefr-min-slider").value,10), settings.cefrMax, "min"));
+  el("cefr-max-slider").addEventListener("input", ()=> applyCefrRange(settings.cefrMin, parseInt(el("cefr-max-slider").value,10), "max"));
+  el("cefr-min-select").addEventListener("change", ()=> applyCefrRange(parseInt(el("cefr-min-select").value,10), settings.cefrMax, "min"));
+  el("cefr-max-select").addEventListener("change", ()=> applyCefrRange(settings.cefrMin, parseInt(el("cefr-max-select").value,10), "max"));
   el("adaptive-enabled").addEventListener("change", ()=>{
     settings.adaptiveEnabled = el("adaptive-enabled").checked;
     saveJSON(LS_SETTINGS, settings);
@@ -61178,6 +61316,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   }
   updatePeakIndicator();
   setInterval(updatePeakIndicator, 60000);
+  setInterval(()=>{ if(settings.apiKey) fetchDeepSeekBalance(true); }, 60000);
   updateCostDisplay();
 });
 
