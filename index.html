@@ -122,7 +122,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 21:40</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 21:42</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -59770,6 +59770,11 @@ async function pickMasteredPoolWords(category, count, avoidEn){
     // allerlaatste redmiddel: nog helemaal geen woord van deze woordsoort op niveau 7+
     pool = allInCat.filter(en => { const w = EN_WORDS_DATA.find(x=>x.en===en); return w && w.cefr <= 2; });
   }
+  // CEFR-bereik: deze functie filterde voorheen ALLEEN op "al beheerst" (level>=7/8), nooit op het
+  // ingestelde niveau -- een allang gemasterd, maar zwaar woord (bv. "danışman" = consultant) kon dus
+  // zomaar in een A1-grammatica-oefening belanden. Eerst binnen bereik proberen, terugval als leeg.
+  const poolInRange = pool.filter(inCefrRangeEn);
+  if(poolInRange.length) pool = poolInRange;
   // Recent-binnen-deze-sessie-gebruikte woorden vermijden (voorkomt "steeds hetzelfde zinnetje" bij
   // grammatica-oefeningen) -- maar alleen als dat niet de hele pool leegveegt.
   if(avoidEn && avoidEn.size){
@@ -59806,6 +59811,8 @@ async function pickMasteredPossessorWords(count, avoidEn){
   let pool = level8.length >= count ? level8 : level7;
   if(!pool.length) pool = allEn; // nog geen enkele possessor-noun op niveau 7+: pak elk bekend exemplaar
   if(!pool.length) pool = [...POSSESSOR_NOUNS]; // allerlaatste redmiddel: de curated lijst zelf (nog niet vertaald)
+  const poolInRange = pool.filter(inCefrRangeEn);
+  if(poolInRange.length) pool = poolInRange;
   if(avoidEn && avoidEn.size){
     const filtered = pool.filter(en => !avoidEn.has(en));
     if(filtered.length) pool = filtered;
@@ -59834,7 +59841,7 @@ const FRAMEWORK_INSTRUCTIONS = {
   verb2: {needCategory:["Verbs","Verbs"], needCount:[1,1],
     instr: (w1,w2) => `Build one short, natural sentence that links/combines EXACTLY these two verbs using the grammar point: "${w1.tr}" (${w1.en}) and "${w2.tr}" (${w2.en}). Example shape only (build your own): "Koşarak geldi." combines running+coming. Keep it SHORT and use no other verbs besides the two given.`},
   noun: {needCategory:["Nouns"], needCount:[1],
-    instr: (w1) => `Build one short, natural sentence or short phrase applying the grammar point to EXACTLY this noun: "${w1.tr}" (${w1.en}). Keep it SHORT (2-5 words) and use no other noun besides the one given.`},
+    instr: (w1) => `Build one short, natural sentence applying the grammar point to EXACTLY this noun: "${w1.tr}" (${w1.en}). Do NOT return a single bare inflected word with no verb/copula/context (e.g. just "${w1.tr}lar" alone is NOT acceptable) — always embed it in a minimal real clause (a copula, "var"/"yok", or a simple verb) so it's an actual testable sentence, not an isolated inflected form. Keep it SHORT (2-5 words) and use no other noun besides the one given.`},
   noun2: {needCategory:["Nouns","Nouns"], needCount:[1,1],
     instr: (w1,w2) => `Build one short, natural phrase or sentence that relates EXACTLY these two nouns using the grammar point: "${w1.tr}" (${w1.en}) and "${w2.tr}" (${w2.en}). Keep it SHORT and use no other nouns besides the two given.`},
   // Onbepaalde naamwoordgroep (belirtisiz isim tamlaması): eerste naamwoord blijft KAAL (geen
@@ -59924,11 +59931,13 @@ async function generateFrameworkDrillCandidate(topic, framework, correctionNote,
       recentGrammarDrillWords.delete(recentGrammarDrillWords.values().next().value); // oudste (eerst toegevoegde) eruit
     }
   }
-  const sys = `You create a SHORT, concrete example testing a given Turkish grammar topic, isolated to that one skill but applied PRACTICALLY (a real short sentence/phrase, never an abstract rule question), using only the word(s) given to you for that call.
+  const sys = `You create a SHORT, concrete example testing a given Turkish grammar topic, isolated to that one skill but applied PRACTICALLY (a real short sentence/phrase, never an abstract rule question, and NEVER a single bare inflected word with no surrounding context), using only the word(s) given to you for that call.
 Randomly choose the test direction: en-tr (show the English version, ask for the Turkish translation) or tr-en (show the Turkish version, ask for the English translation).
 Write everything in English and Turkish ONLY — never any other language.
 Respond in JSON.`;
+  const level = pickLevelInRange();
   const userMsg = `Topic: "${topic.label}" (${topic.hint})
+Niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
 ${cfg.instr(...words)}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
   const schema = {
     name: "grammar_drill",
