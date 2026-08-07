@@ -58346,8 +58346,14 @@ function drillLooksInvalid(drill, baseWords){
 
 // Welke woordsoort-pool(s) elk onderwerp nodig heeft, en welk framework (zinspatroon) daarbij hoort.
 const GRAMMAR_TOPIC_FRAMEWORK = {
-  // ruimtelijk: voorzetsel-achtige constructies + de bijbehorende naamvallen -> [onderwerp-nw] + [ankernw]+constructie
-  edatlar:"spatial", bulunma_hali:"spatial", yonelme_hali:"spatial", ayrilma_hali:"spatial",
+  // ruimtelijk: naamval-constructies (locatief/datief/ablatief) -> [onderwerp-nw] + [ankernw]+constructie.
+  // Deze werken vrijwel altijd met een willekeurig naamwoord als anker, dus puur "spatial" blijft prima.
+  bulunma_hali:"spatial", yonelme_hali:"spatial", ayrilma_hali:"spatial",
+  // postposities (için/ile/rağmen/göre) zaten voorheen ook op "spatial", maar "göre" ("volgens X")
+  // vereist een MENINGSHOUDER (persoon/groep/bron) als anker -- gedwongen combineren met een
+  // willekeurig object (bv. "volgens de sleutel") leverde onzinnige zinnen op. Eigen framework dat de
+  // AI zelf laat kiezen welke van de vier postposities bij het gegeven naamwoord past.
+  edatlar:"postpositions",
   // werkwoord-gebaseerd: tijd/wijze/çatı toegepast op een los werkwoord (+onderwerp)
   olumsuzluk:"verb", simdiki_zaman:"verb", genis_zaman:"verb", gecmis_di:"verb",
   gecmis_mis:"verb", gelecek_zaman:"verb", gecmis_devam:"verb", gelecek_gecmis:"verb",
@@ -58367,7 +58373,11 @@ const GRAMMAR_TOPIC_FRAMEWORK = {
   // geforceerde/rare voorbeelden op, dus dat krijgt een aparte curated "bezitter"-pool (zie
   // POSSESSOR_NOUNS/pickMasteredPossessorWords) i.p.v. de brede, willekeurige Nouns-pool.
   isim_tamlamasi:"noun_compound_indefinite", tamlayan_hali:"noun_compound_definite",
-  karsilastirma:"noun2", ki_eki:"noun2",
+  // ki_eki ("-ki" achtervoegsel) zat ook op "noun2" (twee volledig willekeurige naamwoorden), maar de
+  // meest gangbare -ki-vorm (bv. "masadaki kitap" = het boek OP de tafel) vereist dat het tweede
+  // naamwoord fysiek/plausibel bij het eerste kan horen -- willekeurige paren gaven onzin als
+  // "kupadaki başarı" ("het succes in de beker"). Eigen framework, zie hieronder.
+  karsilastirma:"noun2", ki_eki:"relative_ki",
   // rest: geen duidelijke woordsoort-voorkeur, gebruikt de brede gemengde pool (bestaand gedrag)
 };
 
@@ -58439,6 +58449,11 @@ async function pickMasteredPossessorWords(count){
 const FRAMEWORK_INSTRUCTIONS = {
   spatial: {needCategory:["Nouns","Nouns"], needCount:[1,1],
     instr: (w1,w2) => `Build one short, natural sentence using EXACTLY these two nouns: "${w1.tr}" (${w1.en}) as the subject, and "${w2.tr}" (${w2.en}) as the location/reference noun that the grammar point attaches to.\nIllustration only (build your OWN sentence with the given words/topic, don't just copy this): "Kedi masanın üstünde." (The cat is on the table.)\nKeep it SHORT (3-6 words) and use no other nouns besides the two given.`},
+  // Postposities (için "for", ile "with", rağmen "despite", göre "according to") stellen heel
+  // verschillende eisen aan het naamwoord waar ze aan hangen -- daarom kiest de AI hier zelf welke
+  // postpositie past bij het gegeven tweede naamwoord, i.p.v. één vaste (locatieve) framing te forceren.
+  postpositions: {needCategory:["Nouns","Nouns"], needCount:[1,1],
+    instr: (w1,w2) => `Build one short, natural sentence using EXACTLY these two nouns: "${w1.tr}" (${w1.en}) as the subject, and "${w2.tr}" (${w2.en}) as the noun that a Turkish postposition attaches to. Choose WHICHEVER of these four postpositions fits "${w2.en}" most naturally: için ("for"), ile ("with"), rağmen ("despite"), or göre ("according to"). için/ile/rağmen work with almost any noun. göre is an EXCEPTION: it only makes natural sense if "${w2.en}" is a person, group, or source capable of holding an opinion/view (e.g. "according to my mother", "according to the teacher") — if "${w2.en}" is an inanimate object or abstract thing, do NOT use göre; pick için, ile, or rağmen instead. Keep it SHORT (3-6 words) and use no other nouns besides the two given.`},
   verb: {needCategory:["Verbs"], needCount:[1],
     instr: (w1) => `Build one short, natural sentence applying the grammar point to EXACTLY this verb: "${w1.tr}" (${w1.en}). Pick any subject (I/you/he/she/we/they) yourself. Keep it SHORT (2-5 words) and use no other verb besides the one given.`},
   verb2: {needCategory:["Verbs","Verbs"], needCount:[1,1],
@@ -58458,6 +58473,10 @@ const FRAMEWORK_INSTRUCTIONS = {
   // achtige naamwoorden (mensen, dieren, organisaties, plekken) i.p.v. een volledig willekeurig naamwoord.
   noun_compound_definite: {needCategory:["PossessorNouns","Nouns"], needCount:[1,1],
     instr: (w1,w2) => `Build a Turkish DEFINITE noun compound (belirtili isim tamlaması) expressing genuine, specific possession, using EXACTLY these two nouns: "${w1.tr}" (${w1.en}) as the possessor, and "${w2.tr}" (${w2.en}) as the thing possessed. The first noun takes the genitive suffix -(n)In; the second noun takes the 3rd-person possessive suffix -(s)I — e.g. "okulun bahçesi" (the school's garden, okul+un + bahçe+si). Build a short, natural phrase or short sentence (2-5 words) using exactly these two nouns.`},
+  // Het -ki achtervoegsel heeft twee heel verschillende hoofdgebruiken; de AI kiest zelf welke bij het
+  // gegeven paar past, i.p.v. één vaste (locatieve) lezing te forceren op een paar dat daar niet bij past.
+  relative_ki: {needCategory:["Nouns","Nouns"], needCount:[1,1],
+    instr: (w1,w2) => `Build one short, natural phrase or sentence using the Turkish relative suffix -ki, involving EXACTLY these two nouns: "${w1.tr}" (${w1.en}) and "${w2.tr}" (${w2.en}). -ki has two common uses — pick WHICHEVER actually fits this pair, don't force the wrong one:\n1) Locative-relative: [noun1 in locative + -ki] + noun2, meaning "the noun2 that is at/in/on noun1" (e.g. "masadaki kitap" = the book on the table). ONLY use this if "${w2.en}" could plausibly be physically located at/in/on "${w1.en}" (a book CAN be on a table; success CANNOT be in a cup).\n2) Possessive/comparative substitute: [noun1 in genitive + -ki], replacing an implied noun2, often comparing to noun2 (e.g. "Ahmet'in arabası benimkinden hızlı" = Ahmet's car is faster than mine). Use this if the locative reading doesn't make sense.\nKeep it SHORT and use no other nouns besides the two given.`},
 };
 
 /* Voor de "Prepositions"-vocabulairelessen: verpakt een specifiek voorzetsel-woord in een kort,
@@ -58547,13 +58566,22 @@ ${cfg.instr(...words)}` + (correctionNote ? `\n\nNOTE: your previous attempt was
   return parseAIJson(raw);
 }
 
+// Haalt de Turkse kant van een framework-drill op, ongeacht de gekozen richting -- nodig om 'm door
+// checkSentenceNatural te kunnen halen (die verwacht altijd Turkse tekst).
+function drillTurkishText(drill){
+  return drill.direction === "tr-en" ? drill.prompt : drill.correct;
+}
 async function generateGrammarDrill(topic){
   const framework = GRAMMAR_TOPIC_FRAMEWORK[topic.key];
   if(framework){
     let drill = await generateFrameworkDrillCandidate(topic, framework);
     let attempts = 1;
-    while(drillLooksInvalid(drill, []) && attempts < 3){ // lege pool: alleen de kale-uitgang/metavraag/kaal-functiewoord-checks gelden hier
-      drill = await generateFrameworkDrillCandidate(topic, framework, "make sure it's a real short sentence/phrase using only the given word(s), never a bare suffix or standalone preposition/function word.");
+    // Structuurcheck (kale uitgang/metavraag/functiewoord) ÉN natuurlijkheidscheck (klinkt de zin echt
+    // als iets een moedertaalspreker zou zeggen, i.p.v. een geforceerde combinatie van twee willekeurig
+    // gekozen woorden -- zie de "kupadaki başarı"-klasse problemen die hiermee opgevangen worden,
+    // ook voor topic-combinaties die niet apart met een eigen framework gecureerd zijn).
+    while(attempts < 3 && (drillLooksInvalid(drill, []) || !(await checkSentenceNatural(drillTurkishText(drill))))){
+      drill = await generateFrameworkDrillCandidate(topic, framework, "make sure it's a real short sentence/phrase using only the given word(s), never a bare suffix or standalone preposition/function word, and make sure the result sounds genuinely natural to a native speaker -- not a forced or nonsensical combination of the two given words.");
       attempts++;
     }
     return drill;
