@@ -57370,7 +57370,13 @@ async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temp
   // (in tegenstelling tot bij Claude) wél zelf blijven uitleggen welke velden verwacht worden. Wat
   // response_format WEL garandeert: altijd geldige, kale JSON (nooit binnen ```json ... ``` verpakt,
   // nooit met verdwaalde tekst ervoor/erna) -- dus geen losse regex-opschoning meer nodig voor dat deel.
-  if(schema) body.response_format = {type: "json_object"};
+    if(schema) {
+    body.response_format = {type: "json_object"};
+    // Voeg 'json' toe aan de systeemprompt in het object als het er nog niet in staat
+    if (!messages[0].content.toLowerCase().includes("json")) {
+      messages[0].content += " Return the output as a valid JSON object.";
+    }
+  }
   const res = await fetchWithTimeout(url, {
     method: "POST",
     headers,
