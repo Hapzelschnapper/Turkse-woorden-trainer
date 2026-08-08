@@ -122,7 +122,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-07 23:22</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 08:08</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -33554,7 +33554,7 @@ let newWords = loadJSON(LS_NEWWORDS, {});
 }
 let grammar = loadJSON(LS_GRAMMAR, {});
 let trCache = loadJSON(LS_TRCACHE, {});
-let curatedTr = {...(typeof EMBEDDED_CURATED_TR !== "undefined" ? EMBEDDED_CURATED_TR : {}), ...loadJSON(LS_CURATED_TR, {})}; // ingebedde basis + lokale/gesyncte aanvullingen (die winnen bij overlap)
+let curatedTr = {...loadJSON(LS_CURATED_TR, {}), ...(typeof EMBEDDED_CURATED_TR !== "undefined" ? EMBEDDED_CURATED_TR : {})}; // ingebedde data is nu de volledige, verse curatie (alle 4932 woorden) en wint bij overlap; de lokale/gesyncte laag was bedoeld voor de oude (inmiddels verwijderde) bulk-translate-knop en dient alleen nog als vangnet voor woorden die de ingebedde data zelf niet kent
 let lessonProgress = loadJSON(LS_LESSONS, {});
 /* Eenmalige reparatie van "gaten" in lesson-voortgang: door eerdere iteraties van de ontgrendellogica
    (deze cursus is meermaals herbouwd) kan het voorkomen dat een latere les als voltooid staat terwijl
@@ -36933,7 +36933,7 @@ async function syncPushNow(){
     localStorage.setItem(LS_COST_PENDING, JSON.stringify(costPending));
     updateCostDisplay();
 
-    const payload = { progress, custom, overrides, newWords, grammar, cost: costUsage, curatedTr, updatedAt: Date.now() };
+    const payload = { progress, custom, overrides, newWords, grammar, cost: costUsage, updatedAt: Date.now() };
     const res = await fetch(`https://api.github.com/gists/${settings.syncBinId}`, {
       method: "PATCH",
       headers: {
@@ -36976,7 +36976,8 @@ async function syncPullNow(showAlertOnEmpty){
       newWords = remote.newWords || {};
       grammar = remote.grammar || {};
       costUsage = remote.cost ? maxCostUsage(costUsage, remote.cost) : costUsage; // laat lokaal costPending ongemoeid, dat wordt bij de volgende push meegeteld
-      if(remote.curatedTr) curatedTr = {...remote.curatedTr, ...curatedTr}; // lokaal-al-aanwezige entries nooit laten verdwijnen, alleen aanvullen
+      // curatedTr wordt niet meer gesynct (zie syncPushNow): de ingebedde data is nu de volledige,
+      // verse bron, en persoonlijke correcties lopen via de veel kleinere overrides-laag hieronder.
       localStorage.setItem(LS_PROGRESS, JSON.stringify(progress));
       localStorage.setItem(LS_CUSTOM, JSON.stringify(custom));
       localStorage.setItem(LS_OVERRIDES, JSON.stringify(overrides));
@@ -37658,14 +37659,11 @@ async function generateSentence(){
     if(!w.tr || !w.en) continue;
     const en = w.en.toLowerCase().trim();
     const isOfficialWord = EN_WORDS_DATA.some(x=>x.en===en);
-    if(!isOfficialWord){
-      ensureWordExists(en, w.cefr); // voegt alleen toe als het nog niet bestaat
-    }
-    // Alleen voor woorden die NIET in de officiele Oxford-lijst zitten cachen we de vertaling meteen
-    // (die hebben anders geen andere weg naar een vertaling). Officiele woorden krijgen hun vertaling
-    // altijd via de aparte, betrouwbaardere getOrFetchTranslation()-aanroep zodra ze als losse
-    // woordoefening aan de beurt komen -- de losse koppeling die de AI hier binnen een hele zin
-    // teruggeeft is minder betrouwbaar (bron van eerder gemelde foute vertalingen zoals weather->acaba).
+    // ensureWordExists() hier NIET meer aanroepen: de gebruiker wil geen groei van de woordenlijst
+    // meer buiten de al-gecureerde ~4932 kernwoorden om. Een woord dat de AI binnen een zin gebruikt
+    // maar niet in de kernlijst zit, krijgt hieronder nog wel een tijdelijke vertaling gecached zodat
+    // het tap-to-peek-chipje in DEZE ene zin werkt, maar wordt niet blijvend aan newWords toegevoegd
+    // (dus ook niet als losse oefening opnieuw geoefend later).
     if(!isOfficialWord && !cachedTranslation(en)){
       trCache[en] = {tr: [w.tr], fetchedAt: Date.now()};
       saveJSON(LS_TRCACHE, trCache);
@@ -37792,9 +37790,7 @@ async function generateQuestion(){
     if(!w.tr || !w.en) continue;
     const en = w.en.toLowerCase().trim();
     const isOfficialWord = EN_WORDS_DATA.some(x=>x.en===en);
-    if(!isOfficialWord){
-      ensureWordExists(en, w.cefr);
-    }
+    // zelfde redenering als in generateSentence(): geen groei van de woordenlijst meer via ensureWordExists().
     if(!isOfficialWord && !cachedTranslation(en)){
       trCache[en] = {tr: [w.tr], fetchedAt: Date.now()};
       saveJSON(LS_TRCACHE, trCache);
