@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 11:54</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 12:07</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -2893,8 +2893,12 @@ function filterWordsActuallyInSentence(sentenceTr, words){
   return filtered.length ? filtered : words;
 }
 
-async function generateSentenceCandidate(targetWord, grammarTopic, _levelOverride, _correctionNote){
+async function generateSentenceCandidate(targetWord, grammarTopic, _levelOverride, _correctionNote, _vocabLevelOverride){
   const level = _levelOverride ?? pickSentenceComplexityLevel();
+  // Apart woordniveau-plafond, losgekoppeld van de zinscomplexiteit -- dit was voorheen impliciet
+  // gelijk aan "level" (complexiteit), waardoor bv. complexiteit=max + woordniveau=min de check nooit
+  // liet falen (elk woord ligt onder complexiteit-17). Nu expliciet uit de eigen sentenceVocab-slider.
+  const vocabLevel = _vocabLevelOverride ?? pickLevelInRange(settings.sentenceVocabMin, settings.sentenceVocabMax);
   const knownSample = pickKnownVocabSample(35);
   // Systeeminstructie bevat GEEN enkele per-aanroep-variabele meer (geen niveau, geen woord, geen
   // willekeurige woordsteekproef) -- dat is precies wat prompt-caching effectief maakt: deze tekst is
@@ -2905,11 +2909,13 @@ De zin moet vooral grammaticaal correct en natuurlijk klinken voor een moedertaa
 Vermijd zinnen die zichzelf tegenspreken of onlogisch klinken (bv. een vraag en het antwoord daarop in één zin proppen).
 Let op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Is een naamwoord in de zin bedoeld als lijdend voorwerp van een overgankelijk werkwoord, geef het dan de juiste accusatief-uitgang (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü) — anders verandert de betekenis van de zin ongemerkt (bv. "Kitaplar tanıyor" betekent "de boeken kennen [iets]", niet "hij/zij kent de boeken"; dat laatste vereist "Kitapları tanıyor").
 Als een grammaticaal onderwerp is opgegeven: bouw de zin zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
-Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde niveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de zin buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven niveau. Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger niveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken -- eenvoud weegt hier zwaarder dan een verfraaiing.
+BELANGRIJK: zinscomplexiteit (zinsbouw, lengte, aantal bijzinnen) en woordmoeilijkheid (welke woorden je gebruikt) zijn TWEE APARTE dingen die je per aanroep los te horen krijgt. Een complexe zinsbouw kan en moet met simpele woorden gebouwd worden als het opgegeven woordniveau laag is — een lang, formeel, ambtelijk-klinkend of literair register is dan GEEN excuus om toch moeilijke woorden te gebruiken. Bouw liever een langere zin met alleen eenvoudige woorden en veel herhaling/omschrijving dan een kortere zin met één moeilijk woord.
+Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde woordniveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de zin buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven WOORDNIVEAU (niet het zinscomplexiteitsniveau — die twee kunnen ver uit elkaar liggen). Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger woordniveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken of beter bij het formele register past -- eenvoud van woordkeuze weegt hier zwaarder dan een verfraaiing.
 Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin.
 Antwoord in JSON.`;
-  const user = `Niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
-Doelwoord: "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als het niveau dat vraagt).
+  const user = `Zinscomplexiteit: ${cefrLabel(level)}. ${cefrGuidance(level)}
+Woordniveau-plafond (apart van de complexiteit hierboven): ${cefrLabel(vocabLevel)} — ELK woord in de zin (behalve het doelwoord en simpele functiewoorden) moet op of onder dit niveau liggen, ongeacht hoe complex de zinsbouw zelf moet zijn.
+Doelwoord: "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als de zinscomplexiteit dat vraagt).
 ${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
 ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}
 ${_correctionNote || ""}`;
@@ -2945,7 +2951,8 @@ ${_correctionNote || ""}`;
   }
   if(!parsed.tr) throw new Error("AI did not return a sentence.");
   parsed.words = filterWordsActuallyInSentence(parsed.tr, parsed.words);
-  parsed._level = level; // nodig voor de vocab-niveau-check in generateSentence()
+  parsed._level = level; // complexiteitsniveau -- nodig om dezelfde complexiteit aan te houden bij herkansing
+  parsed._vocabLevel = vocabLevel; // woordniveau-plafond -- nodig voor de vocab-check in generateSentence()
   return parsed;
 }
 
@@ -3026,7 +3033,7 @@ async function generateSentence(){
   try{
     const natural = await checkSentenceNatural(parsed.tr);
     if(!natural){
-      parsed = await generateSentenceCandidate(targetWord, grammarTopic, parsed._level); // één herkansing, zelfde niveau, daarna gewoon accepteren
+      parsed = await generateSentenceCandidate(targetWord, grammarTopic, parsed._level, undefined, parsed._vocabLevel); // één herkansing, zelfde niveaus, daarna gewoon accepteren
     }
   }catch(e){
     // controle mislukt: geen probleem, ga door met de eerste kandidaat
@@ -3034,16 +3041,18 @@ async function generateSentence(){
 
   // Vocab-niveau-check: ondanks de (nu harde) instructie kan de AI alsnog een te zwaar woord verzinnen
   // voor iets anders dan het doelwoord (bv. "köylüler" in een A1-zin) -- dat repareert de instructie
-  // zelf niet altijd, dus hier een code-level controle met één gerichte herkansing.
+  // zelf niet altijd, dus hier een code-level controle met één gerichte herkansing. Toetst tegen het
+  // APARTE woordniveau-plafond (_vocabLevel), niet tegen de zinscomplexiteit (_level) -- die twee lagen
+  // voorheen door elkaar, waardoor bv. complexiteit=max de check altijd liet slagen ongeacht woordniveau.
   if(Array.isArray(parsed.words)){
     const targetEnLower = target ? target.en.toLowerCase() : null;
     const violations = parsed.words.filter(w =>
       w.en && w.en.toLowerCase() !== targetEnLower &&
-      typeof w.cefr === "number" && w.cefr > parsed._level
+      typeof w.cefr === "number" && w.cefr > parsed._vocabLevel
     );
     if(violations.length){
-      const note = `LET OP: je vorige poging bevatte ${violations.length > 1 ? "woorden" : "een woord"} die te zwaar zijn voor het gevraagde niveau: ${violations.map(v=>`"${v.tr}" (${v.en}, niveau ${cefrLabel(v.cefr)})`).join(", ")}. Vervang deze door een eenvoudiger woord dat past bij het niveau (of laat het weg als het niet strikt nodig is voor de zin).`;
-      const retried = await generateSentenceCandidate(targetWord, grammarTopic, parsed._level, note);
+      const note = `LET OP: je vorige poging bevatte ${violations.length > 1 ? "woorden" : "een woord"} die te zwaar zijn voor het gevraagde WOORDNIVEAU (niet de zinscomplexiteit): ${violations.map(v=>`"${v.tr}" (${v.en}, niveau ${cefrLabel(v.cefr)})`).join(", ")}. De zin mag qua zinsbouw nog steeds complex zijn, maar vervang deze woorden door eenvoudiger alternatieven op het opgegeven woordniveau (of laat ze weg als het niet strikt nodig is voor de zin).`;
+      const retried = await generateSentenceCandidate(targetWord, grammarTopic, parsed._level, note, parsed._vocabLevel);
       if(retried.tr) parsed = retried; // bij een tweede mislukking (geen tr): gewoon de eerste kandidaat behouden
     }
   }
@@ -3075,8 +3084,9 @@ async function generateSentence(){
 }
 
 /* ===================== TR-VRAAG / TR-ANTWOORD (begrip zonder vertaling) ===================== */
-async function generateQuestionCandidate(targetWord, grammarTopic, _levelOverride, _correctionNote){
+async function generateQuestionCandidate(targetWord, grammarTopic, _levelOverride, _correctionNote, _vocabLevelOverride){
   const level = _levelOverride ?? pickSentenceComplexityLevel();
+  const vocabLevel = _vocabLevelOverride ?? pickLevelInRange(settings.sentenceVocabMin, settings.sentenceVocabMax);
   const knownSample = pickKnownVocabSample(35);
   const sys = `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
 Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv. rekenen, geografie, een feit uit de zin zelf), ofwel een PERSOONLIJKE/OPEN vraag waarop elk contextueel passend Turks antwoord goed is (bv. "Bugün ne yaptın?").
@@ -3084,10 +3094,12 @@ KRITIEK: het resultaat MOET een echte vraag zijn, GEEN mededelende stelling. Ein
 Als een grammaticaal onderwerp is opgegeven: bouw de vraag zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
 De vraag moet grammaticaal correct en natuurlijk klinken voor een moedertaalspreker.
 Let op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Is een naamwoord bedoeld als lijdend voorwerp van een overgankelijk werkwoord, geef het dan de juiste accusatief-uitgang (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü) — anders verandert de betekenis van de zin ongemerkt.
-Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde niveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de vraag buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven niveau. Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger niveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken -- eenvoud weegt hier zwaarder dan een verfraaiing.
+BELANGRIJK: zinscomplexiteit (zinsbouw, lengte, aantal bijzinnen) en woordmoeilijkheid (welke woorden je gebruikt) zijn TWEE APARTE dingen die je per aanroep los te horen krijgt. Een complexe zinsbouw kan en moet met simpele woorden gebouwd worden als het opgegeven woordniveau laag is — een lang, formeel of literair register is dan GEEN excuus om toch moeilijke woorden te gebruiken.
+Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde woordniveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de vraag buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven WOORDNIVEAU (niet het zinscomplexiteitsniveau). Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger woordniveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken -- eenvoud van woordkeuze weegt hier zwaarder dan een verfraaiing.
 Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
 Antwoord in JSON.`;
-  const user = `Niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
+  const user = `Zinscomplexiteit: ${cefrLabel(level)}. ${cefrGuidance(level)}
+Woordniveau-plafond (apart van de complexiteit hierboven): ${cefrLabel(vocabLevel)} — ELK woord in de vraag (behalve het doelwoord en simpele functiewoorden) moet op of onder dit niveau liggen, ongeacht hoe complex de zinsbouw zelf moet zijn.
 Doelwoord: "${targetWord}" (vervoegd/verbogen mag).
 ${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
 ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}
@@ -3127,6 +3139,7 @@ ${_correctionNote || ""}`;
   if(!parsed.tr) throw new Error("AI did not return a question.");
   parsed.words = filterWordsActuallyInSentence(parsed.tr, parsed.words);
   parsed._level = level;
+  parsed._vocabLevel = vocabLevel;
   return parsed;
 }
 
@@ -3149,7 +3162,7 @@ async function generateQuestion(){
 
   let parsed = await generateQuestionCandidate(targetWord, grammarTopic);
   if(!looksLikeQuestion(parsed.tr)){
-    parsed = await generateQuestionCandidate(targetWord, grammarTopic, parsed._level); // herkansing: AI maakte een stelling i.p.v. een vraag
+    parsed = await generateQuestionCandidate(targetWord, grammarTopic, parsed._level, undefined, parsed._vocabLevel); // herkansing: AI maakte een stelling i.p.v. een vraag
   }
   if(!looksLikeQuestion(parsed.tr)){
     // nog steeds geen echte vraag na de herkansing: forceer een vraagteken zodat het UI-onderscheid
@@ -3159,22 +3172,22 @@ async function generateQuestion(){
   try{
     const natural = await checkSentenceNatural(parsed.tr); // generieke check, werkt ook prima voor vragen
     if(!natural){
-      parsed = await generateQuestionCandidate(targetWord, grammarTopic, parsed._level); // één herkansing
+      parsed = await generateQuestionCandidate(targetWord, grammarTopic, parsed._level, undefined, parsed._vocabLevel); // één herkansing
       if(!looksLikeQuestion(parsed.tr)) parsed.tr = parsed.tr.replace(/[.!]+\s*$/, "") + "?";
     }
   }catch(e){ /* controle mislukt: gewoon doorgaan met de eerste kandidaat */ }
 
-  // Vocab-niveau-check: zelfde redenering als bij generateSentence -- de AI kan ondanks de harde
-  // instructie alsnog een te zwaar woord verzinnen voor iets anders dan het doelwoord.
+  // Vocab-niveau-check: zelfde redenering als bij generateSentence -- toetst tegen het APARTE
+  // woordniveau-plafond (_vocabLevel), niet tegen de zinscomplexiteit (_level).
   if(Array.isArray(parsed.words)){
     const targetEnLower = target ? target.en.toLowerCase() : null;
     const violations = parsed.words.filter(w =>
       w.en && w.en.toLowerCase() !== targetEnLower &&
-      typeof w.cefr === "number" && w.cefr > parsed._level
+      typeof w.cefr === "number" && w.cefr > parsed._vocabLevel
     );
     if(violations.length){
-      const note = `LET OP: je vorige poging bevatte ${violations.length > 1 ? "woorden" : "een woord"} die te zwaar zijn voor het gevraagde niveau: ${violations.map(v=>`"${v.tr}" (${v.en}, niveau ${cefrLabel(v.cefr)})`).join(", ")}. Vervang deze door een eenvoudiger woord dat past bij het niveau (of laat het weg als het niet strikt nodig is voor de vraag).`;
-      const retried = await generateQuestionCandidate(targetWord, grammarTopic, parsed._level, note);
+      const note = `LET OP: je vorige poging bevatte ${violations.length > 1 ? "woorden" : "een woord"} die te zwaar zijn voor het gevraagde WOORDNIVEAU (niet de zinscomplexiteit): ${violations.map(v=>`"${v.tr}" (${v.en}, niveau ${cefrLabel(v.cefr)})`).join(", ")}. De vraag mag qua zinsbouw nog steeds complex zijn, maar vervang deze woorden door eenvoudiger alternatieven op het opgegeven woordniveau.`;
+      const retried = await generateQuestionCandidate(targetWord, grammarTopic, parsed._level, note, parsed._vocabLevel);
       if(retried.tr && looksLikeQuestion(retried.tr)) parsed = retried;
     }
   }
