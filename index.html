@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 09:50</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 10:57</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -1203,11 +1203,20 @@ function cefrOfEn(en){
 }
 /* Of een los Engels woord (op basis van zijn cefr-niveau) binnen het ingestelde bereik valt. Woorden
    zonder bekend niveau tellen als "binnen bereik" (kunnen niet uitgesloten worden op iets wat er niet is). */
+// De woordenlijst zelf bevat GEEN enkel woord met cefr 15/16/17 (C2) -- de hoogste waarde die ooit
+// voorkomt is 14 (C1-end). Een sliderselectie die (deels) in C2 valt, vond dus altijd een gegarandeerd
+// lege pool en viel noodgedwongen 100% van de tijd terug op lagere niveaus. Omdat de indeling daarboven
+// toch enigszins arbitrair is, behandelen we voor woordSELECTIE alles vanaf C1-start (12) als één brede
+// "C1+"-band: een woord met cefr 14 valt zo ook binnen een zuivere C2-selectie. Zinscomplexiteit
+// (CEFR_LEVEL_GUIDANCE) en grammatica-onderwerpen (minCefr) blijven wél gewoon per subniveau verschillen
+// -- alleen de onderliggende woordenpool wordt vanaf hier gedeeld.
+function vocabCefrBand(idx){ return idx >= 12 ? 12 : idx; }
 function inCefrRangeEn(en){
   const cefr = cefrOfEn(en);
   if(typeof cefr !== "number") return true;
-  const lo = Math.min(settings.cefrMin, settings.cefrMax), hi = Math.max(settings.cefrMin, settings.cefrMax);
-  return cefr >= lo && cefr <= hi;
+  const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax));
+  const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
+  return vocabCefrBand(cefr) >= lo && vocabCefrBand(cefr) <= hi;
 }
 
 /* Toont een Engels woord zoals het aan de gebruiker gepresenteerd wordt: werkwoorden krijgen een
@@ -2403,8 +2412,8 @@ function unlockedGrammarTopicSet(){
 
 function getIntroducibleWords(){
   const words = baseWordList();
-  const lo = Math.min(settings.cefrMin, settings.cefrMax), hi = Math.max(settings.cefrMin, settings.cefrMax);
-  const inRange = w => typeof w.cefr !== "number" || (w.cefr >= lo && w.cefr <= hi);
+  const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
+  const inRange = w => typeof w.cefr !== "number" || (vocabCefrBand(w.cefr) >= lo && vocabCefrBand(w.cefr) <= hi);
   const cur = currentVocabLesson();
   // voorkeur: nog-nooit-getoonde woorden uit de HUIDIGE les van het vocabulaire-spoor, binnen het
   // ingestelde CEFR-bereik. Dit veld checkte het bereik voorheen helemaal niet -- nieuwe woorden
@@ -2624,8 +2633,8 @@ async function getOrFetchTranslation(en){
 
 function pickNextItem(){
   const unlockedEns = unlockedWordSet();
-  const lo = Math.min(settings.cefrMin, settings.cefrMax), hi = Math.max(settings.cefrMin, settings.cefrMax);
-  const inRange = w => typeof w.cefr !== "number" || (w.cefr >= lo && w.cefr <= hi);
+  const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
+  const inRange = w => typeof w.cefr !== "number" || (vocabCefrBand(w.cefr) >= lo && vocabCefrBand(w.cefr) <= hi);
   const words = allWords().filter(w => unlockedEns.has(w.en));
   const now = Date.now();
 
