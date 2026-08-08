@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 12:07</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 12:20</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -3734,34 +3734,25 @@ async function handleCheck(){
   el("btn-check").disabled = true;
   el("answer-input").disabled = true;
 
-  if(!answer){
-    // leeg antwoord = "ik weet het niet", meteen als fout tellen, geen AI-call nodig
-    if(currentItem.type === "sentence" || currentItem.type === "question"){
-      recordHistory(currentItem.type);
-      for(const w of currentItem.words) recordResult(w.en, false);
-      const lessonNote = advanceLessonSession();
-      const adaptiveNote = recordAdaptiveResult(false);
-      const wordTranslations = currentItem.words.map(w=> `${w.tr} = ${w.en}`).join(" &nbsp;·&nbsp; ");
-      showFeedback("wrong", "❌<br><br><b>Translations:</b><br>" + wordTranslations + lessonNote + adaptiveNote);
-      el("post-actions").classList.remove("hidden");
-      el("btn-next").classList.remove("hidden");
-      el("btn-dispute").classList.add("hidden");
-      currentAnswered = true;
-      el("answer-input").disabled = false;
-      if(hasLikelyPhysicalKeyboard()) el("answer-input").focus();
-    } else {
-      const correctAnswer = currentItem.direction === "tr-en" ? displayEnglishWord(currentItem.en) : (cachedTranslation(currentItem.en)||[]).join(", ");
-      finalizeAnswer(false, "❌<br>" + answerCompareLine("", correctAnswer, false));
-    }
-    return;
-  }
-
+  // Zin/vraag-oefeningen gaan ALTIJD door de volledige AI-beoordeling, ook bij een leeg antwoord --
+  // anders krijg je nooit de referentievertaling te zien (voorheen toonde een leeg antwoord hier alleen
+  // een kale woord-voor-woord-lijst, niet de daadwerkelijke vertaling van de hele zin/vraag). De AI
+  // beoordeelt een leeg antwoord toch al betrouwbaar als fout, dus dit kost geen nauwkeurigheid, alleen
+  // één AI-call die je anders miste op precies het moment dat je de vertaling het hardst nodig hebt.
   if(currentItem.type === "sentence"){
     await handleCheckSentence(answer);
     return;
   }
   if(currentItem.type === "question"){
     await handleCheckQuestion(answer);
+    return;
+  }
+
+  if(!answer){
+    // leeg antwoord bij een los woord = "ik weet het niet", meteen als fout tellen, geen AI-call nodig
+    // -- hier kost niks-doen geen informatie, want de statische vertaling is toch al meteen beschikbaar.
+    const correctAnswer = currentItem.direction === "tr-en" ? displayEnglishWord(currentItem.en) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
+    finalizeAnswer(false, "❌<br>" + answerCompareLine("", correctAnswer, false));
     return;
   }
 
