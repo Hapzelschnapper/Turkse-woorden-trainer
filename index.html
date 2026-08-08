@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 10:57</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 11:54</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -185,7 +185,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Language level (CEFR range)</h3>
-      <div class="muted" style="margin-bottom:10px;">Determines the difficulty range for generated sentences/questions AND for which words come up in regular practice — each exercise picks a random level within this range. Which words/grammar you actually practise is still driven by your current position in the Course tab, this just sets the difficulty band.</div>
+      <div class="muted" style="margin-bottom:10px;">Determines the difficulty range for regular word practice (which words come up when practising outside of sentences/questions). Sentence/question generation now has its own two ranges below (complexity and vocabulary). Which words/grammar you actually practise is still driven by your current position in the Course tab, this just sets the difficulty band.</div>
       <div class="row space-between" style="margin-bottom:4px;">
         <span>Minimum</span>
         <span class="muted" id="cefr-min-label">A1 start</span>
@@ -201,6 +201,38 @@
       <div class="muted" id="cefr-unlocked-info" style="margin-top:12px;"></div>
       <button class="btn-secondary" id="btn-start-test" style="width:100%;margin-top:12px;">📝 Take a placement test to determine your level</button>
       <div class="muted" id="test-result" style="margin-top:8px;"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">Sentence generation — complexity</h3>
+      <div class="muted" style="margin-bottom:10px;">How complex generated sentences/questions are (word count, tense variety, number of subclauses) — independent of the difficulty range above and of the vocabulary range below.</div>
+      <div class="row space-between" style="margin-bottom:4px;">
+        <span>Minimum</span>
+        <span class="muted" id="sent-complexity-min-label">A1 start</span>
+      </div>
+      <input type="range" id="sent-complexity-min-slider" min="0" max="17" step="1" value="3" style="width:100%;">
+      <select id="sent-complexity-min-select" style="width:100%;margin-top:6px;"></select>
+      <div class="row space-between" style="margin-top:16px;margin-bottom:4px;">
+        <span>Maximum</span>
+        <span class="muted" id="sent-complexity-max-label">A2 mid</span>
+      </div>
+      <input type="range" id="sent-complexity-max-slider" min="0" max="17" step="1" value="5" style="width:100%;">
+      <select id="sent-complexity-max-select" style="width:100%;margin-top:6px;"></select>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">Sentence generation — word difficulty</h3>
+      <div class="muted" style="margin-bottom:10px;">How difficult the actual vocabulary used inside generated sentences/questions is (the target word plus filler words) — independent of the sentence complexity above. E.g. combine simple A1-A2 words with B2 sentence structure, or vice versa.</div>
+      <div class="row space-between" style="margin-bottom:4px;">
+        <span>Minimum</span>
+        <span class="muted" id="sent-vocab-min-label">A1 start</span>
+      </div>
+      <input type="range" id="sent-vocab-min-slider" min="0" max="17" step="1" value="3" style="width:100%;">
+      <select id="sent-vocab-min-select" style="width:100%;margin-top:6px;"></select>
+      <div class="row space-between" style="margin-top:16px;margin-bottom:4px;">
+        <span>Maximum</span>
+        <span class="muted" id="sent-vocab-max-label">A2 mid</span>
+      </div>
+      <input type="range" id="sent-vocab-max-slider" min="0" max="17" step="1" value="5" style="width:100%;">
+      <select id="sent-vocab-max-select" style="width:100%;margin-top:6px;"></select>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">📊 Adaptive difficulty</h3>
@@ -324,7 +356,9 @@
 <div class="modal-bg hidden" id="modal-edit-word">
   <div class="modal">
     <h3>✏️ Correct this word</h3>
-    <div class="muted" style="margin-bottom:10px;">English: <b id="edit-word-en"></b><br>Overrides whatever the AI/curated data says for this word — takes priority everywhere it's used.</div>
+    <div class="muted" style="margin-bottom:10px;">Overrides whatever the AI/curated data says for this word — takes priority everywhere it's used. Your progress/level stays tied to the original word, only what's shown/graded changes.</div>
+    <div class="muted" style="margin-bottom:4px;">English (source):</div>
+    <input type="text" id="edit-word-en-input" placeholder="e.g. to be born" style="width:100%;margin-bottom:10px;">
     <div class="muted" style="margin-bottom:4px;">Turkish translation(s), comma-separated:</div>
     <input type="text" id="edit-word-tr-input" placeholder="e.g. kitap, kitabı" style="width:100%;">
     <div class="row" style="margin-top:10px;">
@@ -487,9 +521,22 @@ async function fetchWithTimeout(url, opts, timeoutMs){
 if(settings.cefrLevel === undefined) settings.cefrLevel = 4;
 if(settings.cefrMin === undefined) settings.cefrMin = Math.max(0, settings.cefrLevel - 1);
 if(settings.cefrMax === undefined) settings.cefrMax = Math.min(17, settings.cefrLevel + 1);
-function pickLevelInRange(){
-  const lo = Math.min(settings.cefrMin, settings.cefrMax), hi = Math.max(settings.cefrMin, settings.cefrMax);
+// Twee losse bereiken specifiek voor zin-generatie, standaard gelijk aan de woord-oefenslider tot de
+// gebruiker ze zelf aanpast: complexiteit (zinsbouw/lengte/bijzinnen, stuurt cefrGuidance) en
+// woordmoeilijkheid (welk vocabulaire in die zinnen gebruikt wordt) waren voorheen gedwongen gelijk
+// aan elkaar en aan de woord-oefenslider -- nu onafhankelijk instelbaar.
+if(settings.sentenceComplexityMin === undefined) settings.sentenceComplexityMin = settings.cefrMin;
+if(settings.sentenceComplexityMax === undefined) settings.sentenceComplexityMax = settings.cefrMax;
+if(settings.sentenceVocabMin === undefined) settings.sentenceVocabMin = settings.cefrMin;
+if(settings.sentenceVocabMax === undefined) settings.sentenceVocabMax = settings.cefrMax;
+function pickLevelInRange(min, max){
+  const lo = Math.min(min, max), hi = Math.max(min, max);
   return lo + Math.floor(Math.random() * (hi - lo + 1));
+}
+// Zinscomplexiteit (zinsbouw/lengte/bijzinnen, via cefrGuidance) gebruikt voortaan zijn EIGEN bereik
+// i.p.v. de algemene woord-oefenslider -- zie de nieuwe instellingen-kaart "Sentence generation".
+function pickSentenceComplexityLevel(){
+  return pickLevelInRange(settings.sentenceComplexityMin, settings.sentenceComplexityMax);
 }
 if(settings.newWordPercent === undefined) settings.newWordPercent = 50;
 if(settings.questionPercent === undefined) settings.questionPercent = 0;
@@ -1050,7 +1097,7 @@ function markLessonComplete(id){
 }
 /* Grammatica-onderwerp kiezen binnen een actieve les (of het normale gedrag als er geen les actief is) */
 function pickLessonGrammarTopic(){
-  const cefrCeiling = Math.max(settings.cefrMin, settings.cefrMax);
+  const cefrCeiling = Math.max(settings.sentenceComplexityMin, settings.sentenceComplexityMax); // grammatica-zwaarte hoort bij zin-complexiteit, niet bij woordmoeilijkheid
   const cur = currentGrammarLesson();
   // voorkeur: het grammaticale onderwerp van de HUIDIGE les (in het grammatica-spoor), zolang dat nog
   // niet volledig beheerst is -- EN zolang het niet zwaarder is dan het ingestelde CEFR-plafond. Zonder
@@ -1218,11 +1265,23 @@ function inCefrRangeEn(en){
   const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
   return vocabCefrBand(cefr) >= lo && vocabCefrBand(cefr) <= hi;
 }
+// Zelfde als inCefrRangeEn, maar tegen het losse "woordmoeilijkheid voor zin-generatie"-bereik i.p.v.
+// de algemene woord-oefenslider -- gebruikt voor het doelwoord én de "bekende woorden"-vulwoorden
+// binnen gegenereerde zinnen/vragen (zie de nieuwe instellingen-kaart "Sentence generation").
+function inSentenceVocabRangeEn(en){
+  const cefr = cefrOfEn(en);
+  if(typeof cefr !== "number") return true;
+  const lo = vocabCefrBand(Math.min(settings.sentenceVocabMin, settings.sentenceVocabMax));
+  const hi = vocabCefrBand(Math.max(settings.sentenceVocabMin, settings.sentenceVocabMax));
+  return vocabCefrBand(cefr) >= lo && vocabCefrBand(cefr) <= hi;
+}
 
 /* Toont een Engels woord zoals het aan de gebruiker gepresenteerd wordt: werkwoorden krijgen een
    "to" ervoor (bv. "to meet" i.p.v. kaal "meet"), duidelijker herkenbaar als werkwoord — net als in
-   een woordenboek. Modale/hulpwerkwoorden (can, must, ...) nemen geen "to" en blijven kaal. */
+   een woordenboek. Modale/hulpwerkwoorden (can, must, ...) nemen geen "to" en blijven kaal.
+   Een handmatige correctie (overrides[en].en, bv. "born" -> "to be born") heeft altijd voorrang. */
 function displayEnglishWord(en){
+  if(overrides[en] && overrides[en].en) return overrides[en].en;
   return wordCategoryOf(en) === "v." ? `to ${en}` : en;
 }
 
@@ -1385,7 +1444,7 @@ async function pickMasteredPoolWords(category, count, avoidEn){
   // CEFR-bereik: deze functie filterde voorheen ALLEEN op "al beheerst" (level>=7/8), nooit op het
   // ingestelde niveau -- een allang gemasterd, maar zwaar woord (bv. "danışman" = consultant) kon dus
   // zomaar in een A1-grammatica-oefening belanden. Eerst binnen bereik proberen, terugval als leeg.
-  const poolInRange = pool.filter(inCefrRangeEn);
+  const poolInRange = pool.filter(inSentenceVocabRangeEn);
   if(poolInRange.length) pool = poolInRange;
   // Recent-binnen-deze-sessie-gebruikte woorden vermijden (voorkomt "steeds hetzelfde zinnetje" bij
   // grammatica-oefeningen) -- maar alleen als dat niet de hele pool leegveegt.
@@ -1423,7 +1482,7 @@ async function pickMasteredPossessorWords(count, avoidEn){
   let pool = level8.length >= count ? level8 : level7;
   if(!pool.length) pool = allEn; // nog geen enkele possessor-noun op niveau 7+: pak elk bekend exemplaar
   if(!pool.length) pool = [...POSSESSOR_NOUNS]; // allerlaatste redmiddel: de curated lijst zelf (nog niet vertaald)
-  const poolInRange = pool.filter(inCefrRangeEn);
+  const poolInRange = pool.filter(inSentenceVocabRangeEn);
   if(poolInRange.length) pool = poolInRange;
   if(avoidEn && avoidEn.size){
     const filtered = pool.filter(en => !avoidEn.has(en));
@@ -1552,7 +1611,7 @@ async function generateFrameworkDrillCandidate(topic, framework, correctionNote,
 Randomly choose the test direction: en-tr (show the English version, ask for the Turkish translation) or tr-en (show the Turkish version, ask for the English translation).
 Write everything in English and Turkish ONLY — never any other language.
 Respond in JSON.`;
-  const level = pickLevelInRange();
+  const level = pickSentenceComplexityLevel();
   const userMsg = `Topic: "${topic.label}" (${topic.hint})
 Niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
 ${cfg.instr(...words)}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
@@ -2768,7 +2827,7 @@ function pickEnglishWordForSentence(){
   // ver-gevorderd due woord kon zomaar als doelwoord in een A1-zin belanden), met terugval naar buiten
   // bereik zodat herhaling nooit stokt.
   const dueShownAll = words.filter(en => { const p = getProgress(en); return p.reps > 0 && p.due <= now; });
-  const dueShownInRange = dueShownAll.filter(inCefrRangeEn);
+  const dueShownInRange = dueShownAll.filter(inSentenceVocabRangeEn);
   const dueShown = dueShownInRange.length ? dueShownInRange : dueShownAll;
   if(dueShown.length){
     const minLevel = Math.min(...dueShown.map(en=>getProgress(en).level));
@@ -2779,7 +2838,7 @@ function pickEnglishWordForSentence(){
   // niets is due (of "nieuwe woorden" gewenst maar geen meer over) -> val terug op absoluut laagste
   // niveau, ook hier eerst binnen bereik proberen.
   if(!words.length) return null;
-  const wordsInRange = words.filter(inCefrRangeEn);
+  const wordsInRange = words.filter(inSentenceVocabRangeEn);
   const rankPool = wordsInRange.length ? wordsInRange : words;
   const minLevel = Math.min(...rankPool.map(en=>getProgress(en).level));
   const pool = rankPool.filter(en=>getProgress(en).level === minLevel);
@@ -2811,7 +2870,7 @@ async function pickTurkishTargetForSentence(){
    een zin niet stiekem onbekende woorden binnensmokkelt enkel omdat ze "bij het niveau passen". */
 function pickKnownVocabSample(count){
   const allMastered = baseWordList().map(w=>w.en).filter(en => getProgress(en).level >= 7);
-  const mastered = allMastered.filter(inCefrRangeEn);
+  const mastered = allMastered.filter(inSentenceVocabRangeEn);
   const pool = mastered.length ? mastered : allMastered;
   const shuffled = [...pool];
   for(let i=shuffled.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]; }
@@ -2835,7 +2894,7 @@ function filterWordsActuallyInSentence(sentenceTr, words){
 }
 
 async function generateSentenceCandidate(targetWord, grammarTopic, _levelOverride, _correctionNote){
-  const level = _levelOverride ?? pickLevelInRange();
+  const level = _levelOverride ?? pickSentenceComplexityLevel();
   const knownSample = pickKnownVocabSample(35);
   // Systeeminstructie bevat GEEN enkele per-aanroep-variabele meer (geen niveau, geen woord, geen
   // willekeurige woordsteekproef) -- dat is precies wat prompt-caching effectief maakt: deze tekst is
@@ -2917,7 +2976,7 @@ Antwoord in JSON.`;
    dingen tegelijk getest worden. */
 function pickWellKnownWord(){
   const allKnown = [...unlockedWordSet()].filter(en => { const p = getProgress(en); return p.reps > 0 && p.level >= 7; });
-  const inRange = allKnown.filter(inCefrRangeEn);
+  const inRange = allKnown.filter(inSentenceVocabRangeEn);
   const words = inRange.length ? inRange : allKnown;
   if(!words.length) return null;
   return words[Math.floor(Math.random()*words.length)];
@@ -2925,7 +2984,7 @@ function pickWellKnownWord(){
 /* Zelfde idee, maar dan een goed beheerst grammatica-onderwerp — gebruikt als "veilige" grammatica
    wanneer een oefening juist gericht is op een nog niet goed gekend woord. */
 function pickWellKnownGrammarTopic(){
-  const cefrCeiling = Math.max(settings.cefrMin, settings.cefrMax);
+  const cefrCeiling = Math.max(settings.sentenceComplexityMin, settings.sentenceComplexityMax); // grammatica-zwaarte hoort bij zin-complexiteit, niet bij woordmoeilijkheid
   const unlockedKeys = [...unlockedGrammarTopicSet()];
   const keys = unlockedKeys.length ? unlockedKeys : GRAMMAR_TOPICS.map(t=>t.key);
   const topics = keys.map(grammarTopicByKey).filter(t => t.minCefr <= cefrCeiling);
@@ -3017,7 +3076,7 @@ async function generateSentence(){
 
 /* ===================== TR-VRAAG / TR-ANTWOORD (begrip zonder vertaling) ===================== */
 async function generateQuestionCandidate(targetWord, grammarTopic, _levelOverride, _correctionNote){
-  const level = _levelOverride ?? pickLevelInRange();
+  const level = _levelOverride ?? pickSentenceComplexityLevel();
   const knownSample = pickKnownVocabSample(35);
   const sys = `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
 Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv. rekenen, geografie, een feit uit de zin zelf), ofwel een PERSOONLIJKE/OPEN vraag waarop elk contextueel passend Turks antwoord goed is (bv. "Bugün ne yaptın?").
@@ -3866,12 +3925,12 @@ let editWordCurrentEn = null;
 function openEditWordModal(en){
   if(!en) return;
   editWordCurrentEn = en;
-  el("edit-word-en").textContent = displayEnglishWord(en);
+  el("edit-word-en-input").value = displayEnglishWord(en);
   const current = overrides[en]?.tr || cachedTranslation(en) || [];
   el("edit-word-tr-input").value = current.join(", ");
-  el("btn-edit-word-clear").classList.toggle("hidden", !(overrides[en] && overrides[en].tr && overrides[en].tr.length));
+  el("btn-edit-word-clear").classList.toggle("hidden", !(overrides[en] && ((overrides[en].tr && overrides[en].tr.length) || overrides[en].en)));
   el("modal-edit-word").classList.remove("hidden");
-  setTimeout(()=> el("edit-word-tr-input").focus(), 50);
+  setTimeout(()=> el("edit-word-en-input").focus(), 50);
 }
 function closeEditWordModal(){
   el("modal-edit-word").classList.add("hidden");
@@ -3879,10 +3938,14 @@ function closeEditWordModal(){
 }
 function saveEditWord(){
   if(!editWordCurrentEn) return;
+  const enText = el("edit-word-en-input").value.trim();
   const raw = el("edit-word-tr-input").value.trim();
   const trList = raw.split(",").map(s=>s.trim()).filter(Boolean);
+  if(!enText){ alert("Enter the English (source) text."); return; }
   if(!trList.length){ alert("Enter at least one Turkish translation."); return; }
-  overrides[editWordCurrentEn] = {tr: trList};
+  // en blijft de SLEUTEL (voortgang/level/due-datum blijven gekoppeld aan het oorspronkelijke woord) --
+  // enText is puur een weergave-correctie, geen hernoeming van het onderliggende woord.
+  overrides[editWordCurrentEn] = {tr: trList, en: enText};
   saveJSON(LS_OVERRIDES, overrides);
   closeEditWordModal();
   // relevante schermen verversen zodat de correctie meteen zichtbaar is
@@ -4203,10 +4266,11 @@ function renderWordsTab(){
     const scoreLabel = w.reps===0 ? "new" : `${w.level}/10`;
     const cefrTxt = typeof w.cefr === "number" ? cefrLabel(w.cefr) : "?";
     const pos = wordCategoryOf(w.en);
-    const hasOverride = !!(overrides[w.en] && overrides[w.en].tr && overrides[w.en].tr.length);
+    const hasOverride = !!(overrides[w.en] && ((overrides[w.en].tr && overrides[w.en].tr.length) || overrides[w.en].en));
+    const displayEn = overrides[w.en]?.en || w.en;
     return `<div class="word-row">
       <div>
-        <div class="word-row-tr">${escapeHtml(w.en)}${pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${pos}</span>` : ""}${hasOverride ? ` <span class="muted" style="font-size:.68rem;" title="Manually corrected">✏️</span>` : ""}</div>
+        <div class="word-row-tr">${escapeHtml(displayEn)}${pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${pos}</span>` : ""}${hasOverride ? ` <span class="muted" style="font-size:.68rem;" title="Manually corrected">✏️</span>` : ""}</div>
         <div class="word-row-trans">${escapeHtml(trans)}</div>
       </div>
       <div style="text-align:right;">
@@ -4574,18 +4638,26 @@ function initSettingsUI(){
   el("new-word-percent-label").textContent = (settings.newWordPercent ?? 50) + "%";
   el("question-percent").value = settings.questionPercent ?? 0;
   el("question-percent-label").textContent = (settings.questionPercent ?? 0) + "%";
-  if(!el("cefr-min-select").options.length){
-    for(let i=0;i<18;i++){
-      el("cefr-min-select").add(new Option(cefrLabel(i), i));
-      el("cefr-max-select").add(new Option(cefrLabel(i), i));
+  // Gedeelde init voor elk van de drie CEFR-bereikcontrols (woord-oefening, zin-complexiteit,
+  // zin-woordmoeilijkheid) -- zelfde opbouw (slider + dropdown, min+max), alleen andere id-prefix en
+  // andere onderliggende settings-velden.
+  function initCefrRangeDisplay(prefix, minKey, maxKey){
+    if(!el(`${prefix}-min-select`).options.length){
+      for(let i=0;i<18;i++){
+        el(`${prefix}-min-select`).add(new Option(cefrLabel(i), i));
+        el(`${prefix}-max-select`).add(new Option(cefrLabel(i), i));
+      }
     }
+    el(`${prefix}-min-slider`).value = settings[minKey];
+    el(`${prefix}-max-slider`).value = settings[maxKey];
+    el(`${prefix}-min-select`).value = settings[minKey];
+    el(`${prefix}-max-select`).value = settings[maxKey];
+    el(`${prefix}-min-label`).textContent = cefrLabel(settings[minKey]);
+    el(`${prefix}-max-label`).textContent = cefrLabel(settings[maxKey]);
   }
-  el("cefr-min-slider").value = settings.cefrMin;
-  el("cefr-max-slider").value = settings.cefrMax;
-  el("cefr-min-select").value = settings.cefrMin;
-  el("cefr-max-select").value = settings.cefrMax;
-  el("cefr-min-label").textContent = cefrLabel(settings.cefrMin);
-  el("cefr-max-label").textContent = cefrLabel(settings.cefrMax);
+  initCefrRangeDisplay("cefr", "cefrMin", "cefrMax");
+  initCefrRangeDisplay("sent-complexity", "sentenceComplexityMin", "sentenceComplexityMax");
+  initCefrRangeDisplay("sent-vocab", "sentenceVocabMin", "sentenceVocabMax");
   updateCefrUnlockedInfo();
   el("adaptive-enabled").checked = !!settings.adaptiveEnabled;
   el("adaptive-threshold").value = settings.adaptiveThreshold ?? 60;
@@ -4674,6 +4746,9 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-edit-word-save").addEventListener("click", saveEditWord);
   el("btn-edit-word-close").addEventListener("click", closeEditWordModal);
   el("btn-edit-word-clear").addEventListener("click", clearEditWord);
+  el("edit-word-en-input").addEventListener("keydown", e=>{
+    if(e.key === "Enter"){ e.preventDefault(); saveEditWord(); }
+  });
   el("edit-word-tr-input").addEventListener("keydown", e=>{
     if(e.key === "Enter"){ e.preventDefault(); saveEditWord(); }
   });
@@ -4737,22 +4812,27 @@ document.addEventListener("DOMContentLoaded", ()=>{
     settings.questionPercent = parseInt(el("question-percent").value, 10) || 0;
     saveJSON(LS_SETTINGS, settings);
   });
-  function applyCefrRange(newMin, newMax, source){
+  function applyCefrRange(prefix, minKey, maxKey, newMin, newMax, source, onChange){
     // min mag nooit boven max uitkomen en andersom -- duw de andere kant mee als dat gebeurt
     if(newMin > newMax){ if(source === "min") newMax = newMin; else newMin = newMax; }
-    settings.cefrMin = newMin;
-    settings.cefrMax = newMax;
+    settings[minKey] = newMin;
+    settings[maxKey] = newMax;
     saveJSON(LS_SETTINGS, settings);
-    el("cefr-min-slider").value = newMin; el("cefr-max-slider").value = newMax;
-    el("cefr-min-select").value = newMin; el("cefr-max-select").value = newMax;
-    el("cefr-min-label").textContent = cefrLabel(newMin);
-    el("cefr-max-label").textContent = cefrLabel(newMax);
-    updateCefrUnlockedInfo();
+    el(`${prefix}-min-slider`).value = newMin; el(`${prefix}-max-slider`).value = newMax;
+    el(`${prefix}-min-select`).value = newMin; el(`${prefix}-max-select`).value = newMax;
+    el(`${prefix}-min-label`).textContent = cefrLabel(newMin);
+    el(`${prefix}-max-label`).textContent = cefrLabel(newMax);
+    if(onChange) onChange();
   }
-  el("cefr-min-slider").addEventListener("input", ()=> applyCefrRange(parseInt(el("cefr-min-slider").value,10), settings.cefrMax, "min"));
-  el("cefr-max-slider").addEventListener("input", ()=> applyCefrRange(settings.cefrMin, parseInt(el("cefr-max-slider").value,10), "max"));
-  el("cefr-min-select").addEventListener("change", ()=> applyCefrRange(parseInt(el("cefr-min-select").value,10), settings.cefrMax, "min"));
-  el("cefr-max-select").addEventListener("change", ()=> applyCefrRange(settings.cefrMin, parseInt(el("cefr-max-select").value,10), "max"));
+  function wireCefrRangeControl(prefix, minKey, maxKey, onChange){
+    el(`${prefix}-min-slider`).addEventListener("input", ()=> applyCefrRange(prefix, minKey, maxKey, parseInt(el(`${prefix}-min-slider`).value,10), settings[maxKey], "min", onChange));
+    el(`${prefix}-max-slider`).addEventListener("input", ()=> applyCefrRange(prefix, minKey, maxKey, settings[minKey], parseInt(el(`${prefix}-max-slider`).value,10), "max", onChange));
+    el(`${prefix}-min-select`).addEventListener("change", ()=> applyCefrRange(prefix, minKey, maxKey, parseInt(el(`${prefix}-min-select`).value,10), settings[maxKey], "min", onChange));
+    el(`${prefix}-max-select`).addEventListener("change", ()=> applyCefrRange(prefix, minKey, maxKey, settings[minKey], parseInt(el(`${prefix}-max-select`).value,10), "max", onChange));
+  }
+  wireCefrRangeControl("cefr", "cefrMin", "cefrMax", updateCefrUnlockedInfo);
+  wireCefrRangeControl("sent-complexity", "sentenceComplexityMin", "sentenceComplexityMax");
+  wireCefrRangeControl("sent-vocab", "sentenceVocabMin", "sentenceVocabMax");
   el("adaptive-enabled").addEventListener("change", ()=>{
     settings.adaptiveEnabled = el("adaptive-enabled").checked;
     saveJSON(LS_SETTINGS, settings);
