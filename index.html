@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 09:29</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 09:50</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -26,6 +26,7 @@
       <div id="tr-word" class="tr-word">…</div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="word-meta" style="font-size:.78rem;margin-top:2px;"></div>
+        <button class="btn-ghost btn-small hidden" id="btn-word-hint" style="margin-top:0;padding:2px 8px;font-size:.75rem;" title="Show which specific meaning is being tested">🔍 Which meaning?</button>
         <button class="btn-ghost btn-small hidden" id="btn-edit-flashcard" style="margin-top:0;padding:2px 8px;font-size:.75rem;" title="Correct this word if it's wrong">✏️ Fix</button>
       </div>
       <div class="level-bar"><div class="level-bar-fill" id="level-fill" style="width:0%"></div></div>
@@ -355,7 +356,10 @@
     <span id="checkup-badge" class="badge badge-word hidden" style="margin-bottom:8px;display:inline-block;">word</span>
     <div id="checkup-question-box">
       <div class="tr-word" id="checkup-word">…</div>
-      <div class="muted" id="checkup-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
+      <div class="row space-between" style="align-items:flex-start;">
+        <div class="muted" id="checkup-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
+        <button class="btn-ghost btn-small hidden" id="btn-checkup-word-hint" style="margin-top:0;padding:2px 8px;font-size:.75rem;" title="Show which specific meaning is being tested">🔍 Which meaning?</button>
+      </div>
       <input type="text" id="checkup-answer-input" placeholder="Type your answer…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-top:10px;">
       <div class="row" style="margin-top:10px;">
         <button class="btn-primary" id="btn-checkup-next" style="flex:1;">Check</button>
@@ -1654,10 +1658,11 @@ async function nextCheckupQuestion(){
     const sense = await resolveWordSense(word.en);
     const direction = sense ? (Math.random()<0.5 ? "tr-en" : "en-tr") : "en-tr";
     checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, direction};
-    el("checkup-word").textContent = direction === "tr-en"
-      ? checkupState.current.tr + (checkupState.current.gloss ? ` (${checkupState.current.gloss})` : "")
-      : displayEnglishWord(checkupState.current.en) + (checkupState.current.gloss ? ` (${checkupState.current.gloss})` : "");
+    el("checkup-word").textContent = direction === "tr-en" ? checkupState.current.tr : displayEnglishWord(checkupState.current.en);
     el("checkup-word").className = "tr-word";
+    checkupState.current.hintRevealed = false;
+    el("btn-checkup-word-hint").classList.toggle("hidden", !checkupState.current.gloss);
+    el("btn-checkup-word-hint").textContent = "🔍 Which meaning?";
     el("checkup-word-meta").textContent = [cefrLabel(word.cefr), wordCategoryOf(word.en) || null].filter(Boolean).join(" · ");
     el("checkup-answer-input").placeholder = direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
@@ -1918,10 +1923,11 @@ async function nextSkillPracticeQuestion(){
     const sense = await resolveWordSense(en);
     const direction = sense ? (Math.random()<0.5 ? "tr-en" : "en-tr") : "en-tr";
     skillPracticeState.current = {type:"word", en, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, direction};
-    el("checkup-word").textContent = direction === "tr-en"
-      ? skillPracticeState.current.tr + (skillPracticeState.current.gloss ? ` (${skillPracticeState.current.gloss})` : "")
-      : displayEnglishWord(en) + (skillPracticeState.current.gloss ? ` (${skillPracticeState.current.gloss})` : "");
+    el("checkup-word").textContent = direction === "tr-en" ? skillPracticeState.current.tr : displayEnglishWord(en);
     el("checkup-word").className = "tr-word";
+    skillPracticeState.current.hintRevealed = false;
+    el("btn-checkup-word-hint").classList.toggle("hidden", !skillPracticeState.current.gloss);
+    el("btn-checkup-word-hint").textContent = "🔍 Which meaning?";
     el("checkup-word-meta").textContent = [typeof wordCefrOf(en) === "number" ? cefrLabel(wordCefrOf(en)) : null, wordCategoryOf(en) || null].filter(Boolean).join(" · ");
     el("checkup-answer-input").placeholder = direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
@@ -3331,7 +3337,8 @@ function checkStaticMatch(item, answer){
   if(item.direction === "tr-en"){
     // Turks getoond, Engels gevraagd: het bekende Engelse trefwoord is de primaire juiste vorm...
     if(normalize(item.en) === norm) return true;
-    // ...MAAR sommige Turkse woorden zijn zelf ambigu (bv. "ay" = zowel "month" als "moon" —
+    if(item.hintRevealed) return false; // hint bekeken -> bedoelde betekenis is expliciet verklapt, alleen het exacte trefwoord telt nog
+    // ...MAAR zonder bekeken hint zijn sommige Turkse woorden zelf ambigu (bv. "ay" = zowel "month" als "moon" —
     // geen vertaalfout, gewoon hetzelfde woord met 2 losstaande betekenissen, hier zonder context
     // getoond). Check daarom ook: is het antwoord van de gebruiker zelf een bekend Engels woord
     // waarvan de (gecachte) Turkse vertaling overlapt met die van het GETOONDE woord? Dan is het
@@ -3347,11 +3354,11 @@ function checkStaticMatch(item, answer){
     return false;
   }
   // en-tr: Engels getoond, Turks gevraagd -> check tegen de specifiek voor DEZE oefening gekozen
-  // betekenis (senseTr) als die er is -- bij een woord met meerdere betekenissen (bv. "mine") mag een
-  // antwoord dat toevallig bij een ANDERE betekenis hoort niet zomaar goedgerekend worden, want de
-  // gloss liet specifiek zien welke betekenis bedoeld was. Zonder senseTr (bv. oude/nieuwe woorden
-  // zonder zin-uitsplitsing) blijft de brede, platgeslagen lijst het redelijke alternatief.
-  const tr = item.senseTr || cachedTranslation(item.en) || [];
+  // betekenis (senseTr) ALLEEN als de gebruiker de disambiguatie-hint heeft bekeken (die verklapt
+  // welke betekenis getest wordt, dus dan mag er ook streng op die ene betekenis beoordeeld worden).
+  // Is de hint niet bekeken, dan is er geen eerlijke manier om te weten welke betekenis bedoeld was --
+  // dan telt elke geldige betekenis van het woord als correct (de brede, platgeslagen lijst).
+  const tr = (item.senseTr && item.hintRevealed) ? item.senseTr : (cachedTranslation(item.en) || []);
   return tr.map(normalize).includes(norm);
 }
 
@@ -3362,8 +3369,8 @@ async function askDeepSeekJudge(item, answer, isRecheck){
   // homoniem/polyseem woord (bv. "mine") mag de AI niet zomaar een antwoord goedrekenen dat bij een
   // ANDERE betekenis hoort dan de getoonde gloss, ook al is dat woord op zichzelf ook een geldige
   // vertaling van iets. Zonder senseTr (oude/niet-gecureerde woorden) blijft de brede lijst het redelijke alternatief.
-  const tr = item.senseTr || cachedTranslation(item.en) || (item.tr ? [item.tr] : []);
-  const glossLine = item.gloss ? `\nBedoelde betekenis in deze oefening: "${item.gloss}" (dit woord heeft meerdere losstaande betekenissen; beoordeel ALLEEN tegen deze specifieke betekenis, niet tegen de andere).` : "";
+  const tr = (item.senseTr && item.hintRevealed) ? item.senseTr : (cachedTranslation(item.en) || (item.tr ? [item.tr] : []));
+  const glossLine = (item.gloss && item.hintRevealed) ? `\nBedoelde betekenis in deze oefening: "${item.gloss}" (dit woord heeft meerdere losstaande betekenissen; beoordeel ALLEEN tegen deze specifieke betekenis, niet tegen de andere).` : "";
   const sys = `Je bent een strenge maar faire docent Turks voor Engelstalige gebruikers.
 ${isTrEn
   ? `Je krijgt een Turks woord en het (correcte) Engelse trefwoord, en het Engelse antwoord dat de gebruiker gaf. Beoordeel of het antwoord een acceptabele Engelse vertaling is — accepteer synoniemen en kleine spelfouten. BELANGRIJK: sommige Turkse woorden zijn zelf ambigu/polyseem (bv. "ay" betekent zowel "month" als "moon" — geen vertaalfout, gewoon twee losstaande betekenissen van hetzelfde woord). Als het gegeven Turkse woord ZELF, onafhankelijk van het "verwachte" trefwoord, daadwerkelijk ook de betekenis heeft die de gebruiker gaf, reken dit dan GOED — ook als het een heel ander woord is dan het verwachte trefwoord. Is er hieronder een specifieke "bedoelde betekenis" vermeld, houd je daar dan wél strikt aan (dat is de betekenis die in DEZE oefening getest wordt, niet een andere betekenis van hetzelfde woord).`
@@ -3567,9 +3574,10 @@ async function renderPractice(){
   el("badge-type").className = "badge " + (isQuestion ? "badge-question" : (isSentence ? "badge-sentence" : "badge-word"));
   el("btn-edit-flashcard").classList.toggle("hidden", !isWord);
   const wordEl = el("tr-word");
-  wordEl.textContent = (isWord && !isTrEn)
-    ? displayEnglishWord(currentItem.en) + (currentItem.gloss ? ` (${currentItem.gloss})` : "")
-    : (currentItem.tr || currentItem.en) + (isWord && isTrEn && currentItem.gloss ? ` (${currentItem.gloss})` : "");
+  wordEl.textContent = (isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || currentItem.en);
+  el("btn-word-hint").classList.toggle("hidden", !(isWord && currentItem.gloss));
+  el("btn-word-hint").textContent = "🔍 Which meaning?";
+  currentItem.hintRevealed = false;
   wordEl.className = "tr-word" + ((isSentence||isQuestion) ? " sentence" : "");
 
   if(isWord){
@@ -4646,6 +4654,11 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("words-cefr-filter").addEventListener("change", renderWordsTab);
   el("words-search").addEventListener("input", renderWordsTab);
   el("btn-ask-ai").addEventListener("click", openAiModal);
+  el("btn-word-hint").addEventListener("click", ()=>{
+    if(!currentItem || !currentItem.gloss) return;
+    currentItem.hintRevealed = true;
+    el("btn-word-hint").textContent = "🔍 " + currentItem.gloss;
+  });
   el("btn-edit-flashcard").addEventListener("click", ()=>{
     if(currentItem && currentItem.type === "word") openEditWordModal(currentItem.en);
   });
@@ -4789,6 +4802,13 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-start-test").addEventListener("click", startPlacementTest);
   el("btn-start-checkup").addEventListener("click", startCheckup);
   el("btn-checkup-next").addEventListener("click", ()=> skillPracticeState ? submitSkillPracticeAnswer() : submitCheckupAnswer());
+  el("btn-checkup-word-hint").addEventListener("click", ()=>{
+    // dit scherm wordt gedeeld door checkup en skill-practice -- welke van de twee actief is, bepaalt waar de state staat
+    const cur = skillPracticeState ? skillPracticeState.current : (checkupState ? checkupState.current : null);
+    if(!cur || !cur.gloss) return;
+    cur.hintRevealed = true;
+    el("btn-checkup-word-hint").textContent = "🔍 " + cur.gloss;
+  });
   el("checkup-answer-input").addEventListener("keydown", e=>{
     if(e.key === "Enter"){
       e.preventDefault();
