@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 08:32</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 09:29</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -1655,7 +1655,7 @@ async function nextCheckupQuestion(){
     const direction = sense ? (Math.random()<0.5 ? "tr-en" : "en-tr") : "en-tr";
     checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, direction};
     el("checkup-word").textContent = direction === "tr-en"
-      ? checkupState.current.tr
+      ? checkupState.current.tr + (checkupState.current.gloss ? ` (${checkupState.current.gloss})` : "")
       : displayEnglishWord(checkupState.current.en) + (checkupState.current.gloss ? ` (${checkupState.current.gloss})` : "");
     el("checkup-word").className = "tr-word";
     el("checkup-word-meta").textContent = [cefrLabel(word.cefr), wordCategoryOf(word.en) || null].filter(Boolean).join(" · ");
@@ -1919,7 +1919,7 @@ async function nextSkillPracticeQuestion(){
     const direction = sense ? (Math.random()<0.5 ? "tr-en" : "en-tr") : "en-tr";
     skillPracticeState.current = {type:"word", en, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, direction};
     el("checkup-word").textContent = direction === "tr-en"
-      ? skillPracticeState.current.tr
+      ? skillPracticeState.current.tr + (skillPracticeState.current.gloss ? ` (${skillPracticeState.current.gloss})` : "")
       : displayEnglishWord(en) + (skillPracticeState.current.gloss ? ` (${skillPracticeState.current.gloss})` : "");
     el("checkup-word").className = "tr-word";
     el("checkup-word-meta").textContent = [typeof wordCefrOf(en) === "number" ? cefrLabel(wordCefrOf(en)) : null, wordCategoryOf(en) || null].filter(Boolean).join(" · ");
@@ -3569,7 +3569,7 @@ async function renderPractice(){
   const wordEl = el("tr-word");
   wordEl.textContent = (isWord && !isTrEn)
     ? displayEnglishWord(currentItem.en) + (currentItem.gloss ? ` (${currentItem.gloss})` : "")
-    : (currentItem.tr || currentItem.en);
+    : (currentItem.tr || currentItem.en) + (isWord && isTrEn && currentItem.gloss ? ` (${currentItem.gloss})` : "");
   wordEl.className = "tr-word" + ((isSentence||isQuestion) ? " sentence" : "");
 
   if(isWord){
