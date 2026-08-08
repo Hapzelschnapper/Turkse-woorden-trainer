@@ -122,7 +122,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 08:08</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 08:32</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -33899,6 +33899,16 @@ const GRAMMAR_TOPICS = [
   {key:"islik_cati",      label:"Reciprocal voice -iş",               hint:"e.g. \"görüşmek\" (to see each other)", minCefr:11},
   {key:"ettirgen_cati",   label:"Causative (make/have done, -dir/-t)", hint:"e.g. \"yaptırdım\" (I had it made)", minCefr:12},
   {key:"donusluluk_cati", label:"Reflexive voice (-in)",              hint:"oneself, e.g. \"yıkandım\" (I washed myself)", minCefr:12},
+  {key:"sart_bilesik",    label:"Compound conditional (hypothetical past, -seydi)", hint:"e.g. \"gitseydim\" (if I had gone), \"gitmiş olsaydı\" (if he had [reportedly] gone) — a hypothetical about something that did NOT happen, distinct from the basic -se conditional", minCefr:13},
+  {key:"tezlik_fiili",    label:"Rapid-action verb -(y)Iver",         hint:"e.g. \"gidiver\" (just go / go right away), \"bakıver\" (just take a quick look) — adds a sense of speed, ease, or suddenness to the action", minCefr:13},
+  {key:"rivayet_bilesik", label:"Compound hearsay tenses (-(i)yormuş, -mişmiş)", hint:"e.g. \"gidiyormuş\" (apparently he's going), \"gitmişmiş\" (apparently he had [reportedly] gone) — layering the hearsay/inferential -miş onto another tense, distinct from the simple -miş past", minCefr:14},
+  {key:"ileri_baglaclar", label:"Correlative conjunctions (ne...ne de, gerek...gerek, ister...ister)", hint:"e.g. \"ne çay ne de kahve\" (neither tea nor coffee), \"gerek anne gerek baba\" (both mother and father), \"ister gel ister gelme\" (whether you come or not) — paired conjunctions linking two items/options", minCefr:14},
+  {key:"devrik_cumle",    label:"Inverted word order (devrik cümle) for emphasis", hint:"moving the verb away from its normal sentence-final position to emphasize another element, common in spoken/literary Turkish — e.g. \"Geldi mektup sonunda.\" (It arrived, the letter, finally — emphasizing \"geldi\") instead of the neutral \"Mektup sonunda geldi.\"", minCefr:15},
+  {key:"ileri_edatlar",   label:"Formal/written postpositions (dair, ilişkin, itibaren, nazaran)", hint:"e.g. \"bu konuya dair\" (regarding this matter), \"yarından itibaren\" (starting from tomorrow), \"geçen yıla nazaran\" (compared to last year) — more formal/written register than için/ile/göre/rağmen", minCefr:15},
+  {key:"ikileme",         label:"Reduplication / echo words (ikileme)", hint:"e.g. \"büyük büyük\" (huge, emphatic repetition), \"kitap mitap\" (books and such — dismissive echo-word), \"yemyeşil\" (intensely green — intensifying prefix reduplication)", minCefr:16},
+  {key:"resmi_dil",       label:"Formal/bureaucratic register constructions", hint:"e.g. \"toplantının yapılmakta olduğu\" (the meeting that is [formally] taking place), \"geç kalınması durumunda\" (in the event of being late) — the nominalized, impersonal style used in official/written Turkish", minCefr:16},
+  {key:"surerlik_fiili",  label:"Literary durative aspect -(y)Adur/-(y)Idur", hint:"e.g. \"bakadur\" (keep on looking), \"güledur\" (keep on laughing) — an archaic/literary construction for an ongoing action, rare in everyday speech", minCefr:17},
+  {key:"atasozu_deyim",   label:"Proverbs & fixed idiomatic expressions", hint:"the grammatical patterns behind common Turkish proverbs/idioms — often elliptical or parallel structures, e.g. \"Ne ekersen onu biçersin.\" (You reap what you sow, lit. whatever you sow, that you harvest)", minCefr:17},
 ];
 function grammarTopicByKey(key){ return GRAMMAR_TOPICS.find(t=>t.key===key); }
 
@@ -35612,6 +35622,388 @@ const GRAMMAR_LESSONS = [
 <p>Notice the pattern: the -dıkça clause sets up the "the more/as..." half, and a separate main clause (often in the aorist tense, like <b>öğrenirsin</b> or <b>harcıyor</b>) gives the result. Unlike the reciprocal voice you just learned, which changes what a verb <i>means</i> (doing something to each other), -dıkça changes how a verb <i>connects to another clause</i> — it's a linking tool, not a meaning-changer on the verb itself.</p>
 <p>In the exercises, you'll practise attaching -dıkça correctly (with vowel harmony and consonant devoicing) and pairing it with a matching result clause.</p>`
   },
+  {
+    id:"sart_bilesik", title:"Compound Conditional (Hypothetical Past)", icon:"⏪", grammarTopics:["sart_bilesik"], targetExercises:20,
+    explanation:`<p>The <b>compound conditional</b> (also called the hypothetical past) is how Turkish says <b>"if I had done..."</b> — a condition about something that <b>did NOT actually happen</b>. This is different from the basic <b>-se</b> conditional, which can talk about open or future possibilities ("if I go" / "if I went"). The compound form specifically looks back at a past that was never real.</p>
+<p>You build it by taking the conditional suffix <b>-se/-sa</b> and attaching it to <b>-di</b>, the same past-tense marker you already know, before adding the personal ending. In effect: <b>past + conditional</b>, glued into one word.</p>
+<p>The suffix has four forms, following full vowel harmony:</p>
+<ul>
+<li><b>-seydi</b> (after e, i)</li>
+<li><b>-saydı</b> (after a, ı)</li>
+<li><b>-seydi / -söydü</b> (after ö, ü — rare roots)</li>
+<li><b>-saydı / -soydu</b> (after o, u — rare roots)</li>
+</ul>
+<p>Basic examples (with personal endings):</p>
+<ul>
+<li><b>gitseydim</b> = if I had gone</li>
+<li><b>gelseydin</b> = if you had come</li>
+<li><b>yapsaydı</b> = if he/she had done (it)</li>
+<li><b>görseydik</b> = if we had seen</li>
+<li><b>bilseydiniz</b> = if you (pl.) had known</li>
+</ul>
+<p>This pattern is almost always paired with a second clause describing what would have happened as a result, using the past conditional of <b>olmak</b> or a plain past tense:</p>
+<ul>
+<li><b>Gitseydim, onu görürdüm.</b> = If I had gone, I would have seen him/her.</li>
+<li><b>Param olsaydı, o arabayı alırdım.</b> = If I had had money, I would have bought that car.</li>
+<li><b>Erken kalksaydık, treni kaçırmazdık.</b> = If we had gotten up early, we wouldn't have missed the train.</li>
+</ul>
+<p><b>1. Adding "olsaydı" for reported/inferred pasts:</b> if the situation you're imagining is based on hearsay or inference (the <b>-miş</b> past), you use the participle <b>-miş</b> plus <b>olsaydı</b> instead of attaching <b>-seydi</b> directly to the verb:</p>
+<ul>
+<li><b>gitmiş olsaydı</b> = if he had (reportedly) gone</li>
+<li><b>yağmur yağmış olsaydı</b> = if it had (apparently) rained</li>
+<li><b>o kitabı okumuş olsaydım</b> = if I had (apparently, in retrospect) read that book</li>
+</ul>
+<p>This "olsaydı" pattern is also handy for compound tenses in general — attaching <b>olsaydı</b> after a participle lets you build hypothetical pasts for situations that are themselves already complex (reported, continuous, etc.), not just simple past actions.</p>
+<p>More full-sentence examples:</p>
+<ul>
+<li><b>Keşke sana söyleseydim.</b> = I wish I had told you. (keşke + compound conditional = a strong regret about the past)</li>
+<li><b>O zaman burada olsaydın, anlardın.</b> = If you had been here then, you would have understood.</li>
+<li><b>Daha dikkatli olsaydı, kazayı önlerdi.</b> = If he/she had been more careful, he/she would have prevented the accident.</li>
+</ul>
+<p>Note the word <b>keşke</b> ("if only"), which very often introduces this tense to express regret about something that's now impossible to change — even without a second clause.</p>
+<p>In the exercises, you'll practise building the -seydi/-saydı forms, adding "olsaydı" for reported situations, and pairing them with the right result clause to express unreal past conditions.</p>`
+  },
+  {
+    id:"tezlik_fiili", title:"Rapid-Action Verb -(y)Iver", icon:"⚡", grammarTopics:["tezlik_fiili"], targetExercises:20,
+    explanation:`<p>The suffix <b>-(y)Iver</b> attaches to a verb stem to add a sense of <b>speed, ease, or suddenness</b> to the action. It tells the listener that something is done quickly, effortlessly, or on the spot — a flavor English usually expresses with extra words like "just," "go ahead and," or "right away," rather than with a suffix.</p>
+<p>This isn't a tense by itself — it's an aspect marker that then takes normal tense endings, most often the aorist/present or past, and it's especially common in commands and quick promises.</p>
+<p>The suffix has four vowel-harmony forms (it follows the same four-way pattern as the verb stem's last vowel), with a buffer <b>-y-</b> if the stem ends in a vowel:</p>
+<ul>
+<li><b>-ıver</b> (after a, ı)</li>
+<li><b>-iver</b> (after e, i)</li>
+<li><b>-uver</b> (after o, u)</li>
+<li><b>-üver</b> (after ö, ü)</li>
+</ul>
+<p>Basic examples:</p>
+<ul>
+<li><b>gitmek → gidiver</b> = just go / go right away (t → d softening, as with other vowel-initial suffixes)</li>
+<li><b>bakmak → bakıver</b> = just take a quick look</li>
+<li><b>vermek → veriver</b> = just hand it over / give it right away</li>
+<li><b>okumak → okuyuver</b> = just read it quickly (buffer -y- after the vowel u)</li>
+</ul>
+<p>Two things to watch when building this form:</p>
+<p><b>1. Consonant softening still applies</b>, exactly as with any suffix starting in a vowel:</p>
+<ul>
+<li><b>gitmek (git-) + iver → gidiver</b> = go quickly (t → d)</li>
+<li><b>atmak (at-) + ıver → atıver</b> = just throw it (no softening here since "t" stays after a single-syllable stem in some verbs — but check each verb, as usage varies)</li>
+</ul>
+<p><b>2. A buffer "-y-" appears if the stem ends in a vowel</b>, so the two vowels don't collide:</p>
+<ul>
+<li><b>oku- + uver → okuyuver</b> = just read it quickly</li>
+<li><b>bekle- + iver → bekleyiver</b> = just wait a moment</li>
+</ul>
+<p>Once attached, the verb takes normal endings for tense and person, most commonly in the imperative or simple past:</p>
+<ul>
+<li><b>Gidiver!</b> = Just go! / Go on, go!</li>
+<li><b>Bakıverdim.</b> = I just took a quick look.</li>
+<li><b>Şu kapıyı kapatıver.</b> = Just shut that door real quick.</li>
+<li><b>Mektubu okuyuverdi.</b> = He/she quickly read the letter.</li>
+<li><b>Hemen geliver!</b> = Come right away!</li>
+</ul>
+<p>This suffix is very common in spoken, everyday Turkish — it softens commands (making them sound like a small, easy favor rather than an order) and adds a casual, brisk tone to narration. It contrasts with the more formal, deliberate feel of the compound conditional forms from the previous lesson, which describe careful hypothetical reasoning about the past — here, instead, the emphasis is on immediacy and lack of effort in the real, present moment.</p>
+<p>In the exercises, you'll practise attaching <b>-(y)Iver</b> to different verb stems with the correct vowel harmony, buffer -y-, and consonant softening, and recognizing the "quick/easy action" nuance it adds in context.</p>
+`
+  },
+  {
+    id:"rivayet_bilesik", title:"Compound Hearsay Tenses", icon:"🗞️", grammarTopics:["rivayet_bilesik"], targetExercises:20,
+    explanation:`<p>You've already met <b>-miş</b> as a past tense that marks hearsay or inference — "apparently, it seems, I heard that..." Turkish lets you layer this same <b>-miş</b> onto other tenses too, creating compound forms that say "apparently [this other tense] is/was true." The result is a whole family of "reportedly..." verbs built by simply adding <b>imiş</b> (which becomes <b>-mış/-miş/-muş/-müş</b> after a consonant, or <b>-ymış/-ymiş/-ymuş/-ymüş</b> after a vowel) onto a tense form that already ends in a vowel or consonant.</p>
+<p>Think of it as two layers: first the "real" tense (present, past, etc.), then a second-hand marker glued on top saying "this is what I heard/inferred, not what I witnessed."</p>
+<p>1. <b>Present continuous + hearsay: -Iyormuş</b> — "apparently is/was doing"</p>
+<ul>
+<li><b>gidiyor + muş → gidiyormuş</b> = apparently he/she is going</li>
+<li><b>geliyor + muş → geliyormuş</b> = apparently he/she is coming</li>
+<li><b>çalışıyor + muş → çalışıyormuş</b> = apparently he/she is working</li>
+</ul>
+<p>2. <b>Past (-mIş) + hearsay: -mIşmIş</b> — "apparently had [reportedly] done"</p>
+<ul>
+<li><b>gitmiş + miş → gitmişmiş</b> = apparently he/she had gone</li>
+<li><b>yemiş + miş → yemişmiş</b> = apparently he/she had eaten</li>
+<li><b>okumuş + muş → okumuşmuş</b> = apparently he/she had read</li>
+</ul>
+<p>3. <b>Future + hearsay: -(y)EcEkmIş</b> — "apparently will do"</p>
+<ul>
+<li><b>gidecek + miş → gidecekmiş</b> = apparently he/she will go</li>
+<li><b>gelecek + miş → gelecekmiş</b> = apparently he/she will come</li>
+</ul>
+<p>4. <b>Simple "is/was" + hearsay: -(y)mIş</b> — used on nouns/adjectives, not just verbs</p>
+<ul>
+<li><b>hasta + ymış → hastaymış</b> = apparently he/she is sick</li>
+<li><b>yorgun + muş → yorgunmuş</b> = apparently he/she is tired</li>
+</ul>
+<p>Notice the pattern: whatever tense suffix already exists, you just tack on the appropriate <b>imiş</b> variant, following normal vowel harmony (and adding a buffer <b>-y-</b> after a vowel-final tense marker, as in <b>hasta-y-mış</b>).</p>
+<p>Full-sentence examples:</p>
+<ul>
+<li><b>Ali okula gidiyormuş.</b> = Apparently Ali is going to school.</li>
+<li><b>Onlar yemeği yemişmiş.</b> = Apparently they had eaten the food.</li>
+<li><b>Yarın gelecekmiş.</b> = Apparently he/she will come tomorrow.</li>
+<li><b>Çok yorgunmuş.</b> = Apparently he/she is very tired.</li>
+<li><b>Ayşe hastaymış, o yüzden gelmedi.</b> = Apparently Ayşe was sick, that's why she didn't come.</li>
+</ul>
+<p>All of these share the same flavor as the simple <b>-miş</b> past you already know: the speaker didn't witness the fact directly — they heard it, read it, or are inferring it from evidence. Compare <b>gidiyor</b> (he is going, seen firsthand) with <b>gidiyormuş</b> (apparently he is going, secondhand) — same tense, but the added <b>-muş</b> completely shifts the source of information rather than the time.</p>
+<p>Unlike the rapid-action <b>-(y)Iver</b> suffix from the last lesson, which attaches straight onto a verb stem to add a nuance of speed, this hearsay layer attaches onto an already-complete tense form and adds a nuance of source — so you'll often see it stacked at the very end of a longer verb, after everything else.</p>
+<p>In the exercises, you'll practice layering <b>-miş</b> onto different tenses and translating the resulting "apparently..." meaning correctly.</p>`
+  },
+  {
+    id:"ileri_baglaclar", title:"Correlative Conjunctions", icon:"🔗", grammarTopics:["ileri_baglaclar"], targetExercises:20,
+    explanation:`<p><b>Correlative conjunctions</b> are paired linking words that work together across two parts of a sentence — like English "neither...nor", "both...and", or "whether...or". Turkish has its own set of these paired patterns, and each pair has its own fixed meaning and structure that you just need to memorize as a chunk.</p>
+<p>Three of the most common patterns are:</p>
+<ul>
+<li><b>ne ... ne (de) ...</b> = neither ... nor ...</li>
+<li><b>gerek ... gerek(se) ...</b> = both ... and ... / whether ... or ...</li>
+<li><b>ister ... ister ...</b> = whether ... or ...</li>
+</ul>
+<p>Basic examples:</p>
+<ul>
+<li><b>ne çay ne de kahve</b> = neither tea nor coffee</li>
+<li><b>gerek anne gerek baba</b> = both mother and father</li>
+<li><b>ister gel ister gelme</b> = whether you come or not</li>
+</ul>
+<p><b>1. "ne ... ne (de)" negates both items</b> — notice that the verb itself is often left in the positive form, because the "ne...ne" already carries the negative meaning:</p>
+<ul>
+<li><b>Ne çayı ne de kahveyi sevdim.</b> = I liked neither the tea nor the coffee.</li>
+<li><b>Ne param var ne vaktim var.</b> = I have neither money nor time. (here each clause repeats "var" instead of using a negative verb)</li>
+</ul>
+<p><b>2. "gerek ... gerek(se) ..." pairs two equal options</b>, meaning both are true or both apply — it's slightly more formal than "hem...hem de" ("both...and"), which you may already know:</p>
+<ul>
+<li><b>Gerek anne gerek baba çalışıyor.</b> = Both mother and father work.</li>
+<li><b>Gerek param gerekse vaktim yok.</b> = I have neither the money nor the time. (literally "whether it be my money or my time, [it's] not [there]" — used here with a negative sense from context)</li>
+</ul>
+<p><b>3. "ister ... ister ..." presents two alternatives as equally irrelevant to the outcome</b> — English often needs "whether...or (not)" to capture this:</p>
+<ul>
+<li><b>İster gel ister gelme, ben gideceğim.</b> = Whether you come or not, I'm going.</li>
+<li><b>İster çay iç ister kahve iç, fark etmez.</b> = Whether you drink tea or coffee, it doesn't matter.</li>
+</ul>
+<p>More full-sentence examples:</p>
+<ul>
+<li><b>Ne İngilizce ne de Türkçe biliyor.</b> = He/she knows neither English nor Turkish.</li>
+<li><b>Gerek kışın gerek yazın oraya gidebilirsin.</b> = You can go there both in winter and in summer.</li>
+<li><b>İster erken gel ister geç, kapı açık.</b> = Whether you come early or late, the door is open.</li>
+</ul>
+<p>Unlike the compound hearsay tenses from the previous lesson, which stack suffixes onto a single verb to show reported speech, correlative conjunctions work by repeating a small word before each of two parallel elements — the "glue" here is word order and repetition, not suffixation.</p>
+<p>In the exercises, you'll practise choosing the right paired conjunction for a given meaning and placing each half correctly before its matching element.</p>`
+  },
+  {
+    id:"devrik_cumle", title:"Inverted Word Order (Devrik Cümle)", icon:"🔃", grammarTopics:["devrik_cumle"], targetExercises:20,
+    explanation:`<p>Turkish is normally an <b>SOV</b> language — subject, object, verb, with the verb glued to the very end of the sentence. This neutral word order is called <b>düz cümle</b> ("straight sentence"). But Turkish speakers can freely break this pattern to shift emphasis, and that's called <b>devrik cümle</b> — "inverted sentence."</p>
+<p>In an inverted sentence, the verb moves earlier — often right after the subject — and whatever now sits at the very end becomes the focus of attention, the "new" or most important information.</p>
+<p>Compare the neutral order with its inverted version:</p>
+<ul>
+<li><b>Mektup sonunda geldi.</b> = The letter finally arrived. (neutral: subject-adverb-verb)</li>
+<li><b>Geldi mektup sonunda.</b> = It arrived, the letter, finally. (inverted: verb moved forward, "sonunda" now stands out)</li>
+</ul>
+<p>Notice that the meaning doesn't change grammatically — it's still "the letter finally arrived" — but the <i>emphasis</i> shifts. In the inverted version, the fact that it happened "finally" (after a long wait) feels more dramatic, almost like an afterthought or an exclamation.</p>
+<p><b>1. Moving the verb to front focuses on the event itself.</b> This is common in spoken Turkish, poetry, and storytelling, where the action is announced first and details follow like an afterthought:</p>
+<ul>
+<li><b>Gitti Ahmet okula.</b> = He went, Ahmet did, to school. (compare neutral: Ahmet okula gitti.)</li>
+<li><b>Bitti sınav sonunda.</b> = It's over, the exam, finally. (compare neutral: Sınav sonunda bitti.)</li>
+</ul>
+<p><b>2. Whatever word ends up last gets stressed as the key new information.</b> Speakers choose what to push to the end depending on what they want to highlight:</p>
+<ul>
+<li><b>Aradım seni dün.</b> = I called you — yesterday. (emphasizing "yesterday," compare neutral: Seni dün aradım.)</li>
+<li><b>Seviyorum seni.</b> = I love you. (a very common inverted form — softer and more emotional than the neutral "Seni seviyorum.")</li>
+</ul>
+<p>Full examples in context:</p>
+<ul>
+<li><b>Geldi mektup sonunda.</b> = It arrived, the letter, finally.</li>
+<li><b>Gitti Ahmet okula.</b> = He went, Ahmet did, to school.</li>
+<li><b>Seviyorum seni.</b> = I love you.</li>
+<li><b>Unutma beni.</b> = Don't forget me. (compare neutral: Beni unutma.)</li>
+<li><b>Ağlıyor çocuk hâlâ.</b> = He's crying, the child, still. (compare neutral: Çocuk hâlâ ağlıyor.)</li>
+</ul>
+<p>Devrik cümle is everywhere in everyday speech, song lyrics, and casual writing — it makes sentences sound more natural, emotional, or conversational than the textbook-neutral SOV order. Unlike the correlative conjunctions from the last lesson, which link two clauses together with paired connector words, inversion works within a single clause, simply by reordering its existing parts for effect.</p>
+<p>In the exercises, you'll practise recognizing inverted sentences, converting them back to neutral SOV order, and identifying which element is being emphasized by its position at the end.</p>`
+  },
+  {
+    id:"ileri_edatlar", title:"Formal/Written Postpositions", icon:"📜", grammarTopics:["ileri_edatlar"], targetExercises:20,
+    explanation:`<p>Turkish has a set of <b>formal/written postpositions</b> used in official writing, news, essays, and careful speech — the kind of register you'd find in a newspaper article or a business letter rather than in everyday conversation. They express meanings like "regarding," "starting from," "compared to," and "with regard to," and they mostly replace or upgrade the everyday postpositions <b>için, ile, göre, rağmen</b> you already know.</p>
+<p>Like other Turkish postpositions, these words follow the noun they attach to, and the noun usually takes a specific case (genitive, ablative, or dative) depending on the postposition.</p>
+<p>The main formal postpositions to learn:</p>
+<ul>
+<li><b>dair</b> (+ dative) = regarding, about, concerning</li>
+<li><b>itibaren</b> (+ ablative) = starting from, as of</li>
+<li><b>nazaran</b> (+ dative) = compared to, relative to</li>
+<li><b>ilişkin</b> (+ dative) = related to, concerning</li>
+<li><b>istinaden</b> (+ dative) = based on, on the basis of</li>
+</ul>
+<p>Basic examples:</p>
+<ul>
+<li><b>bu konuya dair</b> = regarding this matter</li>
+<li><b>yarından itibaren</b> = starting from tomorrow</li>
+<li><b>geçen yıla nazaran</b> = compared to last year</li>
+<li><b>karara ilişkin</b> = related to the decision</li>
+<li><b>rapora istinaden</b> = based on the report</li>
+</ul>
+<p><b>1. Each postposition demands a fixed case on the noun before it.</b> This isn't optional — using the wrong case sounds broken:</p>
+<ul>
+<li><b>konu + ya + dair → konuya dair</b> = regarding the matter (dative)</li>
+<li><b>bugün + den + itibaren → bugünden itibaren</b> = starting from today (ablative)</li>
+<li><b>geçen sene + ye + nazaran → geçen seneye nazaran</b> = compared to last year (dative)</li>
+</ul>
+<p><b>2. These postpositions can act like adjectives before a noun</b>, especially <b>dair</b> and <b>ilişkin</b>, forming set phrases such as <b>"...e dair bir açıklama"</b> (an explanation regarding...):</p>
+<ul>
+<li><b>bu olaya dair bir açıklama</b> = an explanation regarding this event</li>
+<li><b>projeye ilişkin bilgiler</b> = information related to the project</li>
+</ul>
+<p>Examples in full sentences:</p>
+<ul>
+<li><b>Bu konuya dair hiçbir bilgim yok.</b> = I have no information regarding this matter.</li>
+<li><b>Yarından itibaren yeni kurallar geçerli olacak.</b> = Starting from tomorrow, the new rules will be in effect.</li>
+<li><b>Bu yılki satışlar, geçen yıla nazaran çok daha iyi.</b> = This year's sales are much better compared to last year.</li>
+<li><b>Yönetmeliğe ilişkin sorular sorabilirsiniz.</b> = You may ask questions related to the regulation.</li>
+<li><b>Bu karar, uzman raporuna istinaden alındı.</b> = This decision was made based on the expert's report.</li>
+</ul>
+<p>Note the register difference: in everyday speech you'd say <b>bu konu hakkında</b> or <b>bu konu için</b> instead of <b>bu konuya dair</b>, and <b>geçen yıla göre</b> instead of <b>geçen yıla nazaran</b>. The formal versions are common in news, contracts, and academic writing, so recognizing them is more urgent than producing them yourself at first.</p>
+<p>These postpositions often appear in the same kind of formal, carefully ordered sentences you saw with inverted word order — written Turkish tends to combine both features, placing heavy, formal phrases early and using precise case-marked postpositions rather than looser everyday connectors.</p>
+<p>In the exercises, you'll practise matching each formal postposition with its required case and recognising these phrases in formal or written-style sentences.</p>`
+  },
+  {
+    id:"ikileme", title:"Reduplication / Echo Words (İkileme)", icon:"🔁", grammarTopics:["ikileme"], targetExercises:20,
+    explanation:`<p><b>Reduplication</b>, called <b>ikileme</b> in Turkish, is a word-formation trick where a word is doubled or paired with a rhyming/altered partner to add emphasis, express a vague "and so on" meaning, or intensify an adjective. English does something similar in a loose way ("big big house", "books and stuff"), but Turkish uses it constantly and in several distinct patterns.</p>
+<p>There isn't a single suffix here — instead there are a few recognizable patterns you'll start noticing everywhere once you learn them.</p>
+<p><b>1. Plain doubling for emphasis</b> — repeating an adjective or adverb makes it stronger, often implying "each one" or "very":</p>
+<ul>
+<li><b>büyük büyük</b> = huge (emphatic) / big ones, each of them big</li>
+<li><b>yavaş yavaş</b> = slowly, little by little</li>
+<li><b>güzel güzel</b> = nicely, in a nice leisurely way</li>
+</ul>
+<p><b>2. The "m-" echo word</b> — you replace the first consonant of a repeated noun with <b>m</b> (or add an m- form if it starts with a vowel), giving a meaning like "X and that sort of thing" or "X and whatnot":</p>
+<ul>
+<li><b>kitap mitap</b> = books and such</li>
+<li><b>çay may</b> = tea or whatever</li>
+<li><b>araba maraba</b> = cars and stuff like that</li>
+</ul>
+<p>This pattern is very casual and often slightly dismissive — it suggests the speaker doesn't think the details matter much.</p>
+<p><b>3. Intensified color/quality words with a special prefix syllable</b> — for certain basic adjectives (especially colors and a few qualities), Turkish takes the first syllable, drops its final consonant, and adds <b>m</b>, <b>p</b>, <b>r</b>, or <b>s</b> before it, then attaches it to the front of the full word for a strong intensifying effect:</p>
+<ul>
+<li><b>yeşil → yemyeşil</b> = intensely green</li>
+<li><b>kara → kapkara</b> = jet black</li>
+<li><b>temiz → tertemiz</b> = spotlessly clean</li>
+<li><b>beyaz → bembeyaz</b> = pure white</li>
+</ul>
+<p>There's no single rule predicting which consonant (m/p/r/s) a given word takes — it's fixed per word and just needs to be learned as you meet each one, the way irregular forms are in any language.</p>
+<p><b>4. Paired near-synonyms or opposites</b> — two related words are put side by side to express a broader or combined idea:</p>
+<ul>
+<li><b>eş dost</b> = friends and relatives (literally "spouse, friend")</li>
+<li><b>ev bark</b> = house and home, household</li>
+<li><b>aşağı yukarı</b> = more or less (literally "down up")</li>
+</ul>
+<p>Examples in full sentences:</p>
+<ul>
+<li><b>Yavaş yavaş yürüyoruz.</b> = We are walking slowly, little by little.</li>
+<li><b>Odada kitap mitap doluydu.</b> = The room was full of books and whatnot.</li>
+<li><b>Gökyüzü bugün masmaviydi.</b> = The sky was intensely blue today.</li>
+<li><b>Eş dostla bayramı kutladık.</b> = We celebrated the holiday with friends and relatives.</li>
+</ul>
+<p>Unlike the formal postpositions from the last lesson, which belong to careful written Turkish, echo words are overwhelmingly a feature of everyday spoken language — you'll hear them constantly in conversation even though they rarely appear in formal writing.</p>
+<p>In the exercises, you'll practise recognizing and forming these patterns — plain doubling, m-words, intensified adjectives, and paired expressions — and matching them to their natural English meanings.</p>`
+  },
+  {
+    id:"resmi_dil", title:"Formal/Bureaucratic Register", icon:"🏛️", grammarTopics:["resmi_dil"], targetExercises:20,
+    explanation:`<p>Official Turkish — the language of laws, contracts, government notices, and formal reports — sounds quite different from everyday spoken Turkish. It relies heavily on <b>nominalization</b> (turning verbs into noun-like phrases) and <b>impersonal constructions</b> that avoid naming a specific doer. English does something similar with passives and phrases like "in the event of..." or "the fact that...".</p>
+<p>This register isn't a different grammar system — it's mostly familiar suffixes (like <b>-dık</b>, <b>-ma</b>, and the passive <b>-ıl/-in</b>) combined and layered more heavily than in casual speech.</p>
+<p>One core building block is the <b>-makta olan / -makta olduğu</b> pattern, a more formal alternative to the simple present continuous:</p>
+<ul>
+<li><b>yapılmakta olan</b> = that is being done (ongoing, formal)</li>
+<li><b>devam etmekte olan</b> = that is continuing/ongoing</li>
+<li><b>toplantının yapılmakta olduğu</b> = that the meeting is [formally] taking place</li>
+</ul>
+<p>Notice how the verb <b>yapmak</b> (to do) first becomes passive <b>yapıl-</b> (to be done), then gets the continuous <b>-makta</b>, then <b>olan/olduğu</b> nominalizes the whole phrase so it can act like a noun/adjective inside a bigger sentence — exactly the layering that makes bureaucratic Turkish feel dense.</p>
+<p><b>1. Passive voice to hide the doer.</b> Official language usually avoids saying "who" did something, focusing on the action or result instead:</p>
+<ul>
+<li><b>form doldurulmalıdır</b> = the form must be filled out (by someone unspecified)</li>
+<li><b>karar verilmiştir</b> = a decision has been made</li>
+<li><b>başvuru kabul edilmiştir</b> = the application has been accepted</li>
+</ul>
+<p><b>2. "-dığı" nominalizations to embed whole clauses as nouns.</b> Just like in relative clauses you may already know, <b>-dık/-acak</b> + possessive turns a verb into "the fact/thing that...", letting a full event be packed into one noun phrase:</p>
+<ul>
+<li><b>toplantının yapılmakta olduğu</b> = that the meeting is taking place</li>
+<li><b>işin tamamlandığı</b> = that the work has been completed</li>
+<li><b>başvurunun reddedildiği bildirilmiştir</b> = it has been reported that the application was rejected</li>
+</ul>
+<p><b>3. "durumunda" and similar formal connectors instead of everyday "if/when".</b> Official texts prefer noun-based conditionals over the simple <b>-se</b> conditional:</p>
+<ul>
+<li><b>geç kalınması durumunda</b> = in the event of being late (literally "in the situation of lateness being had")</li>
+<li><b>ödemenin yapılmaması halinde</b> = in the event that payment is not made</li>
+<li><b>gerekli görülmesi durumunda</b> = if/when it is deemed necessary</li>
+</ul>
+<p>Here <b>geç kalınması</b> is itself a nominalized impersonal passive ("the being-late" / "lateness occurring"), which then combines with <b>durumunda</b> ("in the situation of") — a very typical formal-register stack: verb → passive → nominalized noun → case-marked connector.</p>
+<p>Full examples showing the register in action:</p>
+<ul>
+<li><b>Toplantının yapılmakta olduğu salon kapatılmıştır.</b> = The hall where the meeting is [formally] taking place has been closed.</li>
+<li><b>Geç kalınması durumunda giriş yapılamaz.</b> = In the event of being late, entry cannot be made.</li>
+<li><b>Başvuruların en geç Cuma gününe kadar yapılması gerekmektedir.</b> = It is required that applications be made by Friday at the latest.</li>
+<li><b>Gerekli belgelerin sunulmaması halinde işlem iptal edilir.</b> = If the required documents are not submitted, the process is cancelled.</li>
+</ul>
+<p>Unlike the playful, rhythmic feel of reduplication words like <b>yavaş yavaş</b> or <b>eş dost</b> from the previous lesson, formal register is built for precision and distance: it stacks passives and nominalizations to sound neutral, official, and doer-less, even when the underlying sentence is quite simple in everyday speech.</p>
+<p>In the exercises, you'll practice recognizing and building these nominalized, passive, impersonal structures, and converting casual sentences into their formal/bureaucratic equivalents.</p>`
+  },
+  {
+    id:"surerlik_fiili", title:"Literary Durative Aspect", icon:"📖", grammarTopics:["surerlik_fiili"], targetExercises:20,
+    explanation:`<p>Turkish has a rare, old-fashioned way of saying "keep on doing something" or "just go on doing it" — the <b>literary durative aspect</b>. You'll mostly meet it in folk tales, older literature, and set expressions rather than in everyday speech, but it's good to recognize it.</p>
+<p>It's built by taking the verb stem and adding <b>-a/-e</b> plus the verb <b>durmak</b> (to stand/stop), which itself gets a personal ending. The idea is literally "to stand looking" or "to stand laughing" — i.e. to remain in the middle of doing something, without pause.</p>
+<p>The connecting vowel follows two-way harmony, same as the dative-style vowel you already know:</p>
+<ul>
+<li><b>-a</b> (after back vowels: a, ı, o, u)</li>
+<li><b>-e</b> (after front vowels: e, i, ö, ü)</li>
+</ul>
+<p>Basic examples (stem + a/e + dur-):</p>
+<ul>
+<li><b>bakadur</b> = keep on looking</li>
+<li><b>güledur</b> = keep on laughing</li>
+<li><b>koşadur</b> = keep on running</li>
+<li><b>bekleyedur</b> = keep on waiting</li>
+</ul>
+<p><b>1. A buffer "-y-" appears if the stem ends in a vowel</b>, just like with other vowel-initial suffixes:</p>
+<ul>
+<li><b>bekle + e + dur → bekleyedur</b> = wait + keep on → keep on waiting</li>
+<li><b>söyle + e + dur → söyleyedur</b> = tell + keep on → keep on telling</li>
+</ul>
+<p><b>2. Durmak still conjugates for person and tense</b>, since it's the actual verb carrying the grammar — the stem + a/e part never changes:</p>
+<ul>
+<li><b>bakadururum</b> = I keep on looking</li>
+<li><b>bakadurdu</b> = he/she kept on looking</li>
+<li><b>bakadursun</b> = you keep on looking</li>
+</ul>
+<p>Examples in fuller (if somewhat archaic-sounding) sentences:</p>
+<ul>
+<li><b>O, denize bakadurdu.</b> = He/she kept on looking at the sea.</li>
+<li><b>Çocuklar güledursun.</b> = Let the children keep on laughing.</li>
+<li><b>Sen bekleyedur, ben geliyorum.</b> = You just keep waiting, I'm coming.</li>
+</ul>
+<p>Unlike the <i>formal/bureaucratic register</i> from the previous lesson, which is about sounding official and modern, this construction leans the opposite way — it sounds old, storybook-like, almost proverbial. You'll rarely need to produce it yourself, but spotting <b>-adur/-edur</b> tacked onto a verb should immediately signal "ongoing action, told in a literary voice."</p>
+<p>In the exercises, you'll practise recognizing the <b>-a/-edur</b> pattern on verb stems and matching it to its "keep on doing X" meaning.</p>`
+  },
+  {
+    id:"atasozu_deyim", title:"Proverbs & Fixed Idiomatic Expressions", icon:"💬", grammarTopics:["atasozu_deyim"], targetExercises:20,
+    explanation:`<p>Turkish proverbs (<b>atasözleri</b>) and fixed idiomatic expressions (<b>deyimler</b>) are frozen little grammar lessons in themselves. They usually aren't random phrases to memorize word-for-word — they're built on real, productive grammatical patterns you've already learned (conditionals, aorist, relative clauses), just packed tightly into a fixed, unchangeable saying.</p>
+<p>Because they're fixed expressions, you generally can't swap words in and out the way you can in ordinary sentences — the whole proverb is memorized as a unit, even though its grammar is fully analyzable.</p>
+<p>The single most common pattern behind Turkish proverbs is the <b>"-se/-sa" conditional + aorist</b> combo, used to state a general, timeless truth ("whoever/whatever does X, Y follows"):</p>
+<ul>
+<li><b>Ne ekersen onu biçersin.</b> = You reap what you sow. (literally: "whatever you plant, you harvest that")</li>
+<li><b>Kim iyi bakarsa o kazanır.</b> = Whoever looks carefully wins.</li>
+</ul>
+<p>Breaking down the example: <b>ek-</b> (plant) + <b>-er-</b> (aorist) + <b>-se-</b> (conditional) + <b>-n</b> (you) = <b>ekersen</b> = "if/whatever you plant." The second half, <b>biçersin</b>, is just plain aorist ("you harvest") — no conditional needed, since it's the automatic result.</p>
+<p>Some other very common grammatical shapes you'll meet in proverbs:</p>
+<p><b>1. Aorist alone, stating a timeless truth</b> (no conditional needed, similar to English "a stitch in time saves nine"):</p>
+<ul>
+<li><b>Damlaya damlaya göl olur.</b> = Drop by drop, a lake is formed. (little things add up)</li>
+<li><b>Sona kalan dona kalar.</b> = He who is left till last is left in the cold. (rhyming aorist forms: kalan/kalar)</li>
+</ul>
+<p><b>2. Negative imperative or negative aorist, giving timeless advice or warning:</b></p>
+<ul>
+<li><b>Dokuz doğurmaz.</b> = Nine months can't be rushed. (literally: "it doesn't give birth in nine [days]")</li>
+<li><b>Acele işe şeytan karışır.</b> = Haste makes the devil get involved. (i.e. haste makes waste)</li>
+</ul>
+<p><b>3. Fixed idioms built on a single frozen verb form</b>, where the idiom's meaning has drifted from the literal words — these must simply be learned as vocabulary chunks:</p>
+<ul>
+<li><b>Aklıma geldi.</b> = It came to my mind. (literally: "it came to my mind" — but used exactly like "it occurred to me")</li>
+<li><b>Kafayı yemek</b> = to lose one's mind (literally: "to eat the head")</li>
+<li><b>Eli boş dönmek</b> = to come back empty-handed (literally: "to return with an empty hand")</li>
+</ul>
+<p>A useful contrast with the literary durative aspect you just studied: that pattern (<b>-egelmek</b>, <b>-edurmak</b> etc.) shows up in formal, written narration to stress continuity over time. Proverbs, by contrast, almost always use the plain <b>aorist</b> instead, because they're stating something that is <i>always</i> true, not describing an ongoing event — compare the timeless <b>biçersin</b> (you [always] reap) with a durative form like <b>bekleyedurdu</b> (he kept on waiting), which is tied to one specific unfolding scene.</p>
+<p>Recognizing the grammar inside a proverb helps you guess its meaning even the first time you hear it, but remember: the proverb itself is fixed — you can't change the tense, add negation, or rearrange the word order, the way you could in an ordinary sentence built from the same pieces.</p>
+<p>In the exercises, you'll practise matching proverbs to their English meanings, spotting the conditional/aorist patterns inside them, and recognizing a few common frozen idioms by their literal vs. actual meaning.</p>`
+  },
 ];
 
 /* Bouwt de volledige cursus: de 238 auto-gegenereerde vocabulaire-lessen (28-woordbatches per
@@ -36008,11 +36400,19 @@ const GRAMMAR_TOPIC_FRAMEWORK = {
   birlesik_gecmis:"verb", gereklilik_kipi:"verb", sart_kipi:"verb", istek_kipi:"verb",
   emir_kipi:"verb", yeterlik_kipi:"verb", mastar:"verb", edilgen_cati:"verb", ettirgen_cati:"verb",
   donusluluk_cati:"verb", islik_cati:"verb", gecmis_copula:"verb", isim_fiil:"verb", dolayli_anlatim:"verb",
+  sart_bilesik:"verb", tezlik_fiili:"verb", rivayet_bilesik:"verb", devrik_cumle:"verb",
+  resmi_dil:"verb", surerlik_fiili:"verb",
   // twee werkwoorden nodig: verbindende/temporele constructies
   madan_once:"verb2", diginde:"verb2", inca:"verb2", dikce:"verb2", zarf_fiil:"verb2", ortac:"verb2",
   // zelfstandig-naamwoord-gebaseerd: 1 nw (predicaat) -- incl. de 3 copula-onderdelen (predicaat is een nw/bijv.nw, geen werkwoord)
   belirtme_hali:"noun", iyelik_ekleri:"noun", cogul_eki:"noun", kucultme_eki:"noun", hitap_bicimleri:"noun",
   sayilar_siralar:"noun", copula_basic:"noun", copula_plural:"noun", copula_soru_olumsuz:"noun",
+  ikileme:"noun", atasozu_deyim:"noun",
+  // formele/geschreven-register postposities (dair/ilişkin/itibaren/nazaran) -- eigen framework,
+  // want dit is een compleet ander (en kleiner) setje dan de spreektalige postposities (edatlar).
+  ileri_edatlar:"postpositions_formal",
+  // correlatieve voegwoorden (ne...ne de, gerek...gerek) verbinden twee items -- zelfde vorm als noun2.
+  ileri_baglaclar:"noun2",
   // twee zelfstandige naamwoorden nodig
   // isim_tamlamasi (onbepaalde/belirtisiz compound, bv. "araba anahtarı") werkt met VRIJWEL elk
   // willekeurig naamwoordpaar, want het is een "type/categorie"-relatie -- eigen framework.
@@ -36142,6 +36542,11 @@ const FRAMEWORK_INSTRUCTIONS = {
   // gegeven paar past, i.p.v. één vaste (locatieve) lezing te forceren op een paar dat daar niet bij past.
   relative_ki: {needCategory:["Nouns","Nouns"], needCount:[1,1],
     instr: (w1,w2) => `Build one short, natural phrase or sentence using the Turkish relative suffix -ki, involving EXACTLY these two nouns: "${w1.tr}" (${w1.en}) and "${w2.tr}" (${w2.en}). -ki has two common uses — pick WHICHEVER actually fits this pair, don't force the wrong one:\n1) Locative-relative: [noun1 in locative + -ki] + noun2, meaning "the noun2 that is at/in/on noun1" (e.g. "masadaki kitap" = the book on the table). ONLY use this if "${w2.en}" could plausibly be physically located at/in/on "${w1.en}" (a book CAN be on a table; success CANNOT be in a cup).\n2) Possessive/comparative substitute: [noun1 in genitive + -ki], replacing an implied noun2, often comparing to noun2 (e.g. "Ahmet'in arabası benimkinden hızlı" = Ahmet's car is faster than mine). Use this if the locative reading doesn't make sense.\nKeep it SHORT and use no other nouns besides the two given.`},
+  // Formele/geschreven-register postposities -- een compleet ander, kleiner setje dan de spreektalige
+  // edatlar-postposities (için/ile/göre/rağmen). De AI kiest zelf welke van de vier het beste bij het
+  // gegeven tweede naamwoord past, zelfde aanpak als bij "postpositions" hierboven.
+  postpositions_formal: {needCategory:["Nouns","Nouns"], needCount:[1,1],
+    instr: (w1,w2) => `Build one short, natural FORMAL/WRITTEN-register Turkish sentence using EXACTLY these two nouns: "${w1.tr}" (${w1.en}) as the subject or topic, and "${w2.tr}" (${w2.en}) as the noun that a formal Turkish postposition attaches to. Choose WHICHEVER of these four fits "${w2.en}" most naturally: dair ("regarding/about"), ilişkin ("related to/concerning"), itibaren ("starting from", typically with a time noun), or nazaran ("compared to/relative to"). itibaren specifically needs a time/date-like noun (e.g. "yarından itibaren" = starting from tomorrow) — if "${w2.en}" isn't time-related, use dair, ilişkin, or nazaran instead. This is FORMAL/WRITTEN register (news, official documents, reports) — keep the sentence itself simple and SHORT (3-7 words) even though the register is formal, and use no other nouns besides the two given.`},
 };
 
 /* Voor de "Prepositions"-vocabulairelessen: verpakt een specifiek voorzetsel-woord in een kort,
