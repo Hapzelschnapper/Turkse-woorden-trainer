@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-11 21:47</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-11 21:58</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -4287,8 +4287,11 @@ function renderWordsTab(){
 /* ===================== COURSE TAB ===================== */
 let openLessonIdx = null;
 
-const CEFR_MACRO_ORDER = ["A1","A2","B1","B2","C1","C2"];
+const CEFR_MACRO_ORDER = ["Fundamentals","A1","A2","B1","B2","C1","C2"];
 function macroCefrOfLesson(l){
+  // Grammatica-basisbegrippen-hoofdstuk (znw/ww/lijdend voorwerp/etc.) -- geen Turks-specifiek niveau,
+  // hoort altijd als eerste, aparte sectie vóór de Turkse cursus zelf.
+  if(l.id && l.id.startsWith("gf_")) return "Fundamentals";
   let cefr18 = null;
   if(typeof l.cefr === "number") cefr18 = l.cefr; // vocabulaire-les
   else if(l.grammarTopics && l.grammarTopics.length) cefr18 = Math.max(...l.grammarTopics.map(k=>grammarTopicByKey(k).minCefr));
