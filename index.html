@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-11 17:26</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-11 17:31</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -164,18 +164,15 @@
     <div id="settings-subtab-practice">
     <div class="card">
       <h3 style="margin-top:0;">Practice settings</h3>
-      <div class="row space-between" style="margin-bottom:4px;">
-        <span>Share of sentences</span>
-        <span class="muted" id="sentence-percent-label">20%</span>
-      </div>
-      <input type="range" id="sentence-percent" min="0" max="100" step="5" value="20" style="width:100%;">
-      <div class="muted" style="margin-top:8px;margin-bottom:14px;">Sentences aren't pulled from a fixed list — every sentence is generated live by DeepSeek (requires an API key), using words you're learning.</div>
-      <div class="row space-between" style="margin-top:14px;margin-bottom:4px;">
-        <span>Share of Turkish question/answer</span>
-        <span class="muted" id="question-percent-label">0%</span>
-      </div>
-      <input type="range" id="question-percent" min="0" max="100" step="5" value="0" style="width:100%;">
-      <div class="muted" style="margin-top:8px;">You'll see a Turkish question and answer it yourself in Turkish (no translation) — trains direct comprehension without mentally switching to English. Special characters (ı/ş/ğ/ü/ö/ç) don't need to be typed correctly.</div>
+      <div class="muted" style="margin-bottom:12px;">Drag the dot to set the mix of practice types — the closer to a corner, the more of that type. Always adds up to 100%, no more juggling two separate sliders that could overlap. Sentences/questions aren't pulled from a fixed list — generated live by DeepSeek (requires an API key), using words you're learning.</div>
+      <svg id="mix-triangle" viewBox="0 0 300 260" style="width:100%;max-width:280px;display:block;margin:0 auto;touch-action:none;cursor:pointer;">
+        <polygon points="150,20 20,240 280,240" fill="#0d1720" stroke="#3a4a5a" stroke-width="2"></polygon>
+        <text x="150" y="14" text-anchor="middle" fill="#9fb2c0" font-size="12">Questions</text>
+        <text x="14" y="253" text-anchor="middle" fill="#9fb2c0" font-size="12">Words</text>
+        <text x="286" y="253" text-anchor="middle" fill="#9fb2c0" font-size="12">Sentences</text>
+        <circle id="mix-dot" cx="150" cy="166.7" r="9" fill="#2fae6a" stroke="#fff" stroke-width="2"></circle>
+      </svg>
+      <div class="muted" id="mix-labels" style="text-align:center;margin-top:10px;">Words 60% · Sentences 20% · Questions 20%</div>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Language level (CEFR range)</h3>
@@ -529,6 +526,12 @@ if(settings.sentenceModel === undefined) settings.sentenceModel = "claude"; // z
 if(settings.sentencePercent === undefined){
   // migratie vanaf de oude "aantal van elke 5"-instelling
   settings.sentencePercent = Math.round(((settings.sentenceRatio || 1) / 5) * 100);
+  saveJSON(LS_SETTINGS, settings);
+}
+// wordsPercent bestond nog niet in het oude (2-sliders-)model -- migreer zodat het drietal altijd op
+// 100 sommeert: wat er na sentencePercent+questionPercent overblijft wordt woorden (nooit negatief).
+if(settings.wordsPercent === undefined){
+  settings.wordsPercent = Math.max(0, 100 - (settings.sentencePercent ?? 20) - (settings.questionPercent ?? 0));
   saveJSON(LS_SETTINGS, settings);
 }
 let history  = loadJSON(LS_HISTORY, []);
@@ -2698,14 +2701,24 @@ function pickNextItem(){
   const inRangePool = [...reviewDueInRange, ...introducibleInRange];
   const dueWords = inRangePool.length ? inRangePool : [...reviewDueAll, ...introducibleAsWords];
 
-  // Bepaal of we een zin of TR-vraag willen (streef-verhoudingen), alleen mogelijk met API-sleutel
-  const sentenceRatio = Math.max(0, Math.min(1, (settings.sentencePercent ?? 20) / 100));
-  const questionRatio = Math.max(0, Math.min(1, (settings.questionPercent ?? 0) / 100));
+  // Verhouding woorden/zinnen/vragen (som = 100%, via de driehoek-widget in Instellingen). Kies elke
+  // keer het type dat, over de laatste 10 oefeningen, het verst ONDER zijn streefaandeel zit -- dat
+  // herstelt de gewenste verhouding vanzelf over een venster van 10, i.p.v. bij elke beurt puur toeval.
+  const canGenerate = hasKeyFor("sentence");
+  const wordsPct = settings.wordsPercent ?? 60;
+  const sentPct = canGenerate ? (settings.sentencePercent ?? 20) : 0;
+  const questPct = canGenerate ? (settings.questionPercent ?? 20) : 0;
+  const totalPct = wordsPct + sentPct + questPct;
   const recent = history.slice(-10);
-  const recentSentences = recent.filter(t=>t==="sentence").length;
-  const recentQuestions = recent.filter(t=>t==="question").length;
-  const wantSentence = (recentSentences / 10) < sentenceRatio && hasKeyFor("sentence");
-  const wantQuestion = (recentQuestions / 10) < questionRatio && hasKeyFor("sentence");
+  const recentWordShare = recent.length ? recent.filter(t=>t==="word").length / recent.length : 0;
+  const recentSentenceShare = recent.length ? recent.filter(t=>t==="sentence").length / recent.length : 0;
+  const recentQuestionShare = recent.length ? recent.filter(t=>t==="question").length / recent.length : 0;
+  const deficits = totalPct > 0 ? {
+    word: (wordsPct/totalPct) - recentWordShare,
+    sentence: (sentPct/totalPct) - recentSentenceShare,
+    question: (questPct/totalPct) - recentQuestionShare,
+  } : {word:1, sentence:0, question:0};
+  const bestType = Object.entries(deficits).sort((a,b)=>b[1]-a[1])[0][0];
 
   // Kies willekeurig ÉÉN item uit de groep met de laagste score (in plaats van altijd
   // hetzelfde item bij een gelijke stand — anders krijg je steeds dezelfde paar woorden).
@@ -2720,14 +2733,8 @@ function pickNextItem(){
     return {...chosen, type:"word", direction};
   }
 
-  if(wantSentence && wantQuestion){
-    // beide willen aan de beurt komen -> verdeel naar verhouding van de twee schuifjes
-    const totalPct = (settings.sentencePercent ?? 20) + (settings.questionPercent ?? 0);
-    const pickSentence = totalPct <= 0 ? true : (Math.random() * totalPct) < (settings.sentencePercent ?? 20);
-    return pickSentence ? {needsGeneration:true, kind:"sentence"} : {needsGeneration:true, kind:"question"};
-  }
-  if(wantSentence) return {needsGeneration:true, kind:"sentence"};
-  if(wantQuestion) return {needsGeneration:true, kind:"question"};
+  if(bestType === "sentence" && canGenerate) return {needsGeneration:true, kind:"sentence"};
+  if(bestType === "question" && canGenerate) return {needsGeneration:true, kind:"question"};
 
   if(dueWords.length) return pickRandomAmongLowest(dueWords);
 
@@ -4615,15 +4622,93 @@ function updateAdaptiveLabels(){
 }
 
 /* ===================== INIT ===================== */
+/* ===================== PRACTICE MIX-DRIEHOEK (woorden/zinnen/vragen) ===================== */
+// Hoekpunten van de driehoek in SVG-coördinaten (zie de viewBox 0 0 300 260 in de HTML).
+const MIX_TRIANGLE = {
+  words:     {x: 20,  y: 240},
+  sentences: {x: 280, y: 240},
+  questions: {x: 150, y: 20},
+};
+function mixWeightsToPoint(wordsPct, sentPct, questPct){
+  const total = wordsPct + sentPct + questPct || 1;
+  const w = wordsPct/total, s = sentPct/total, q = questPct/total;
+  return {
+    x: w*MIX_TRIANGLE.words.x + s*MIX_TRIANGLE.sentences.x + q*MIX_TRIANGLE.questions.x,
+    y: w*MIX_TRIANGLE.words.y + s*MIX_TRIANGLE.sentences.y + q*MIX_TRIANGLE.questions.y,
+  };
+}
+// Barycentrische coördinaten: een punt binnen (of buiten) de driehoek omzetten naar drie gewichten
+// die optellen tot 1. Een punt buiten de driehoek (bv. buiten het scherm gesleept) levert een negatief
+// gewicht op -- dat klemmen we op 0 en herverdelen we, zodat je altijd op de rand van de driehoek
+// terechtkomt in plaats van een ongeldige (negatieve) verhouding.
+function mixPointToWeights(px, py){
+  const W = MIX_TRIANGLE.words, S = MIX_TRIANGLE.sentences, Q = MIX_TRIANGLE.questions;
+  const denom = (S.y-Q.y)*(W.x-Q.x) + (Q.x-S.x)*(W.y-Q.y);
+  let w = ((S.y-Q.y)*(px-Q.x) + (Q.x-S.x)*(py-Q.y)) / denom;
+  let s = ((Q.y-W.y)*(px-Q.x) + (W.x-Q.x)*(py-Q.y)) / denom;
+  let q = 1 - w - s;
+  w = Math.max(0, w); s = Math.max(0, s); q = Math.max(0, q);
+  const sum = w + s + q || 1;
+  return {words: w/sum, sentences: s/sum, questions: q/sum};
+}
+function svgPointFromEvent(svg, evt){
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  const ctm = svg.getScreenCTM();
+  if(!ctm) return {x:150, y:166.7};
+  return pt.matrixTransform(ctm.inverse());
+}
+function initMixTriangle(){
+  const wordsPct = settings.wordsPercent ?? 60;
+  const sentPct = settings.sentencePercent ?? 20;
+  const questPct = settings.questionPercent ?? 20;
+  const pt = mixWeightsToPoint(wordsPct, sentPct, questPct);
+  el("mix-dot").setAttribute("cx", pt.x);
+  el("mix-dot").setAttribute("cy", pt.y);
+  el("mix-labels").textContent = `Words ${wordsPct}% · Sentences ${sentPct}% · Questions ${questPct}%`;
+}
+function setMixFromPoint(px, py){
+  const w = mixPointToWeights(px, py);
+  // Afronden op hele procenten, met een correctie zodat de som altijd exact 100 blijft (niet 99 of 101
+  // door drie keer los af te ronden) -- questPct krijgt wat er na de andere twee overblijft.
+  let wordsPct = Math.round(w.words*100);
+  let sentPct = Math.round(w.sentences*100);
+  let questPct = 100 - wordsPct - sentPct;
+  if(questPct < 0){ questPct = 0; sentPct = 100 - wordsPct; } // veiligheidsnet bij afrondingsrandgevallen
+  settings.wordsPercent = wordsPct;
+  settings.sentencePercent = sentPct;
+  settings.questionPercent = questPct;
+  saveJSON(LS_SETTINGS, settings);
+  const pt = mixWeightsToPoint(wordsPct, sentPct, questPct);
+  el("mix-dot").setAttribute("cx", pt.x);
+  el("mix-dot").setAttribute("cy", pt.y);
+  el("mix-labels").textContent = `Words ${wordsPct}% · Sentences ${sentPct}% · Questions ${questPct}%`;
+}
+function wireMixTriangle(){
+  const svg = el("mix-triangle");
+  let dragging = false;
+  function handleMove(evt){
+    if(!dragging) return;
+    const pt = svgPointFromEvent(svg, evt);
+    setMixFromPoint(pt.x, pt.y);
+    evt.preventDefault();
+  }
+  svg.addEventListener("pointerdown", (evt)=>{
+    dragging = true;
+    svg.setPointerCapture(evt.pointerId);
+    handleMove(evt);
+  });
+  svg.addEventListener("pointermove", handleMove);
+  svg.addEventListener("pointerup", ()=>{ dragging = false; });
+  svg.addEventListener("pointercancel", ()=>{ dragging = false; });
+}
+
 function initSettingsUI(){
   el("api-key-input").value = settings.apiKey || "";
   el("anthropic-key-input").value = settings.anthropicApiKey || "";
   el("word-model-select").value = settings.wordModel;
   el("sentence-model-select").value = settings.sentenceModel;
-  el("sentence-percent").value = settings.sentencePercent ?? 20;
-  el("sentence-percent-label").textContent = (settings.sentencePercent ?? 20) + "%";
-  el("question-percent").value = settings.questionPercent ?? 0;
-  el("question-percent-label").textContent = (settings.questionPercent ?? 0) + "%";
+  initMixTriangle();
   // Gedeelde init voor elk van de drie CEFR-bereikcontrols (woord-oefening, zin-complexiteit,
   // zin-woordmoeilijkheid) -- zelfde opbouw (slider + dropdown, min+max), alleen andere id-prefix en
   // andere onderliggende settings-velden.
@@ -4758,7 +4843,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
   });
   el("btn-save-key").addEventListener("click", ()=>{
     settings.apiKey = el("api-key-input").value.trim();
-    settings.sentencePercent = parseInt(el("sentence-percent").value, 10) || 0;
     saveJSON(LS_SETTINGS, settings);
     initSettingsUI();
   });
@@ -4776,20 +4860,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     saveJSON(LS_SETTINGS, settings);
   });
   el("btn-fetch-balance").addEventListener("click", ()=> fetchDeepSeekBalance(false));
-  el("sentence-percent").addEventListener("input", ()=>{
-    el("sentence-percent-label").textContent = el("sentence-percent").value + "%";
-  });
-  el("sentence-percent").addEventListener("change", ()=>{
-    settings.sentencePercent = parseInt(el("sentence-percent").value, 10) || 0;
-    saveJSON(LS_SETTINGS, settings);
-  });
-  el("question-percent").addEventListener("input", ()=>{
-    el("question-percent-label").textContent = el("question-percent").value + "%";
-  });
-  el("question-percent").addEventListener("change", ()=>{
-    settings.questionPercent = parseInt(el("question-percent").value, 10) || 0;
-    saveJSON(LS_SETTINGS, settings);
-  });
+  wireMixTriangle();
   function applyCefrRange(prefix, minKey, maxKey, newMin, newMax, source, onChange){
     // min mag nooit boven max uitkomen en andersom -- duw de andere kant mee als dat gebeurt
     if(newMin > newMax){ if(source === "min") newMax = newMin; else newMin = newMax; }
