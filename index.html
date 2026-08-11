@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-11 17:31</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-11 21:47</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -2447,28 +2447,32 @@ function getIntroducibleWords(){
   const words = baseWordList();
   const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
   const inRange = w => typeof w.cefr !== "number" || (vocabCefrBand(w.cefr) >= lo && vocabCefrBand(w.cefr) <= hi);
-  const cur = currentVocabLesson();
-  // voorkeur: nog-nooit-getoonde woorden uit de HUIDIGE les van het vocabulaire-spoor, binnen het
-  // ingestelde CEFR-bereik. Dit veld checkte het bereik voorheen helemaal niet -- nieuwe woorden
-  // buiten je ingestelde niveau werden dus net zo makkelijk geïntroduceerd als woorden erbinnen, en
-  // omdat een nooit-geoefend woord altijd het laagste "level" heeft, werden ze door pickNextItem()
-  // zelfs vaker gekozen dan woorden die wél in bereik lagen.
-  if(cur && cur.words && cur.words.length){
-    const pool = cur.words
-      .map(en => words.find(w=>w.en===en))
-      .filter(Boolean)
-      .filter(w => getProgress(w.en).reps === 0);
-    const poolInRange = pool.filter(inRange);
-    if(poolInRange.length) return poolInRange;
-    // niets in bereik binnen deze specifieke les: NIET de buiten-bereik pool van deze les forceren
-    // (dat was de eerdere, onvolledige versie van deze fix) -- val door naar de bredere terugvaloptie
-    // hieronder, die zelf ook eerst binnen bereik zoekt over ALLE ontgrendelde lessen heen.
-  }
-  // val terug op eventuele nog niet geïntroduceerde woorden uit eerder al ontgrendelde lessen
+  // ALTIJD eerst de volledige pool berekenen: alle nog-nooit-getoonde, ontgrendelde woorden binnen
+  // bereik. Dit was voorheen ondergeschikt aan "de huidige les" (een vaste batch van ~28 woorden) --
+  // was die les leeg binnen bereik, dan zag je deze grote pool; had die les toevallig weer wél iets
+  // binnen bereik, dan zag je ALLEEN die kleine les-batch. Een breder bereik kon zo, contra-intuïtief,
+  // tot MINDER beschikbare woorden leiden (de kleine les kreeg dan weer voorrang boven de grote pool).
+  // Nu is de volledige pool altijd de basis, dus het aantal groeit consistent mee met je bereik.
   const unlocked = unlockedWordSet();
-  const fallback = words.filter(w => unlocked.has(w.en) && getProgress(w.en).reps === 0);
-  const fallbackInRange = fallback.filter(inRange);
-  return fallbackInRange.length ? fallbackInRange : fallback;
+  const allIntroducible = words.filter(w => unlocked.has(w.en) && getProgress(w.en).reps === 0);
+  const allInRange = allIntroducible.filter(inRange);
+  const pool = allInRange.length ? allInRange : allIntroducible; // niets binnen bereik -> breder, nooit een lege pool
+
+  // Lichte voorkeur voor woorden uit de HUIDIGE les (voor een wat gestructureerdere introductie-volgorde
+  // binnen een les) -- maar alleen als er BINNEN de al bereik-correcte pool ook echt iets van die les
+  // zit; nooit als reden om de bredere pool te negeren of te verkleinen.
+  const cur = currentVocabLesson();
+  if(cur && cur.words && cur.words.length){
+    const curSet = new Set(cur.words);
+    const fromCurrentLesson = pool.filter(w => curSet.has(w.en));
+    if(fromCurrentLesson.length === pool.length || fromCurrentLesson.length === 0) return pool; // les dekt de hele pool al, of dekt 'm helemaal niet -> gewoon de volledige pool
+    // een gedeeltelijke overlap: geef de volledige pool terug, maar met de les-woorden vooraan (lichte
+    // sortering, geen uitsluiting) zodat pickRandomAmongLowest()/getIntroducibleWords()-gebruikers die
+    // toevallig het EERSTE element pakken nog steeds de les-volgorde min of meer aanhouden.
+    const rest = pool.filter(w => !curSet.has(w.en));
+    return [...fromCurrentLesson, ...rest];
+  }
+  return pool;
 }
 
 /* Bewaakt tegen AI-fouten waarbij het "en"-veld eigenlijk geen Engels woord is (bv. per ongeluk een
