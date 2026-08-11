@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-11 16:45</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-11 17:26</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -170,12 +170,6 @@
       </div>
       <input type="range" id="sentence-percent" min="0" max="100" step="5" value="20" style="width:100%;">
       <div class="muted" style="margin-top:8px;margin-bottom:14px;">Sentences aren't pulled from a fixed list — every sentence is generated live by DeepSeek (requires an API key), using words you're learning.</div>
-      <div class="row space-between" style="margin-bottom:4px;">
-        <span>Percentage of new words (in sentences)</span>
-        <span class="muted" id="new-word-percent-label">50%</span>
-      </div>
-      <input type="range" id="new-word-percent" min="0" max="100" step="5" value="50" style="width:100%;">
-      <div class="muted" style="margin-top:8px;">How often a sentence is built around a never-shown word, versus a word you already know whose review is "due" again. Higher = more new material, lower = more focused review of your existing backlog.</div>
       <div class="row space-between" style="margin-top:14px;margin-bottom:4px;">
         <span>Share of Turkish question/answer</span>
         <span class="muted" id="question-percent-label">0%</span>
@@ -185,7 +179,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Language level (CEFR range)</h3>
-      <div class="muted" style="margin-bottom:10px;">Determines the difficulty range for regular word practice (which words come up when practising outside of sentences/questions). Sentence/question generation now has its own two ranges below (complexity and vocabulary). Which words/grammar you actually practise is still driven by your current position in the Course tab, this just sets the difficulty band.</div>
+      <div class="muted" style="margin-bottom:10px;">Determines the difficulty range for word practice AND for vocabulary used inside generated sentences/questions (target word plus filler words) — one shared range for anything word-difficulty-related. Sentence structure/complexity has its own separate range below. Which words/grammar you actually practise is still driven by your current position in the Course tab, this just sets the difficulty band.</div>
       <div class="row space-between" style="margin-bottom:4px;">
         <span>Minimum</span>
         <span class="muted" id="cefr-min-label">A1 start</span>
@@ -204,7 +198,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Sentence generation — complexity</h3>
-      <div class="muted" style="margin-bottom:10px;">How complex generated sentences/questions are (word count, tense variety, number of subclauses) — independent of the difficulty range above and of the vocabulary range below.</div>
+      <div class="muted" style="margin-bottom:10px;">How complex generated sentences/questions are (word count, tense variety, number of subclauses) — independent of the word difficulty range above. E.g. combine simple A1-A2 words with B2 sentence structure, or vice versa.</div>
       <div class="row space-between" style="margin-bottom:4px;">
         <span>Minimum</span>
         <span class="muted" id="sent-complexity-min-label">A1 start</span>
@@ -217,22 +211,6 @@
       </div>
       <input type="range" id="sent-complexity-max-slider" min="0" max="17" step="1" value="5" style="width:100%;">
       <select id="sent-complexity-max-select" style="width:100%;margin-top:6px;"></select>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;">Sentence generation — word difficulty</h3>
-      <div class="muted" style="margin-bottom:10px;">How difficult the actual vocabulary used inside generated sentences/questions is (the target word plus filler words) — independent of the sentence complexity above. E.g. combine simple A1-A2 words with B2 sentence structure, or vice versa.</div>
-      <div class="row space-between" style="margin-bottom:4px;">
-        <span>Minimum</span>
-        <span class="muted" id="sent-vocab-min-label">A1 start</span>
-      </div>
-      <input type="range" id="sent-vocab-min-slider" min="0" max="17" step="1" value="3" style="width:100%;">
-      <select id="sent-vocab-min-select" style="width:100%;margin-top:6px;"></select>
-      <div class="row space-between" style="margin-top:16px;margin-bottom:4px;">
-        <span>Maximum</span>
-        <span class="muted" id="sent-vocab-max-label">A2 mid</span>
-      </div>
-      <input type="range" id="sent-vocab-max-slider" min="0" max="17" step="1" value="5" style="width:100%;">
-      <select id="sent-vocab-max-select" style="width:100%;margin-top:6px;"></select>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">📊 Adaptive difficulty</h3>
@@ -471,7 +449,7 @@ const REVERSE_TR_INDEX = loadJSONSync("reverse-tr-index.json");
 const LS_PROGRESS = "turks_progress_v1";      // { [en]: {level, due, reps} } — nu op ENGELS trefwoord (Oxford lemma)
 const LS_CUSTOM    = "turks_custom_v1";        // { [en]: {tr:[...]} } — extra geaccepteerde Turkse antwoorden (via 'oneens')
 const LS_OVERRIDES = "turks_overrides_v1";     // { [en]: {tr:[...]} } — HANDMATIGE correctie van een woordkaart, vervangt (i.p.v. vult aan) de vertaling en heeft ALTIJD voorrang, ook boven curatedTr
-const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cefrLevel, newWordPercent, questionPercent, syncBinId, syncApiKey }
+const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cefrLevel, questionPercent, syncBinId, syncApiKey }
 const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", laatste 20
 const LS_NEWWORDS  = "turks_newwords_v1";      // { [en]: {cefr} } — via zinnen ontdekte Engelse woorden, niet in de Oxford-lijst
 const LS_GRAMMAR   = "turks_grammar_v1";       // { [topicKey]: {level, due, reps} } — per grammaticaal onderwerp, zelfde SRS-mechaniek als woorden
@@ -505,7 +483,7 @@ function saveJSON(key, val){
 let progress = loadJSON(LS_PROGRESS, {});
 let custom   = loadJSON(LS_CUSTOM, {});
 let overrides = loadJSON(LS_OVERRIDES, {});
-let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentencePercent:20, cefrLevel:4, newWordPercent:50, questionPercent:0});
+let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentencePercent:20, cefrLevel:4, questionPercent:0});
 
 /* Alle netwerkaanroepen naar DeepSeek/Anthropic lopen hierdoorheen: voorkomt dat de app oneindig blijft
    hangen (bv. op "AI is checking your answer...") als de server traag is of niet reageert — na de
@@ -531,8 +509,6 @@ if(settings.cefrMax === undefined) settings.cefrMax = Math.min(17, settings.cefr
 // aan elkaar en aan de woord-oefenslider -- nu onafhankelijk instelbaar.
 if(settings.sentenceComplexityMin === undefined) settings.sentenceComplexityMin = settings.cefrMin;
 if(settings.sentenceComplexityMax === undefined) settings.sentenceComplexityMax = settings.cefrMax;
-if(settings.sentenceVocabMin === undefined) settings.sentenceVocabMin = settings.cefrMin;
-if(settings.sentenceVocabMax === undefined) settings.sentenceVocabMax = settings.cefrMax;
 function pickLevelInRange(min, max){
   const lo = Math.min(min, max), hi = Math.max(min, max);
   return lo + Math.floor(Math.random() * (hi - lo + 1));
@@ -542,7 +518,6 @@ function pickLevelInRange(min, max){
 function pickSentenceComplexityLevel(){
   return pickLevelInRange(settings.sentenceComplexityMin, settings.sentenceComplexityMax);
 }
-if(settings.newWordPercent === undefined) settings.newWordPercent = 50;
 if(settings.questionPercent === undefined) settings.questionPercent = 0;
 if(settings.adaptiveEnabled === undefined) settings.adaptiveEnabled = false;
 if(settings.adaptiveThreshold === undefined) settings.adaptiveThreshold = 60;
@@ -1269,16 +1244,8 @@ function inCefrRangeEn(en){
   const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
   return vocabCefrBand(cefr) >= lo && vocabCefrBand(cefr) <= hi;
 }
-// Zelfde als inCefrRangeEn, maar tegen het losse "woordmoeilijkheid voor zin-generatie"-bereik i.p.v.
-// de algemene woord-oefenslider -- gebruikt voor het doelwoord én de "bekende woorden"-vulwoorden
-// binnen gegenereerde zinnen/vragen (zie de nieuwe instellingen-kaart "Sentence generation").
-function inSentenceVocabRangeEn(en){
-  const cefr = cefrOfEn(en);
-  if(typeof cefr !== "number") return true;
-  const lo = vocabCefrBand(Math.min(settings.sentenceVocabMin, settings.sentenceVocabMax));
-  const hi = vocabCefrBand(Math.max(settings.sentenceVocabMin, settings.sentenceVocabMax));
-  return vocabCefrBand(cefr) >= lo && vocabCefrBand(cefr) <= hi;
-}
+// Zin-generatie gebruikt nu dezelfde woordmoeilijkheidsslider als de gewone woordoefening (was
+// voorheen een los "sentenceVocab"-bereik, samengevoegd op verzoek -- zie inCefrRangeEn hierboven).
 
 /* Toont een Engels woord zoals het aan de gebruiker gepresenteerd wordt: werkwoorden krijgen een
    "to" ervoor (bv. "to meet" i.p.v. kaal "meet"), duidelijker herkenbaar als werkwoord — net als in
@@ -1448,7 +1415,7 @@ async function pickMasteredPoolWords(category, count, avoidEn){
   // CEFR-bereik: deze functie filterde voorheen ALLEEN op "al beheerst" (level>=7/8), nooit op het
   // ingestelde niveau -- een allang gemasterd, maar zwaar woord (bv. "danışman" = consultant) kon dus
   // zomaar in een A1-grammatica-oefening belanden. Eerst binnen bereik proberen, terugval als leeg.
-  const poolInRange = pool.filter(inSentenceVocabRangeEn);
+  const poolInRange = pool.filter(inCefrRangeEn);
   if(poolInRange.length) pool = poolInRange;
   // Recent-binnen-deze-sessie-gebruikte woorden vermijden (voorkomt "steeds hetzelfde zinnetje" bij
   // grammatica-oefeningen) -- maar alleen als dat niet de hele pool leegveegt.
@@ -1486,7 +1453,7 @@ async function pickMasteredPossessorWords(count, avoidEn){
   let pool = level8.length >= count ? level8 : level7;
   if(!pool.length) pool = allEn; // nog geen enkele possessor-noun op niveau 7+: pak elk bekend exemplaar
   if(!pool.length) pool = [...POSSESSOR_NOUNS]; // allerlaatste redmiddel: de curated lijst zelf (nog niet vertaald)
-  const poolInRange = pool.filter(inSentenceVocabRangeEn);
+  const poolInRange = pool.filter(inCefrRangeEn);
   if(poolInRange.length) pool = poolInRange;
   if(avoidEn && avoidEn.size){
     const filtered = pool.filter(en => !avoidEn.has(en));
@@ -2834,33 +2801,33 @@ function pickEnglishWordForSentence(){
   // ook als het model expliciet de instructie kreeg dat te vermijden.
   const words = [...unlockedWordSet()];
   const now = Date.now();
-  const wantNew = Math.random() * 100 < (settings.newWordPercent ?? 50);
 
-  if(wantNew){
-    const introducible = getIntroducibleWords(); // al gescoped op de huidige/ontgrendelde les(sen) + CEFR-bereik
-    if(introducible.length) return introducible[Math.floor(Math.random()*introducible.length)].en;
-  }
-
-  // herhalingspad: alleen al eerder getoonde woorden die nu due zijn, laagste niveau eerst -- eerst
-  // binnen het ingestelde CEFR-bereik proberen (dit pad negeerde het bereik voorheen volledig, dus een
-  // ver-gevorderd due woord kon zomaar als doelwoord in een A1-zin belanden), met terugval naar buiten
-  // bereik zodat herhaling nooit stokt.
+  // Zelfde "laagste level eerst"-aanpak als het gewone woordoefenpad (pickNextItem): geen aparte
+  // percentage-knop meer nodig -- een nooit-geoefend woord heeft altijd level 0 (het laagst mogelijke),
+  // dus nieuwe woorden winnen vanzelf zolang er nog introduceerbare woorden binnen bereik zijn, en de
+  // aandacht schuift vanzelf naar herhaling zodra dat niet meer zo is. Consistent met hoe het hoofdscherm
+  // al werkt, in plaats van een losse willekeurige munt-worp. Alles eerst binnen bereik proberen; pas als
+  // dat écht helemaal leeg is (geen due-woord én geen introduceerbaar woord binnen bereik) breder zoeken.
+  const introducible = getIntroducibleWords(); // al gescoped op de huidige/ontgrendelde les(sen) + CEFR-bereik
   const dueShownAll = words.filter(en => { const p = getProgress(en); return p.reps > 0 && p.due <= now; });
-  const dueShownInRange = dueShownAll.filter(inSentenceVocabRangeEn);
-  const dueShown = dueShownInRange.length ? dueShownInRange : dueShownAll;
-  if(dueShown.length){
-    const minLevel = Math.min(...dueShown.map(en=>getProgress(en).level));
-    const pool = dueShown.filter(en=>getProgress(en).level === minLevel);
+  const dueShownInRange = dueShownAll.filter(inCefrRangeEn);
+  const combinedInRange = [...dueShownInRange, ...introducible.map(w=>w.en)];
+  if(combinedInRange.length){
+    const minLevel = Math.min(...combinedInRange.map(en=>getProgress(en).level));
+    const pool = combinedInRange.filter(en=>getProgress(en).level === minLevel);
     return pool[Math.floor(Math.random()*pool.length)];
   }
 
-  // niets is due (of "nieuwe woorden" gewenst maar geen meer over) -> val terug op absoluut laagste
-  // niveau, ook hier eerst binnen bereik proberen.
+  // niets binnen bereik (due of introduceerbaar) -> breder zoeken: eerst due-woorden ongeacht bereik,
+  // en pas als er ECHT niks meer is, terugvallen op het absoluut laagste niveau van alle woorden.
+  if(dueShownAll.length){
+    const minLevel = Math.min(...dueShownAll.map(en=>getProgress(en).level));
+    const pool = dueShownAll.filter(en=>getProgress(en).level === minLevel);
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
   if(!words.length) return null;
-  const wordsInRange = words.filter(inSentenceVocabRangeEn);
-  const rankPool = wordsInRange.length ? wordsInRange : words;
-  const minLevel = Math.min(...rankPool.map(en=>getProgress(en).level));
-  const pool = rankPool.filter(en=>getProgress(en).level === minLevel);
+  const minLevel = Math.min(...words.map(en=>getProgress(en).level));
+  const pool = words.filter(en=>getProgress(en).level === minLevel);
   return pool.length ? pool[Math.floor(Math.random()*pool.length)] : null;
 }
 
@@ -2889,7 +2856,7 @@ async function pickTurkishTargetForSentence(){
    een zin niet stiekem onbekende woorden binnensmokkelt enkel omdat ze "bij het niveau passen". */
 function pickKnownVocabSample(count){
   const allMastered = baseWordList().map(w=>w.en).filter(en => getProgress(en).level >= 7);
-  const mastered = allMastered.filter(inSentenceVocabRangeEn);
+  const mastered = allMastered.filter(inCefrRangeEn);
   const pool = mastered.length ? mastered : allMastered;
   const shuffled = [...pool];
   for(let i=shuffled.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]; }
@@ -2917,7 +2884,7 @@ async function generateSentenceCandidate(targetWord, grammarTopic, _levelOverrid
   // Apart woordniveau-plafond, losgekoppeld van de zinscomplexiteit -- dit was voorheen impliciet
   // gelijk aan "level" (complexiteit), waardoor bv. complexiteit=max + woordniveau=min de check nooit
   // liet falen (elk woord ligt onder complexiteit-17). Nu expliciet uit de eigen sentenceVocab-slider.
-  const vocabLevel = _vocabLevelOverride ?? pickLevelInRange(settings.sentenceVocabMin, settings.sentenceVocabMax);
+  const vocabLevel = _vocabLevelOverride ?? pickLevelInRange(settings.cefrMin, settings.cefrMax); // zelfde bereik als de gewone woordoefening (samengevoegd)
   const knownSample = pickKnownVocabSample(35);
   // Systeeminstructie bevat GEEN enkele per-aanroep-variabele meer (geen niveau, geen woord, geen
   // willekeurige woordsteekproef) -- dat is precies wat prompt-caching effectief maakt: deze tekst is
@@ -3002,7 +2969,7 @@ Antwoord in JSON.`;
    dingen tegelijk getest worden. */
 function pickWellKnownWord(){
   const allKnown = [...unlockedWordSet()].filter(en => { const p = getProgress(en); return p.reps > 0 && p.level >= 7; });
-  const inRange = allKnown.filter(inSentenceVocabRangeEn);
+  const inRange = allKnown.filter(inCefrRangeEn);
   const words = inRange.length ? inRange : allKnown;
   if(!words.length) return null;
   return words[Math.floor(Math.random()*words.length)];
@@ -3105,7 +3072,7 @@ async function generateSentence(){
 /* ===================== TR-VRAAG / TR-ANTWOORD (begrip zonder vertaling) ===================== */
 async function generateQuestionCandidate(targetWord, grammarTopic, _levelOverride, _correctionNote, _vocabLevelOverride){
   const level = _levelOverride ?? pickSentenceComplexityLevel();
-  const vocabLevel = _vocabLevelOverride ?? pickLevelInRange(settings.sentenceVocabMin, settings.sentenceVocabMax);
+  const vocabLevel = _vocabLevelOverride ?? pickLevelInRange(settings.cefrMin, settings.cefrMax); // zelfde bereik als de gewone woordoefening (samengevoegd)
   const knownSample = pickKnownVocabSample(35);
   const sys = `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
 Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv. rekenen, geografie, een feit uit de zin zelf), ofwel een PERSOONLIJKE/OPEN vraag waarop elk contextueel passend Turks antwoord goed is (bv. "Bugün ne yaptın?").
@@ -4655,8 +4622,6 @@ function initSettingsUI(){
   el("sentence-model-select").value = settings.sentenceModel;
   el("sentence-percent").value = settings.sentencePercent ?? 20;
   el("sentence-percent-label").textContent = (settings.sentencePercent ?? 20) + "%";
-  el("new-word-percent").value = settings.newWordPercent ?? 50;
-  el("new-word-percent-label").textContent = (settings.newWordPercent ?? 50) + "%";
   el("question-percent").value = settings.questionPercent ?? 0;
   el("question-percent-label").textContent = (settings.questionPercent ?? 0) + "%";
   // Gedeelde init voor elk van de drie CEFR-bereikcontrols (woord-oefening, zin-complexiteit,
@@ -4678,7 +4643,6 @@ function initSettingsUI(){
   }
   initCefrRangeDisplay("cefr", "cefrMin", "cefrMax");
   initCefrRangeDisplay("sent-complexity", "sentenceComplexityMin", "sentenceComplexityMax");
-  initCefrRangeDisplay("sent-vocab", "sentenceVocabMin", "sentenceVocabMax");
   updateCefrUnlockedInfo();
   el("adaptive-enabled").checked = !!settings.adaptiveEnabled;
   el("adaptive-threshold").value = settings.adaptiveThreshold ?? 60;
@@ -4819,13 +4783,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
     settings.sentencePercent = parseInt(el("sentence-percent").value, 10) || 0;
     saveJSON(LS_SETTINGS, settings);
   });
-  el("new-word-percent").addEventListener("input", ()=>{
-    el("new-word-percent-label").textContent = el("new-word-percent").value + "%";
-  });
-  el("new-word-percent").addEventListener("change", ()=>{
-    settings.newWordPercent = parseInt(el("new-word-percent").value, 10) || 0;
-    saveJSON(LS_SETTINGS, settings);
-  });
   el("question-percent").addEventListener("input", ()=>{
     el("question-percent-label").textContent = el("question-percent").value + "%";
   });
@@ -4853,7 +4810,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
   }
   wireCefrRangeControl("cefr", "cefrMin", "cefrMax", updateCefrUnlockedInfo);
   wireCefrRangeControl("sent-complexity", "sentenceComplexityMin", "sentenceComplexityMax");
-  wireCefrRangeControl("sent-vocab", "sentenceVocabMin", "sentenceVocabMax");
   el("adaptive-enabled").addEventListener("change", ()=>{
     settings.adaptiveEnabled = el("adaptive-enabled").checked;
     saveJSON(LS_SETTINGS, settings);
