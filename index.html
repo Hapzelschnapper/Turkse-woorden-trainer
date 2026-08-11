@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-08 12:20</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-11 16:34</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -460,7 +460,11 @@ const EN_WORDS_DATA = loadJSONSync("words.json"); // Oxford 3000/5000, {en, cefr
 </script>
 <script>
 const VOCAB_LESSON_DATA = loadJSONSync("vocab-lessons.json"); // {title, cefr, words:[...]} per vocabulary lesson, 28-word batches grouped by level+POS
-const EMBEDDED_CURATED_TR = loadJSONSync("vocab-data.json"); // { [en]: {tr:[...], register, note} } — handmatig doorlopen deel van de woordenlijst, meegeleverd zodat niemand dit zelf via de bulkvertaal-knop hoeft te (her)doen
+const EMBEDDED_CURATED_TR = loadJSONSync("vocab-data.json"); // { [en]: {senses:[{gloss,pos,tr,register,note}]} } — gecureerd op basis van de Oxford 5000 en-tr-lijst
+// { [en]: [{tr, gloss, pos, register, note}] } — reverse-lookup vanaf de APART gecureerde tr-en-lijst
+// (oxford5000_tr-en.csv): voor de tr-en-oefenrichting, zodat de Turkse vorm/gloss/register uit de
+// eigen tr-en-curatie komt i.p.v. "achterstevoren" uit de en-tr-vertaalkolom afgeleid te worden.
+const REVERSE_TR_INDEX = loadJSONSync("reverse-tr-index.json");
 </script>
 <script>
 /* ===================== OPSLAG ===================== */
@@ -1723,16 +1727,16 @@ async function nextCheckupQuestion(){
         return;
       }catch(e){ /* generatie mislukt: val terug op de gewone, kale woordoefening hieronder */ }
     }
-    const sense = await resolveWordSense(word.en);
-    const direction = sense ? (Math.random()<0.5 ? "tr-en" : "en-tr") : "en-tr";
-    checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, direction};
-    el("checkup-word").textContent = direction === "tr-en" ? checkupState.current.tr : displayEnglishWord(checkupState.current.en);
+    const direction = hasKeyFor("word") && Math.random() < 0.5 ? "tr-en" : "en-tr";
+    const sense = await resolveWordSense(word.en, direction);
+    checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, direction: sense ? direction : "en-tr"};
+    el("checkup-word").textContent = checkupState.current.direction === "tr-en" ? checkupState.current.tr : displayEnglishWord(checkupState.current.en);
     el("checkup-word").className = "tr-word";
     checkupState.current.hintRevealed = false;
     el("btn-checkup-word-hint").classList.toggle("hidden", !checkupState.current.gloss);
     el("btn-checkup-word-hint").textContent = "🔍 Which meaning?";
     el("checkup-word-meta").textContent = [cefrLabel(word.cefr), wordCategoryOf(word.en) || null].filter(Boolean).join(" · ");
-    el("checkup-answer-input").placeholder = direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
+    el("checkup-answer-input").placeholder = checkupState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
     const topics = sortedGrammarTopicsByLevel();
     const topic = topics[Math.min(topics.length-1, checkupState.grammarTopicIdx)];
@@ -1988,16 +1992,16 @@ async function nextSkillPracticeQuestion(){
         return;
       }catch(e){ /* generatie mislukt: val terug op de gewone, kale woordoefening hieronder */ }
     }
-    const sense = await resolveWordSense(en);
-    const direction = sense ? (Math.random()<0.5 ? "tr-en" : "en-tr") : "en-tr";
-    skillPracticeState.current = {type:"word", en, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, direction};
-    el("checkup-word").textContent = direction === "tr-en" ? skillPracticeState.current.tr : displayEnglishWord(en);
+    const direction = hasKeyFor("word") && Math.random() < 0.5 ? "tr-en" : "en-tr";
+    const sense = await resolveWordSense(en, direction);
+    skillPracticeState.current = {type:"word", en, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, direction: sense ? direction : "en-tr"};
+    el("checkup-word").textContent = skillPracticeState.current.direction === "tr-en" ? skillPracticeState.current.tr : displayEnglishWord(en);
     el("checkup-word").className = "tr-word";
     skillPracticeState.current.hintRevealed = false;
     el("btn-checkup-word-hint").classList.toggle("hidden", !skillPracticeState.current.gloss);
     el("btn-checkup-word-hint").textContent = "🔍 Which meaning?";
     el("checkup-word-meta").textContent = [typeof wordCefrOf(en) === "number" ? cefrLabel(wordCefrOf(en)) : null, wordCategoryOf(en) || null].filter(Boolean).join(" · ");
-    el("checkup-answer-input").placeholder = direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
+    el("checkup-answer-input").placeholder = skillPracticeState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
     badgeEl.textContent = "grammar"; badgeEl.className = "badge badge-sentence";
     const topic = grammarTopicByKey(lesson.grammarTopics[0]);
@@ -2548,9 +2552,21 @@ function cachedTranslation(en){
 // homoniem/polyseem woord zoals "mine" of "light" zijn dat er meerdere) -- de gekozen zin (incl. gloss
 // en de bijbehorende Turkse vertaling(en)) wordt op het oefening-item zelf bewaard, zodat weergave EN
 // beoordeling binnen diezelfde oefening consistent naar dezelfde betekenis verwijzen.
-function pickWordSense(en){
+function pickWordSense(en, direction){
   if(overrides[en] && overrides[en].tr && overrides[en].tr.length){
     return {tr: overrides[en].tr, gloss: null, register: "neutral"};
+  }
+  // tr-en richting: gebruik de ECHTE tr-en-gebaseerde tegenhanger (reverse-lookup in de apart
+  // gecureerde tr-en-lijst), NIET de en-tr-vertaalkolom "achterstevoren" gelezen -- de twee richtingen
+  // zijn onafhankelijk gecureerd (elk met hun eigen disambiguatie/register) en moeten dat ook blijven.
+  if(direction === "tr-en"){
+    const trEnOptions = REVERSE_TR_INDEX[en];
+    if(trEnOptions && trEnOptions.length){
+      const chosen = trEnOptions[Math.floor(Math.random()*trEnOptions.length)];
+      return {tr: [chosen.tr], gloss: trEnOptions.length > 1 ? (chosen.gloss || null) : null, register: chosen.register || "neutral"};
+    }
+    // geen echte tr-en-tegenhanger bekend voor dit woord (zeldzaam, ~3% van de woorden) -> terugvallen
+    // op de en-tr-data hieronder, beter dan de oefening helemaal te laten mislukken.
   }
   const curated = curatedTr[en];
   if(curated && Array.isArray(curated.senses) && curated.senses.length){
@@ -2563,10 +2579,10 @@ function pickWordSense(en){
   return tr ? {tr, gloss: null, register: (curated && curated.register) || "neutral"} : null;
 }
 // Gedeelde resolutie-stap voor alle drie de plekken die een los woord tonen (hoofdscherm, kennischeck,
-// skill-practice): probeert eerst synchroon een zin te kiezen uit de gecureerde data, en haalt alleen
-// bij een écht nog niet gecureerd woord (zeldzaam na de volledige doorloop) alsnog live iets op.
-async function resolveWordSense(en){
-  let sense = pickWordSense(en);
+// skill-practice): probeert eerst synchroon een zin te kiezen uit de gecureerde data (per richting, zie
+// hierboven), en haalt alleen bij een écht nog niet gecureerd woord (zeldzaam) alsnog live iets op.
+async function resolveWordSense(en, direction){
+  let sense = pickWordSense(en, direction);
   if(!sense){
     try{
       const tr = await getOrFetchTranslation(en);
@@ -3616,7 +3632,7 @@ async function renderPractice(){
     el("tr-word").textContent = "🤖 …";
     el("level-fill").style.width = "0%";
     el("level-label").textContent = "please wait…";
-    let sense = await resolveWordSense(picked.en);
+    let sense = await resolveWordSense(picked.en, picked.direction);
     if(sense){
       picked.tr = sense.tr[0];
       picked.senseTr = sense.tr; // de volledige, bij DEZE oefening horende vertaal-lijst -- gebruikt bij het beoordelen
