@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-11 16:34</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-11 16:45</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -2562,7 +2562,8 @@ function pickWordSense(en, direction){
   if(direction === "tr-en"){
     const trEnOptions = REVERSE_TR_INDEX[en];
     if(trEnOptions && trEnOptions.length){
-      const chosen = trEnOptions[Math.floor(Math.random()*trEnOptions.length)];
+      // altijd de EERSTE (primaire) optie, geen willekeurige keuze uit eventuele verdere/vagere opties
+      const chosen = trEnOptions[0];
       return {tr: [chosen.tr], gloss: trEnOptions.length > 1 ? (chosen.gloss || null) : null, register: chosen.register || "neutral"};
     }
     // geen echte tr-en-tegenhanger bekend voor dit woord (zeldzaam, ~3% van de woorden) -> terugvallen
@@ -2571,7 +2572,9 @@ function pickWordSense(en, direction){
   const curated = curatedTr[en];
   if(curated && Array.isArray(curated.senses) && curated.senses.length){
     const senses = curated.senses;
-    const chosen = senses[Math.floor(Math.random()*senses.length)];
+    // altijd de EERSTE (primaire) betekenis, geen willekeurige keuze -- voorkomt dat een vage, minder
+    // gangbare betekenis als opgave voorgelegd wordt in plaats van de meest voor de hand liggende.
+    const chosen = senses[0];
     // gloss alleen tonen als er ook daadwerkelijk iets te disambigueren valt (>1 zin)
     return {tr: chosen.tr, gloss: senses.length > 1 ? (chosen.gloss || null) : null, register: chosen.register || "neutral"};
   }
@@ -3883,13 +3886,11 @@ async function handleCheckQuestion(answer){
       recordGrammarResult(currentItem.grammarTopic, verdict.grammar_correct);
     }
 
-    const wordLines = currentItem.words.map((w, i)=>{
-      const ok = revealedWords.has(w.en) ? false : !!verdict.words[i];
-      return `${ok ? "✅" : "❌"} ${w.tr}`;
-    }).join(" &nbsp; ");
-
     const adaptiveNote = recordAdaptiveResult(!!verdict.correct);
 
+    // Geen "Word scores"-regel meer hier: in een vraag-oefening beantwoord je in het Turks, er wordt
+    // niets vertaald, dus een per-woord ✅/❌ (dat bij zin-vertaling wél zinvol is) suggereert hier iets
+    // wat niet klopt. De voortgang per woord (recordResult hierboven) blijft gewoon meelopen.
     showFeedback(verdict.correct ? "correct" : "wrong",
       (verdict.correct ? "✅" : "❌") +
       (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct) : "") +
@@ -3898,7 +3899,7 @@ async function handleCheckQuestion(answer){
         (verdict.vraag_en && verdict.antwoord_en ? "<br>" : "") +
         (verdict.antwoord_en ? "Your answer: " + verdict.antwoord_en : "") +
         "</span>" : "") +
-      "<br><br><b>Word scores:</b><br>" + wordLines + adaptiveNote);
+      adaptiveNote);
 
     el("post-actions").classList.remove("hidden");
     el("btn-next").classList.remove("hidden");
@@ -4021,7 +4022,7 @@ async function disputeAnswer(){
           (verdict.vraag_en && verdict.antwoord_en ? "<br>" : "") +
           (verdict.antwoord_en ? "Your answer: " + verdict.antwoord_en : "") +
           "</span>" : "") +
-        "<br><br><b>Word scores:</b><br>" + wordLines);
+        (isQ ? "" : "<br><br><b>Word scores:</b><br>" + wordLines)); // vragen worden niet vertaald -> geen per-woord-score tonen
       el("btn-dispute").classList.add("hidden");
     }catch(e){
       showFeedback("wrong", "⚠️ Re-check failed: " + e.message);
