@@ -23,6 +23,7 @@
         <span id="badge-type" class="badge badge-word">word</span>
         <span class="muted" id="due-count">— items ready to practise</span>
       </div>
+      <div class="muted hidden" id="range-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ No words are due for review in your selected CEFR range right now — showing the least practiced word in range instead.</div>
       <div id="tr-word" class="tr-word">…</div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="word-meta" style="font-size:.78rem;margin-top:2px;"></div>
@@ -2739,23 +2740,17 @@ function pickNextItem(){
   const unlockedEns = unlockedWordSet();
   const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
   const inRange = w => typeof w.cefr !== "number" || (vocabCefrBand(w.cefr) >= lo && vocabCefrBand(w.cefr) <= hi);
-  const words = allWords().filter(w => unlockedEns.has(w.en));
+  const allUnlocked = allWords().filter(w => unlockedEns.has(w.en));
   const now = Date.now();
 
-  // due-voor-herhaling en nog-nooit-getoonde woorden worden nu ALTIJD eerst als gecombineerde pool
-  // binnen het ingestelde CEFR-bereik geprobeerd -- pas als die gecombineerde pool ECHT helemaal leeg
-  // is (geen enkel due-woord én geen enkel introduceerbaar woord binnen bereik) wordt er breder gezocht.
-  // De vorige versie viel al terug op "elk due woord, ongeacht bereik" zodra er specifiek niets due was
-  // BINNEN bereik, ook als er nog volop introduceerbare woorden binnen bereik lagen -- juist vlak nadat
-  // je de sliders aanpast (nog niets van het nieuwe bereik is "due") was dat de meest voorkomende situatie.
-  const reviewDueAll = words.filter(it => { const p = getProgress(it.en); return p.reps > 0 && p.due <= now; });
-  const reviewDueInRange = reviewDueAll.filter(inRange);
-  const introducibleWordsList = getIntroducibleWords(); // al gescoped op de huidige/ontgrendelde les(sen) + CEFR-bereik
-  const introducibleEns = new Set(introducibleWordsList.map(w=>w.en));
-  const introducibleAsWords = allWords().filter(it => introducibleEns.has(it.en));
-  const introducibleInRange = introducibleAsWords.filter(inRange);
-  const inRangePool = [...reviewDueInRange, ...introducibleInRange];
-  const dueWords = inRangePool.length ? inRangePool : [...reviewDueAll, ...introducibleAsWords];
+  // Woordselectie kiest ALTIJD uit het ingestelde CEFR-bereik, ongeacht of een woord "due" is of al
+  // eerder getoond -- due-status en niveau bepalen alleen nog de VOLGORDE (zwakste niveau eerst, bij
+  // gelijk niveau de dichtstbijzijnde duedatum), niet OF een woord in aanmerking komt. Er wordt dus
+  // nooit meer buiten bereik gezocht -- lastNoneDueInRange is puur een melding, geen terugval: hij
+  // klopt zodra er binnen bereik niets is met due <= nu, ook al kiezen we sowieso een woord uit bereik.
+  const wordsInRange = allUnlocked.filter(inRange);
+  lastNoneDueInRange = wordsInRange.length > 0 && !wordsInRange.some(w => getProgress(w.en).due <= now);
+  const dueWords = wordsInRange.length ? wordsInRange : allUnlocked;
 
   // Verhouding woorden/zinnen/vragen (som = 100%, via de driehoek-widget in Instellingen). Kies elke
   // keer het type dat, over de laatste 10 oefeningen, het verst ONDER zijn streefaandeel zit -- dat
@@ -2776,13 +2771,23 @@ function pickNextItem(){
   } : {word:1, sentence:0, question:0};
   const bestType = Object.entries(deficits).sort((a,b)=>b[1]-a[1])[0][0];
 
-  // Kies willekeurig ÉÉN item uit de groep met de laagste score (in plaats van altijd
-  // hetzelfde item bij een gelijke stand — anders krijg je steeds dezelfde paar woorden).
-  function pickRandomAmongLowest(list){
+  // Sorteer op zwakste niveau eerst, en bij gelijk niveau op de dichtstbijzijnde duedatum (nog-nooit-
+  // getoonde woorden staan al op niveau 0 met due = "nu", dus die komen vanzelf bovenaan). Bij een
+  // exacte gelijke stand (zelfde niveau EN zelfde duedatum) alsnog willekeurig kiezen, anders krijg je
+  // steeds precies hetzelfde woord.
+  function pickWeakestSoonest(list){
     if(!list.length) return null;
-    const minLevel = Math.min(...list.map(it=>getProgress(it.en).level));
-    const candidates = list.filter(it=>getProgress(it.en).level === minLevel);
-    const chosen = candidates[Math.floor(Math.random()*candidates.length)];
+    const sorted = [...list].sort((a,b)=>{
+      const pa = getProgress(a.en), pb = getProgress(b.en);
+      if(pa.level !== pb.level) return pa.level - pb.level;
+      return pa.due - pb.due;
+    });
+    const top = getProgress(sorted[0].en);
+    const tied = sorted.filter(it=>{
+      const p = getProgress(it.en);
+      return p.level === top.level && p.due === top.due;
+    });
+    const chosen = tied[Math.floor(Math.random()*tied.length)];
     // richting willekeurig kiezen: EN->TR (Engels tonen) of TR->EN (Turks tonen) — vereist een API-sleutel
     // om de Turkse vorm te kunnen genereren/tonen; zonder sleutel altijd EN->TR (dan hoeft er niets vertaald)
     const direction = hasKeyFor("word") && Math.random() < 0.5 ? "tr-en" : "en-tr";
@@ -2792,18 +2797,7 @@ function pickNextItem(){
   if(bestType === "sentence" && canGenerate) return {needsGeneration:true, kind:"sentence"};
   if(bestType === "question" && canGenerate) return {needsGeneration:true, kind:"question"};
 
-  if(dueWords.length) return pickRandomAmongLowest(dueWords);
-
-  // niets is nu due: kies willekeurig uit de woorden die het eerst weer aan de beurt zijn -- ook hier
-  // eerst binnen het ingestelde bereik proberen (deze terugvaloptie negeerde cefrMin/cefrMax voorheen
-  // volledig), en pas als daar niets is, breder zoeken.
-  const wordsInRange = words.filter(inRange);
-  const rankPool = wordsInRange.length ? wordsInRange : words;
-  const sorted = [...rankPool].sort((a,b)=> getProgress(a.en).due - getProgress(b.en).due);
-  const soonest = sorted.slice(0, Math.min(5, sorted.length));
-  const chosen = soonest[Math.floor(Math.random()*soonest.length)];
-  const direction = hasKeyFor("word") && Math.random() < 0.5 ? "tr-en" : "en-tr";
-  return {...chosen, type:"word", direction};
+  return pickWeakestSoonest(dueWords);
 }
 
 /* ===================== CEFR TAALNIVEAU ===================== */
@@ -3553,6 +3547,7 @@ Beantwoord vragen kort, duidelijk, rechtstreeks tegen de gebruiker gericht (spre
 
 /* ===================== UI STATE ===================== */
 let currentItem = null;
+let lastNoneDueInRange = false; // true als er binnen het ingestelde CEFR-bereik geen enkel woord due is (puur een melding, geen terugval -- er wordt sowieso uit bereik geselecteerd)
 let currentAnswered = false;
 let currentCorrect = null;
 let chatMsgs = []; // voor de "vraag aan AI"-modal, per huidige item
@@ -3763,6 +3758,7 @@ async function renderPractice(){
   el("due-count").textContent = dueN + " word" + (dueN===1?"":"s") + " ready to practise";
 
   el("no-key-warning").style.display = hasKeyFor("word") ? "none" : "block";
+  el("range-empty-notice").classList.toggle("hidden", !lastNoneDueInRange);
   setTimeout(()=> el("answer-input").focus(), 50);
 }
 
