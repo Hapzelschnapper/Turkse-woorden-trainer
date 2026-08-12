@@ -4715,7 +4715,11 @@ function snapToGuideLines(px, py){
     const c = closestPointOnSegment(px, py, seg.x1, seg.y1, seg.x2, seg.y2);
     if(c.dist <= MIX_SNAP_DIST && (!best || c.dist < best.dist)) best = c;
   }
-  return best ? {x: best.x, y: best.y} : {x: px, y: py};
+  return best ? {x: best.x, y: best.y, snapped: true} : {x: px, y: py, snapped: false};
+}
+function vibrateLight(){
+  // Stille no-op op apparaten/browsers zonder Vibration API (bv. iOS Safari) -- geen feature-detect-gedoe nodig
+  try{ navigator.vibrate && navigator.vibrate(12); }catch(e){}
 }
 function mixWeightsToPoint(wordsPct, sentPct, questPct){
   const total = wordsPct + sentPct + questPct || 1;
@@ -4775,15 +4779,19 @@ function setMixFromPoint(px, py){
 function wireMixTriangle(){
   const svg = el("mix-triangle");
   let dragging = false;
+  let wasSnapped = false; // alleen trillen bij het RAKEN van een hulplijn (overgang niet-gesnapt -> gesnapt), niet continu terwijl je erop blijft
   function handleMove(evt){
     if(!dragging) return;
     const raw = svgPointFromEvent(svg, evt);
     const pt = snapToGuideLines(raw.x, raw.y);
+    if(pt.snapped && !wasSnapped) vibrateLight();
+    wasSnapped = pt.snapped;
     setMixFromPoint(pt.x, pt.y);
     evt.preventDefault();
   }
   svg.addEventListener("pointerdown", (evt)=>{
     dragging = true;
+    wasSnapped = false;
     svg.setPointerCapture(evt.pointerId);
     handleMove(evt);
   });
