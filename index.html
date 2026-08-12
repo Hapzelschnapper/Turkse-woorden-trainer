@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-12 11:41</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-12 14:30</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -163,9 +163,13 @@
     <div id="settings-subtab-practice">
     <div class="card">
       <h3 style="margin-top:0;">Practice settings</h3>
-      <div class="muted" style="margin-bottom:12px;">Drag the dot to set the mix of practice types — the closer to a corner, the more of that type. Always adds up to 100%, no more juggling two separate sliders that could overlap. Sentences/questions aren't pulled from a fixed list — generated live by DeepSeek (requires an API key), using words you're learning.</div>
+      <div class="muted" style="margin-bottom:12px;">Drag the dot to set the mix of practice types — the closer to a corner, the more of that type.</div>
       <svg id="mix-triangle" viewBox="0 0 300 260" style="width:100%;max-width:280px;display:block;margin:0 auto;touch-action:none;cursor:pointer;">
         <polygon points="150,20 20,240 280,240" fill="#0d1720" stroke="#3a4a5a" stroke-width="2"></polygon>
+        <line x1="85" y1="130" x2="150" y2="166.7" stroke="#3a4a5a" stroke-width="1.5" stroke-dasharray="4 3"></line>
+        <line x1="215" y1="130" x2="150" y2="166.7" stroke="#3a4a5a" stroke-width="1.5" stroke-dasharray="4 3"></line>
+        <line x1="150" y1="240" x2="150" y2="166.7" stroke="#3a4a5a" stroke-width="1.5" stroke-dasharray="4 3"></line>
+        <circle cx="150" cy="166.7" r="3" fill="#5a6b7d"></circle>
         <text x="150" y="14" text-anchor="middle" fill="#9fb2c0" font-size="12">Questions</text>
         <text x="14" y="253" text-anchor="middle" fill="#9fb2c0" font-size="12">Words</text>
         <text x="286" y="253" text-anchor="middle" fill="#9fb2c0" font-size="12">Sentences</text>
@@ -180,13 +184,13 @@
         <span>Minimum</span>
         <span class="muted" id="cefr-min-label">A1 start</span>
       </div>
-      <input type="range" id="cefr-min-slider" min="0" max="17" step="1" value="3" style="width:100%;">
+      <input type="range" id="cefr-min-slider" min="0" max="13" step="1" value="3" style="width:100%;">
       <select id="cefr-min-select" style="width:100%;margin-top:6px;"></select>
       <div class="row space-between" style="margin-top:16px;margin-bottom:4px;">
         <span>Maximum</span>
         <span class="muted" id="cefr-max-label">A2 mid</span>
       </div>
-      <input type="range" id="cefr-max-slider" min="0" max="17" step="1" value="5" style="width:100%;">
+      <input type="range" id="cefr-max-slider" min="0" max="13" step="1" value="5" style="width:100%;">
       <select id="cefr-max-select" style="width:100%;margin-top:6px;"></select>
       <div class="muted" id="cefr-unlocked-info" style="margin-top:12px;"></div>
       <button class="btn-secondary" id="btn-start-test" style="width:100%;margin-top:12px;">📝 Take a placement test to determine your level</button>
@@ -445,6 +449,10 @@ const REVERSE_TR_INDEX = loadJSONSync("reverse-tr-index.json");
 const LS_PROGRESS = "turks_progress_v1";      // { [en]: {level, due, reps} } — nu op ENGELS trefwoord (Oxford lemma)
 const LS_CUSTOM    = "turks_custom_v1";        // { [en]: {tr:[...]} } — extra geaccepteerde Turkse antwoorden (via 'oneens')
 const LS_OVERRIDES = "turks_overrides_v1";     // { [en]: {tr:[...]} } — HANDMATIGE correctie van een woordkaart, vervangt (i.p.v. vult aan) de vertaling en heeft ALTIJD voorrang, ook boven curatedTr
+// Hoogste sub-niveau-index die daadwerkelijk in de woordenlijst voorkomt (C1 mid) -- de "Language
+// level"-sliders/dropdowns (woord-oefening) mogen hier niet overheen; de aparte "Sentence complexity"-
+// sliders (zinsbouw, niet vocabulaire) blijven wél het volledige 0-17-bereik gebruiken.
+const MAX_VOCAB_CEFR_IDX = 13;
 const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cefrLevel, questionPercent, syncBinId, syncApiKey }
 const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", laatste 20
 const LS_NEWWORDS  = "turks_newwords_v1";      // { [en]: {cefr} } — via zinnen ontdekte Engelse woorden, niet in de Oxford-lijst
@@ -498,7 +506,12 @@ async function fetchWithTimeout(url, opts, timeoutMs){
 }
 if(settings.cefrLevel === undefined) settings.cefrLevel = 4;
 if(settings.cefrMin === undefined) settings.cefrMin = Math.max(0, settings.cefrLevel - 1);
-if(settings.cefrMax === undefined) settings.cefrMax = Math.min(17, settings.cefrLevel + 1);
+if(settings.cefrMax === undefined) settings.cefrMax = Math.min(MAX_VOCAB_CEFR_IDX, settings.cefrLevel + 1);
+// Bestaande, eerder opgeslagen instellingen kunnen nog een hoger bereik bevatten dan nu is toegestaan
+// (bv. via de placement-test of adaptive-difficulty-ophoging van vóór deze cap) -- die knijpen we hier
+// terug, anders staat de dropdown straks op een waarde die niet meer als optie bestaat.
+settings.cefrMin = Math.min(settings.cefrMin, MAX_VOCAB_CEFR_IDX);
+settings.cefrMax = Math.min(settings.cefrMax, MAX_VOCAB_CEFR_IDX);
 // Twee losse bereiken specifiek voor zin-generatie, standaard gelijk aan de woord-oefenslider tot de
 // gebruiker ze zelf aanpast: complexiteit (zinsbouw/lengte/bijzinnen, stuurt cefrGuidance) en
 // woordmoeilijkheid (welk vocabulaire in die zinnen gebruikt wordt) waren voorheen gedwongen gelijk
@@ -2242,7 +2255,7 @@ function recordAdaptiveResult(correct){
   const upper = Math.min(100, threshold + ADAPTIVE_HYSTERESIS);
   const lower = Math.max(0, threshold - ADAPTIVE_HYSTERESIS);
 
-  if(pct >= upper && settings.cefrMax < 17){
+  if(pct >= upper && settings.cefrMax < MAX_VOCAB_CEFR_IDX){
     settings.cefrMin++; settings.cefrMax++;
     saveJSON(LS_SETTINGS, settings);
     adaptiveWindow = [];
@@ -4610,7 +4623,8 @@ function finishPlacementTest(){
   const estimated = Math.max(0, Math.min(17, placementState.high));
   const roundsUsed = placementState.rounds;
   settings.cefrMin = Math.max(0, estimated - 1);
-  settings.cefrMax = Math.min(17, estimated + 1);
+  settings.cefrMax = Math.min(MAX_VOCAB_CEFR_IDX, estimated + 1);
+  settings.cefrMin = Math.min(settings.cefrMin, settings.cefrMax); // estimated kan boven de cap liggen (grammatica/zinsniveau gaat door tot C2) -- min mag dan niet boven de gecapte max uitkomen
   saveJSON(LS_SETTINGS, settings);
   initSettingsUI();
   const skipped = skipLessonsToLevel(estimated);
@@ -4761,9 +4775,9 @@ function initSettingsUI(){
   // Gedeelde init voor elk van de drie CEFR-bereikcontrols (woord-oefening, zin-complexiteit,
   // zin-woordmoeilijkheid) -- zelfde opbouw (slider + dropdown, min+max), alleen andere id-prefix en
   // andere onderliggende settings-velden.
-  function initCefrRangeDisplay(prefix, minKey, maxKey){
+  function initCefrRangeDisplay(prefix, minKey, maxKey, maxIdx){
     if(!el(`${prefix}-min-select`).options.length){
-      for(let i=0;i<18;i++){
+      for(let i=0;i<=maxIdx;i++){
         el(`${prefix}-min-select`).add(new Option(cefrLabel(i), i));
         el(`${prefix}-max-select`).add(new Option(cefrLabel(i), i));
       }
@@ -4775,8 +4789,8 @@ function initSettingsUI(){
     el(`${prefix}-min-label`).textContent = cefrLabel(settings[minKey]);
     el(`${prefix}-max-label`).textContent = cefrLabel(settings[maxKey]);
   }
-  initCefrRangeDisplay("cefr", "cefrMin", "cefrMax");
-  initCefrRangeDisplay("sent-complexity", "sentenceComplexityMin", "sentenceComplexityMax");
+  initCefrRangeDisplay("cefr", "cefrMin", "cefrMax", MAX_VOCAB_CEFR_IDX);
+  initCefrRangeDisplay("sent-complexity", "sentenceComplexityMin", "sentenceComplexityMax", 17);
   updateCefrUnlockedInfo();
   el("adaptive-enabled").checked = !!settings.adaptiveEnabled;
   el("adaptive-threshold").value = settings.adaptiveThreshold ?? 60;
