@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-12 08:21</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-12 11:41</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -1607,6 +1607,7 @@ async function generateFrameworkDrillCandidate(topic, framework, correctionNote,
   }
   const sys = `You create a SHORT, concrete example testing a given Turkish grammar topic, isolated to that one skill but applied PRACTICALLY (a real short sentence/phrase, never an abstract rule question, and NEVER a single bare inflected word with no surrounding context), using only the word(s) given to you for that call.
 Randomly choose the test direction: en-tr (show the English version, ask for the Turkish translation) or tr-en (show the Turkish version, ask for the English translation).
+If you use a possessive pronoun (benim/senin/onun/bizim/sizin/onların) before a noun, that noun ALWAYS needs its own possessive suffix too — the pronoun alone is never enough in Turkish, unlike English "my house" (e.g. "benim evim", NEVER bare "benim ev"; "benim ineğim" not "benim inek").
 Write everything in English and Turkish ONLY — never any other language.
 Respond in JSON.`;
   const level = pickSentenceComplexityLevel();
@@ -1720,23 +1721,44 @@ async function nextCheckupQuestion(){
         el("checkup-word").textContent = drill.prompt;
         el("checkup-word").className = "tr-word sentence";
         el("checkup-answer-input").placeholder = drill.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
+        checkupState.consecutiveFailures = 0; // gelukte generatie -> teller resetten
         persistCheckupState();
         el("checkup-answer-input").disabled = false;
         el("btn-checkup-next").disabled = false;
         el("checkup-answer-input").focus();
         return;
-      }catch(e){ /* generatie mislukt: val terug op de gewone, kale woordoefening hieronder */ }
+      }catch(e){ /* generatie mislukt: val terug op de gewone, kale woordoefening hieronder (die zelf ook beveiligd is, zie try/catch eronder) */ }
     }
-    const direction = hasKeyFor("word") && Math.random() < 0.5 ? "tr-en" : "en-tr";
-    const sense = await resolveWordSense(word.en, direction);
-    checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, direction: sense ? direction : "en-tr"};
-    el("checkup-word").textContent = checkupState.current.direction === "tr-en" ? checkupState.current.tr : displayEnglishWord(checkupState.current.en);
-    el("checkup-word").className = "tr-word";
-    checkupState.current.hintRevealed = false;
-    el("btn-checkup-word-hint").classList.toggle("hidden", !checkupState.current.gloss);
-    el("btn-checkup-word-hint").textContent = "🔍 Which meaning?";
-    el("checkup-word-meta").textContent = [cefrLabel(word.cefr), wordCategoryOf(word.en) || null].filter(Boolean).join(" · ");
-    el("checkup-answer-input").placeholder = checkupState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
+    // Zelfde robuuste aanpak als het grammatica-deel hieronder: resolveWordSense() kan in theorie
+    // falen (bv. een netwerkfout bij een nog niet gecureerd woord) -- dat crashte voorheen de hele
+    // kennischeck stilletjes, zonder enige verklaring ("wordt zomaar afgebroken"). Nu: 3x herkansen
+    // met een ander woord, dan een duidelijke stopmelding i.p.v. een stille crash.
+    try{
+      const direction = hasKeyFor("word") && Math.random() < 0.5 ? "tr-en" : "en-tr";
+      const sense = await resolveWordSense(word.en, direction);
+      checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, direction: sense ? direction : "en-tr"};
+      el("checkup-word").textContent = checkupState.current.direction === "tr-en" ? checkupState.current.tr : displayEnglishWord(checkupState.current.en);
+      el("checkup-word").className = "tr-word";
+      checkupState.current.hintRevealed = false;
+      el("btn-checkup-word-hint").classList.toggle("hidden", !checkupState.current.gloss);
+      el("btn-checkup-word-hint").textContent = "🔍 Which meaning?";
+      el("checkup-word-meta").textContent = [cefrLabel(word.cefr), wordCategoryOf(word.en) || null].filter(Boolean).join(" · ");
+      el("checkup-answer-input").placeholder = checkupState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
+      checkupState.consecutiveFailures = 0;
+    }catch(e){
+      checkupState.consecutiveFailures = (checkupState.consecutiveFailures || 0) + 1;
+      if(checkupState.consecutiveFailures >= 3){
+        el("checkup-word").textContent = "⚠️ Exercise generation kept failing (" + e.message + "). Stopping here for now — your progress so far is saved.";
+        el("checkup-word").className = "tr-word";
+        el("checkup-answer-input").disabled = true;
+        el("btn-checkup-next").disabled = true;
+        persistCheckupState();
+        return;
+      }
+      persistCheckupState();
+      await nextCheckupQuestion(); // ander woord proberen
+      return;
+    }
   } else {
     const topics = sortedGrammarTopicsByLevel();
     const topic = topics[Math.min(topics.length-1, checkupState.grammarTopicIdx)];
@@ -2477,28 +2499,28 @@ function getIntroducibleWords(){
   const words = baseWordList();
   const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
   const inRange = w => typeof w.cefr !== "number" || (vocabCefrBand(w.cefr) >= lo && vocabCefrBand(w.cefr) <= hi);
-  // ALTIJD eerst de volledige pool berekenen: alle nog-nooit-getoonde, ontgrendelde woorden binnen
-  // bereik. Dit was voorheen ondergeschikt aan "de huidige les" (een vaste batch van ~28 woorden) --
-  // was die les leeg binnen bereik, dan zag je deze grote pool; had die les toevallig weer wél iets
-  // binnen bereik, dan zag je ALLEEN die kleine les-batch. Een breder bereik kon zo, contra-intuïtief,
-  // tot MINDER beschikbare woorden leiden (de kleine les kreeg dan weer voorrang boven de grote pool).
-  // Nu is de volledige pool altijd de basis, dus het aantal groeit consistent mee met je bereik.
   const unlocked = unlockedWordSet();
   const allIntroducible = words.filter(w => unlocked.has(w.en) && getProgress(w.en).reps === 0);
-  const allInRange = allIntroducible.filter(inRange);
-  const pool = allInRange.length ? allInRange : allIntroducible; // niets binnen bereik -> breder, nooit een lege pool
+  // Deze functie is puur bereik-respecterend en mag een LEGE array teruggeven als er binnen bereik
+  // niets meer te introduceren valt -- géén interne "verbreed als leeg"-terugval meer. Die zat er
+  // eerder wél in, en dat was precies het probleem: de aanroepers (pickNextItem,
+  // pickEnglishWordForSentence) hebben elk al hun EIGEN nette, expliciete terugvallogica voor "niets
+  // binnen bereik" (eerst due-herhaling ongeacht bereik proberen, pas daarna pas echt breed zoeken) --
+  // maar die werd ondermijnd doordat DEZE functie zelf al in het geniep verbreedde naar alle niveaus
+  // zodra de bereik-pool leeg was, en de aanroepers dat resultaat vervolgens vertrouwden als "binnen
+  // bereik". Twee stille verbredingen die elkaar versterkten: zodra je binnen een smal bereik alle
+  // nieuwe woorden had gehad, kreeg je zonder waarschuwing woorden van willekeurig welk ander niveau.
+  const pool = allIntroducible.filter(inRange);
 
   // Lichte voorkeur voor woorden uit de HUIDIGE les (voor een wat gestructureerdere introductie-volgorde
   // binnen een les) -- maar alleen als er BINNEN de al bereik-correcte pool ook echt iets van die les
-  // zit; nooit als reden om de bredere pool te negeren of te verkleinen.
+  // zit; nooit als reden om de pool te negeren of te verkleinen.
+  if(!pool.length) return pool;
   const cur = currentVocabLesson();
   if(cur && cur.words && cur.words.length){
     const curSet = new Set(cur.words);
     const fromCurrentLesson = pool.filter(w => curSet.has(w.en));
     if(fromCurrentLesson.length === pool.length || fromCurrentLesson.length === 0) return pool; // les dekt de hele pool al, of dekt 'm helemaal niet -> gewoon de volledige pool
-    // een gedeeltelijke overlap: geef de volledige pool terug, maar met de les-woorden vooraan (lichte
-    // sortering, geen uitsluiting) zodat pickRandomAmongLowest()/getIntroducibleWords()-gebruikers die
-    // toevallig het EERSTE element pakken nog steeds de les-volgorde min of meer aanhouden.
     const rest = pool.filter(w => !curSet.has(w.en));
     return [...fromCurrentLesson, ...rest];
   }
@@ -2867,8 +2889,10 @@ function pickEnglishWordForSentence(){
     return pool[Math.floor(Math.random()*pool.length)];
   }
   if(!words.length) return null;
-  const minLevel = Math.min(...words.map(en=>getProgress(en).level));
-  const pool = words.filter(en=>getProgress(en).level === minLevel);
+  const wordsInRange = words.filter(inCefrRangeEn);
+  const rankPool = wordsInRange.length ? wordsInRange : words; // ECHT niets binnen bereik (zelfs geen due-woord) -> pas dan breder
+  const minLevel = Math.min(...rankPool.map(en=>getProgress(en).level));
+  const pool = rankPool.filter(en=>getProgress(en).level === minLevel);
   return pool.length ? pool[Math.floor(Math.random()*pool.length)] : null;
 }
 
@@ -2935,6 +2959,7 @@ async function generateSentenceCandidate(targetWord, grammarTopic, _levelOverrid
 De zin moet vooral grammaticaal correct en natuurlijk klinken voor een moedertaalspreker — dat weegt zwaarder dan het geforceerd verwerken van het opgegeven doelwoord.
 Vermijd zinnen die zichzelf tegenspreken of onlogisch klinken (bv. een vraag en het antwoord daarop in één zin proppen).
 Let op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Is een naamwoord in de zin bedoeld als lijdend voorwerp van een overgankelijk werkwoord, geef het dan de juiste accusatief-uitgang (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü) — anders verandert de betekenis van de zin ongemerkt (bv. "Kitaplar tanıyor" betekent "de boeken kennen [iets]", niet "hij/zij kent de boeken"; dat laatste vereist "Kitapları tanıyor").
+Let ook op bezittelijkheid-consistentie: gebruik je een bezittelijk voornaamwoord (benim/senin/onun/bizim/sizin/onların) vóór een zelfstandig naamwoord, dan moet dat naamwoord ALTIJD ook zijn eigen bezittelijke uitgang dragen — het voornaamwoord alleen is in het Turks nooit voldoende, in tegenstelling tot het Engels waar "my house" zonder extra uitgang werkt (bv. "benim ev" is FOUT, het moet "benim evim" zijn: ev + -im; "Benim inek çok süt veriyor" is om dezelfde reden fout, het moet "Benim ineğim çok süt veriyor" zijn: inek + -im, met k→ğ verzachting).
 Als een grammaticaal onderwerp is opgegeven: bouw de zin zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
 BELANGRIJK: zinscomplexiteit (zinsbouw, lengte, aantal bijzinnen) en woordmoeilijkheid (welke woorden je gebruikt) zijn TWEE APARTE dingen die je per aanroep los te horen krijgt. Een complexe zinsbouw kan en moet met simpele woorden gebouwd worden als het opgegeven woordniveau laag is — een lang, formeel, ambtelijk-klinkend of literair register is dan GEEN excuus om toch moeilijke woorden te gebruiken. Bouw liever een langere zin met alleen eenvoudige woorden en veel herhaling/omschrijving dan een kortere zin met één moeilijk woord.
 Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde woordniveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de zin buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven WOORDNIVEAU (niet het zinscomplexiteitsniveau — die twee kunnen ver uit elkaar liggen). Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger woordniveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken of beter bij het formele register past -- eenvoud van woordkeuze weegt hier zwaarder dan een verfraaiing.
@@ -2987,6 +3012,7 @@ ${_correctionNote || ""}`;
 async function checkSentenceNatural(sentenceTr){
   const sys = `Je bent een kritische moedertaalspreker Turks. Beoordeel of onderstaande zin grammaticaal correct is EN natuurlijk klinkt — dus niet geforceerd, niet zichzelf tegensprekend, geen rare combinatie van woorden die een moedertaalspreker nooit zo zou zeggen.
 Let hierbij SPECIFIEK op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Als de zin een naamwoord kennelijk als lijdend voorwerp bedoelt (bv. bij een overgankelijk werkwoord met maar één passend naamwoord in de zin), moet dat naamwoord de accusatief-uitgang dragen (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü); ontbreekt die waar hij nodig is, dan verandert het onderwerp/lijdend-voorwerp van de zin en is dat een echte fout, ook al is de zin op zichzelf (met de ANDERE, onbedoelde lezing) grammaticaal geldig Turks. Reken dit soort naamvalfout net zo hard aan als een overduidelijke spelfout.
+Let ook op bezittelijkheid-consistentie: staat er een bezittelijk voornaamwoord (benim/senin/onun/bizim/sizin/onların) vóór een zelfstandig naamwoord, dan moet dat naamwoord ook zijn eigen bezittelijke uitgang dragen (bv. "benim evim", nooit kaal "benim ev"). Ontbreekt die uitgang, reken dat net zo hard aan als een naamvalfout.
 Antwoord in JSON.`;
   const user = `Zin: "${sentenceTr}"`;
   const schema = {
@@ -3121,6 +3147,7 @@ KRITIEK: het resultaat MOET een echte vraag zijn, GEEN mededelende stelling. Ein
 Als een grammaticaal onderwerp is opgegeven: bouw de vraag zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
 De vraag moet grammaticaal correct en natuurlijk klinken voor een moedertaalspreker.
 Let op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Is een naamwoord bedoeld als lijdend voorwerp van een overgankelijk werkwoord, geef het dan de juiste accusatief-uitgang (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü) — anders verandert de betekenis van de zin ongemerkt.
+Let ook op bezittelijkheid-consistentie: gebruik je een bezittelijk voornaamwoord (benim/senin/onun/bizim/sizin/onların) vóór een zelfstandig naamwoord, dan moet dat naamwoord ALTIJD ook zijn eigen bezittelijke uitgang dragen (bv. "benim evim", nooit kaal "benim ev") — het voornaamwoord alleen is in het Turks nooit voldoende.
 BELANGRIJK: zinscomplexiteit (zinsbouw, lengte, aantal bijzinnen) en woordmoeilijkheid (welke woorden je gebruikt) zijn TWEE APARTE dingen die je per aanroep los te horen krijgt. Een complexe zinsbouw kan en moet met simpele woorden gebouwd worden als het opgegeven woordniveau laag is — een lang, formeel of literair register is dan GEEN excuus om toch moeilijke woorden te gebruiken.
 Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde woordniveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de vraag buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven WOORDNIVEAU (niet het zinscomplexiteitsniveau). Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger woordniveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken -- eenvoud van woordkeuze weegt hier zwaarder dan een verfraaiing.
 Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
