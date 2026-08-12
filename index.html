@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-12 07:47</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-12 08:21</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -1151,6 +1151,7 @@ function showCheckupResumeNotice(){
 async function startCheckup(){
   if(!hasKeyFor("word") || !hasKeyFor("sentence")){ alert("Both a " + keyNameFor("word") + " and a " + keyNameFor("sentence") + " API key are needed for the knowledge check (Settings)."); return; }
   recentGrammarDrillWords = new Set(); // nieuwe sessie -> geen woorden van een vorige sessie meer vermijden
+  recentCheckupVocabWords = new Set(); // idem voor het vocabulaire-deel
   checkupState = {
     phase: "vocab",
     vocabLevel: 0, vocabLevelResults: [], vocabCeiling: -1,
@@ -1705,7 +1706,13 @@ async function nextCheckupQuestion(){
     el("checkup-progress").textContent = `Level ${cefrLabel(lvl)} · question ${checkupState.vocabLevelResults.length+1}/${CHECKUP_QUESTIONS_PER_VOCAB_LEVEL}`;
     el("checkup-word").textContent = "🤖 …";
     const pool = EN_WORDS_DATA.filter(w=>w.cefr===lvl);
-    const word = pool.length ? pool[Math.floor(Math.random()*pool.length)] : EN_WORDS_DATA[Math.floor(Math.random()*EN_WORDS_DATA.length)];
+    const poolAvoidingRecent = pool.filter(w => !recentCheckupVocabWords.has(w.en));
+    const effectivePool = poolAvoidingRecent.length ? poolAvoidingRecent : pool; // niets meer over binnen dit niveau na uitsluiting -> toch maar herhalen, beter dan vastlopen
+    const word = effectivePool.length ? effectivePool[Math.floor(Math.random()*effectivePool.length)] : EN_WORDS_DATA[Math.floor(Math.random()*EN_WORDS_DATA.length)];
+    recentCheckupVocabWords.add(word.en);
+    while(recentCheckupVocabWords.size > RECENT_CHECKUP_VOCAB_WORDS_MAX){
+      recentCheckupVocabWords.delete(recentCheckupVocabWords.values().next().value); // oudste eruit
+    }
     if(needsContextualDrill(word.en)){
       try{
         const drill = await generateContextualVocabDrill(word.en);
@@ -3530,6 +3537,12 @@ let lastExplanation = "";
 // Gereset bij het starten van een nieuwe sessie (startSkillPractice/startCheckup).
 let recentGrammarDrillWords = new Set();
 const RECENT_GRAMMAR_DRILL_WORDS_MAX = 5;
+// Zelfde idee, maar voor het VOCABULAIRE-deel van de kennischeck: welk woord er als volgende gevraagd
+// wordt, hield tot nu toe totaal geen rekening met wat er zonet al gevraagd is binnen dezelfde sessie
+// -- bij een niveau met een kleine woordenpool kon dat (meerdere keren) hetzelfde woord opleveren,
+// soms zelfs meerdere keren achter elkaar. Gereset bij het starten van een nieuwe kennischeck.
+let recentCheckupVocabWords = new Set();
+const RECENT_CHECKUP_VOCAB_WORDS_MAX = 8;
 
 const el = id => document.getElementById(id);
 
