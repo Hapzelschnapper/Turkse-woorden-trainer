@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.28</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.29</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -302,7 +302,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-12 20:21</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-12 20:30</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -2476,9 +2476,14 @@ function getProgress(tr){
 }
 
 function baseWordList(){
-  // Oxford-lijst + Engelse woorden die tijdens zinsoefeningen zijn ontdekt en toegevoegd
-  const extra = Object.entries(newWords).map(([en, v])=>({en, cefr: v.cefr}));
-  return [...EN_WORDS_DATA, ...extra];
+  // BEWUST alleen de Oxford-kernlijst: newWords-ontdekking staat uit (zie ensureWordExists) en oude,
+  // her en der nog aanwezige newWords-items uit vóór die beslissing mogen niet meer meetellen -- die
+  // zaten eerder WEL in deze lijst (dus zichtbaar in de Woorden-tab, met een score als ze ooit geoefend
+  // zijn) maar NIET in unlockedWordSet() (dat blijft uitsluitend EN_WORDS_DATA), waardoor zulke woorden
+  // permanent als "not yet translated" bleven staan én nooit meer als opgave gekozen konden worden, ook
+  // niet met een lage score. Door ze hier ook te laten vallen is er nergens meer een mismatch: een woord
+  // staat óf helemaal (zichtbaar + selecteerbaar), óf helemaal niet in de actieve woordenlijst.
+  return EN_WORDS_DATA;
 }
 
 function allWords(){
