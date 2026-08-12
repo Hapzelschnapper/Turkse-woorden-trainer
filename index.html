@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-11 21:58</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">2026-08-12 07:47</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -903,6 +903,17 @@ const GRAMMAR_TOPICS = [
   {key:"resmi_dil",       label:"Formal/bureaucratic register constructions", hint:"e.g. \"toplantının yapılmakta olduğu\" (the meeting that is [formally] taking place), \"geç kalınması durumunda\" (in the event of being late) — the nominalized, impersonal style used in official/written Turkish", minCefr:16},
   {key:"surerlik_fiili",  label:"Literary durative aspect -(y)Adur/-(y)Idur", hint:"e.g. \"bakadur\" (keep on looking), \"güledur\" (keep on laughing) — an archaic/literary construction for an ongoing action, rare in everyday speech", minCefr:17},
   {key:"atasozu_deyim",   label:"Proverbs & fixed idiomatic expressions", hint:"the grammatical patterns behind common Turkish proverbs/idioms — often elliptical or parallel structures, e.g. \"Ne ekersen onu biçersin.\" (You reap what you sow, lit. whatever you sow, that you harvest)", minCefr:17},
+  {key:"var_yok",           label:"Existence & possession (var/yok)", hint:"e.g. \"param var\" (I have money, lit. my money exists), \"zamanım yok\" (I don't have time)", minCefr:0},
+  {key:"soru_kelimeleri",   label:"Question words (ne/kim/nerede/ne zaman/nasıl/kaç/hangi)", hint:"e.g. \"Bu ne?\" (What is this?), \"Nerede oturuyorsun?\" (Where do you live?)", minCefr:0},
+  {key:"isaret_zamirleri",  label:"Demonstrative pronouns (bu/şu/o)", hint:"e.g. \"bu kitap\" (this book, near speaker), \"şu adam\" (that man, near listener), \"o ev\" (that house, far from both)", minCefr:1},
+  {key:"zarflar",           label:"Adverbs — formation & position", hint:"e.g. \"hızlı\" (fast, adjective) vs \"hızlıca\"/\"hızlı\" (quickly, adverb) — most Turkish adverbs are unmarked or use -ca/-ce", minCefr:4},
+  {key:"arac_hali",         label:"Instrumental case (-(y)la/-(y)le)", hint:"e.g. \"otobüsle\" (by bus), \"kalemle yazdım\" (I wrote with a pen) — the suffixed form of \"ile\"", minCefr:6},
+  {key:"belirsiz_zamirler", label:"Indefinite pronouns & quantifiers", hint:"e.g. \"biri\" (someone), \"herkes\" (everyone), \"hiç kimse\" (no one), \"bazı\" (some), \"her\" (every)", minCefr:6},
+  {key:"kendi_zamiri",      label:"The reflexive pronoun kendi", hint:"e.g. \"kendim\" (myself), \"kendine bak\" (look after yourself) — distinct from the reflexive verb suffix -in", minCefr:8},
+  {key:"diktan_sonra",      label:"Converb -DIktan sonra (after doing)", hint:"e.g. \"yemek yedikten sonra\" (after eating), \"eve geldikten sonra\" (after coming home) — the counterpart to -madan önce", minCefr:8},
+  {key:"ip_baglaci",        label:"Converb -Ip (sequential actions)", hint:"e.g. \"gidip aldım\" (I went and got it), \"alıp geldi\" (he took it and came) — links same-subject actions without repeating tense/person", minCefr:9},
+  {key:"yardimci_fiiller",  label:"Light verb constructions (etmek/olmak/yapmak)", hint:"e.g. \"yardım etmek\" (to help), \"teşekkür etmek\" (to thank), \"hasta olmak\" (to become sick)", minCefr:10},
+  {key:"aliskanlik_gecmis", label:"Habitual past — \"used to\" (-ArdI)", hint:"e.g. \"eskiden sigara içerdim\" (I used to smoke), \"her gün koşardık\" (we used to run every day)", minCefr:10},
 ];
 function grammarTopicByKey(key){ return GRAMMAR_TOPICS.find(t=>t.key===key); }
 
@@ -1364,12 +1375,24 @@ const GRAMMAR_TOPIC_FRAMEWORK = {
   donusluluk_cati:"verb", islik_cati:"verb", gecmis_copula:"verb", isim_fiil:"verb", dolayli_anlatim:"verb",
   sart_bilesik:"verb", tezlik_fiili:"verb", rivayet_bilesik:"verb", devrik_cumle:"verb",
   resmi_dil:"verb", surerlik_fiili:"verb",
+  // nieuw (volledigheidscontrole): zarflar (bijwoord bij een werkwoord), diktan_sonra en
+  // aliskanlik_gecmis (beide simpele werkwoord+achtervoegsel-constructies), kendi_zamiri (meestal in
+  // combinatie met een werkwoord/handeling) -- allemaal 1 werkwoord (+onderwerp) volstaat.
+  zarflar:"verb", diktan_sonra:"verb", aliskanlik_gecmis:"verb", kendi_zamiri:"verb",
   // twee werkwoorden nodig: verbindende/temporele constructies
   madan_once:"verb2", diginde:"verb2", inca:"verb2", dikce:"verb2", zarf_fiil:"verb2", ortac:"verb2",
+  // nieuw: ip_baglaci verbindt twee opeenvolgende acties van hetzelfde onderwerp -- zelfde vorm als verb2.
+  ip_baglaci:"verb2",
   // zelfstandig-naamwoord-gebaseerd: 1 nw (predicaat) -- incl. de 3 copula-onderdelen (predicaat is een nw/bijv.nw, geen werkwoord)
   belirtme_hali:"noun", iyelik_ekleri:"noun", cogul_eki:"noun", kucultme_eki:"noun", hitap_bicimleri:"noun",
   sayilar_siralar:"noun", copula_basic:"noun", copula_plural:"noun", copula_soru_olumsuz:"noun",
   ikileme:"noun", atasozu_deyim:"noun",
+  // nieuw: var_yok (bestaan/bezit, functioneert als een soort copula), soru_kelimeleri (vraagwoord +
+  // een naamwoord om over te vragen), isaret_zamirleri (bu/şu/o + naamwoord), belirsiz_zamirler
+  // (biri/herkes/bazı + naamwoord), arac_hali (naamval op 1 naamwoord), yardimci_fiiller
+  // (naamwoord + etmek/olmak-patroon) -- allemaal 1 naamwoord volstaat.
+  var_yok:"noun", soru_kelimeleri:"noun", isaret_zamirleri:"noun", belirsiz_zamirler:"noun",
+  arac_hali:"noun", yardimci_fiiller:"noun",
   // formele/geschreven-register postposities (dair/ilişkin/itibaren/nazaran) -- eigen framework,
   // want dit is een compleet ander (en kleiner) setje dan de spreektalige postposities (edatlar).
   ileri_edatlar:"postpositions_formal",
