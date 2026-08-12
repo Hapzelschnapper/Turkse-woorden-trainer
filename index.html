@@ -2603,8 +2603,11 @@ function pickWordSense(en, direction){
       const chosen = trEnOptions[0];
       return {tr: [chosen.tr], gloss: trEnOptions.length > 1 ? (chosen.gloss || null) : null, register: chosen.register || "neutral"};
     }
-    // geen echte tr-en-tegenhanger bekend voor dit woord (zeldzaam, ~3% van de woorden) -> terugvallen
-    // op de en-tr-data hieronder, beter dan de oefening helemaal te laten mislukken.
+    // Geen echte tr-en-tegenhanger bekend voor dit woord -> BEWUST geen terugval meer op de en-tr-data:
+    // de twee richtingen delen geen brondata. null teruggeven zodat de aanroeper (renderPractice) de
+    // oefening voor dit woord gewoon als en-tr afhandelt in plaats van een tr-en-oefening te tonen die
+    // stiekem toch uit de en-tr-lijst put.
+    return null;
   }
   const curated = curatedTr[en];
   if(curated && Array.isArray(curated.senses) && curated.senses.length){
@@ -2621,9 +2624,13 @@ function pickWordSense(en, direction){
 // Gedeelde resolutie-stap voor alle drie de plekken die een los woord tonen (hoofdscherm, kennischeck,
 // skill-practice): probeert eerst synchroon een zin te kiezen uit de gecureerde data (per richting, zie
 // hierboven), en haalt alleen bij een écht nog niet gecureerd woord (zeldzaam) alsnog live iets op.
+// LET OP: de live-vertaalfallback (getOrFetchTranslation) leest zelf eerst de en-tr-cache -- die mag
+// dus NOOIT gebruikt worden om een tr-en-oefening alsnog van een Turks woord te voorzien. Voor tr-en
+// zonder REVERSE_TR_INDEX-tegenhanger blijft sense hier bewust null; renderPractice zet de oefening
+// voor dat woord dan gewoon om naar en-tr in plaats van de en-tr-lijst "achterstevoren" te raadplegen.
 async function resolveWordSense(en, direction){
   let sense = pickWordSense(en, direction);
-  if(!sense){
+  if(!sense && direction !== "tr-en"){
     try{
       const tr = await getOrFetchTranslation(en);
       sense = {tr, gloss: null, register: "neutral"};
@@ -3482,13 +3489,13 @@ function checkStaticMatch(item, answer){
     // getoond). Check daarom ook: is het antwoord van de gebruiker zelf een bekend Engels woord
     // waarvan de (gecachte) Turkse vertaling overlapt met die van het GETOONDE woord? Dan is het
     // een even geldige, alternatieve lezing van hetzelfde Turkse woord.
-    const shownTrList = (cachedTranslation(item.en) || []).map(normalize);
-    if(shownTrList.length){
-      const answerWordData = EN_WORDS_DATA.find(w => normalize(w.en) === norm);
-      if(answerWordData){
-        const answerTrList = (cachedTranslation(answerWordData.en) || []).map(normalize);
-        if(answerTrList.some(t => shownTrList.includes(t))) return true;
-      }
+    // Fix: dit vergelijkt uitsluitend binnen de tr-en-curatie zelf (REVERSE_TR_INDEX), nooit meer
+    // via de (gecachte) en-tr-vertaling -- de twee richtingen mogen elkaars brondata niet raadplegen.
+    const shownTr = normalize(item.tr);
+    const answerWordData = EN_WORDS_DATA.find(w => normalize(w.en) === norm);
+    if(answerWordData){
+      const answerTrEnOptions = (REVERSE_TR_INDEX[answerWordData.en] || []).map(o => normalize(o.tr));
+      if(answerTrEnOptions.includes(shownTr)) return true;
     }
     return false;
   }
