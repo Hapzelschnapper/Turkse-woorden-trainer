@@ -4692,6 +4692,31 @@ const MIX_TRIANGLE = {
   sentences: {x: 280, y: 240},
   questions: {x: 150, y: 20},
 };
+// Dezelfde drie hulplijntjes als in de SVG-markup hierboven (zijde-midden -> middelpunt) -- gebruikt
+// voor een lichte magneetwerking tijdens het slepen: alleen als de dot al heel dicht bij zo'n lijn zit,
+// wordt 'ie er precies op vastgezet, zodat de 50%-/middelpuntstand makkelijker exact te raken is.
+const MIX_GUIDE_LINES = [
+  {x1: 85,  y1: 130, x2: 150, y2: 166.7}, // Woorden-Vragen-zijde -> middelpunt
+  {x1: 215, y1: 130, x2: 150, y2: 166.7}, // Vragen-Zinnen-zijde -> middelpunt
+  {x1: 150, y1: 240, x2: 150, y2: 166.7}, // Woorden-Zinnen-zijde -> middelpunt
+];
+const MIX_SNAP_DIST = 7; // in SVG-eenheden (viewBox 0 0 300 260) -- klein houden, dit moet licht aanvoelen, niet dwingend
+function closestPointOnSegment(px, py, x1, y1, x2, y2){
+  const dx = x2-x1, dy = y2-y1;
+  const lenSq = dx*dx + dy*dy;
+  let t = lenSq ? ((px-x1)*dx + (py-y1)*dy) / lenSq : 0;
+  t = Math.max(0, Math.min(1, t));
+  const x = x1 + t*dx, y = y1 + t*dy;
+  return {x, y, dist: Math.hypot(px-x, py-y)};
+}
+function snapToGuideLines(px, py){
+  let best = null;
+  for(const seg of MIX_GUIDE_LINES){
+    const c = closestPointOnSegment(px, py, seg.x1, seg.y1, seg.x2, seg.y2);
+    if(c.dist <= MIX_SNAP_DIST && (!best || c.dist < best.dist)) best = c;
+  }
+  return best ? {x: best.x, y: best.y} : {x: px, y: py};
+}
 function mixWeightsToPoint(wordsPct, sentPct, questPct){
   const total = wordsPct + sentPct + questPct || 1;
   const w = wordsPct/total, s = sentPct/total, q = questPct/total;
@@ -4752,7 +4777,8 @@ function wireMixTriangle(){
   let dragging = false;
   function handleMove(evt){
     if(!dragging) return;
-    const pt = svgPointFromEvent(svg, evt);
+    const raw = svgPointFromEvent(svg, evt);
+    const pt = snapToGuideLines(raw.x, raw.y);
     setMixFromPoint(pt.x, pt.y);
     evt.preventDefault();
   }
