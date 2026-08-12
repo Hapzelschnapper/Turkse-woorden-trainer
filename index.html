@@ -21,7 +21,6 @@
     <div class="card" id="practice-card">
       <div class="row space-between">
         <span id="badge-type" class="badge badge-word">word</span>
-        <span class="muted" id="due-count">— items ready to practise</span>
       </div>
       <div class="muted hidden" id="range-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ No words are due for review in your selected CEFR range right now — showing the least practiced word in range instead.</div>
       <div id="tr-word" class="tr-word">…</div>
@@ -140,12 +139,11 @@
       <h3 style="margin-top:0;">🔤 Grammar Progress</h3>
       <div class="kpi">
         <div class="box"><div class="num" id="kpi-gram-total">0</div><div class="lbl">total topics</div></div>
-        <div class="box"><div class="num" id="kpi-gram-unlocked">0</div><div class="lbl">unlocked</div></div>
         <div class="box"><div class="num" id="kpi-gram-mastered">0</div><div class="lbl">level 10 (mastered)</div></div>
-        <div class="box" title="Number of unlocked topics whose spaced-repetition review time has passed."><div class="num" id="kpi-gram-due">0</div><div class="lbl">ready to practise now</div></div>
+        <div class="box" title="Number of previously practised topics whose spaced-repetition review time has passed."><div class="num" id="kpi-gram-due">0</div><div class="lbl">ready to practise now</div></div>
         <div class="box"><div class="num" id="kpi-gram-avg">0</div><div class="lbl">average level (1-10)</div></div>
       </div>
-      <div class="muted">Grammar mastery per CEFR sub-level (as %) — greyed out bars are topics not unlocked yet</div>
+      <div class="muted">Grammar mastery per CEFR sub-level (as %)</div>
       <div id="cefr-progress-grammar" style="margin-top:10px;"></div>
       <div class="muted" style="margin-top:14px;margin-bottom:8px;">Individual topics, weakest first. The app automatically favours weaker topics in sentence/question practice.</div>
       <div id="grammar-list"></div>
@@ -2479,12 +2477,11 @@ function allWords(){
 // Levert alleen nog-nooit-getoonde woorden op die "binnen bereik" liggen van het ingestelde
 // CEFR-niveau (met een kleine uitdagingsmarge), zodat nieuwe stof gedoseerd wordt geïntroduceerd
 // i.p.v. willekeurig uit alle ~5000 Oxford-woorden — de kern van een echte niveau-opbouw.
-/* ===================== TWEE ONAFHANKELIJKE SPOREN: grammatica en vocabulaire ontgrendelen elk op hun
-   eigen tempo (zie buildFullLessonList/currentTrackIndex hierboven) — oefenen put uit beide sporen
-   tegelijk, ieder tot waar dat spoor zelf al ontgrendeld is. ===================== */
-function unlockedLessonsList(track){
-  return trackListOf(track); // niets meer vergrendeld -> gewoon het hele spoor
-}
+/* Het oorspronkelijke les-voor-les-ontgrendelmechanisme is losgelaten -- grammatica-onderwerpen en
+   woorden zijn nu allemaal meteen "ontgrendeld"; alleen het ingestelde CEFR-bereik (en voor
+   introductie de voortgang zelf) bepaalt nog wat er geoefend wordt. Deze twee functies bestaan als
+   dunne wrapper zodat de aanroepers niet hoeven te weten dat dat zo is -- ze geven altijd de VOLLEDIGE
+   set terug. */
 function unlockedWordSet(){
   const set = new Set();
   for(const w of EN_WORDS_DATA) set.add(w.en);
@@ -3752,11 +3749,6 @@ async function renderPractice(){
     el("level-label").textContent = fmtLevel(p);
   }
 
-  const words = allWords();
-  const now = Date.now();
-  const dueN = words.filter(w => getProgress(w.en).due <= now).length;
-  el("due-count").textContent = dueN + " word" + (dueN===1?"":"s") + " ready to practise";
-
   el("no-key-warning").style.display = hasKeyFor("word") ? "none" : "block";
   el("range-empty-notice").classList.toggle("hidden", !lastNoneDueInRange);
   setTimeout(()=> el("answer-input").focus(), 50);
@@ -4169,11 +4161,9 @@ function cefrWordProgress(idx){
 }
 function cefrGrammarProgress(idx){
   const topics = GRAMMAR_TOPICS.filter(t => t.minCefr === idx);
-  if(!topics.length) return {pct:null, locked:false};
-  const unlockedKeys = unlockedGrammarTopicSet();
-  const locked = !topics.some(t => unlockedKeys.has(t.key));
+  if(!topics.length) return null;
   const avg = topics.reduce((a,t)=>a+getGrammarProgress(t.key).level, 0) / topics.length;
-  return {pct: Math.round(avg / 10 * 100), locked};
+  return Math.round(avg / 10 * 100);
 }
 
 function renderCefrProgress(containerId, getPct){
@@ -4186,17 +4176,14 @@ function renderCefrProgress(containerId, getPct){
   ];
   container.innerHTML = macros.map(m=>{
     const bars = m.subs.map(idx=>{
-      const result = getPct(idx);
-      const isObj = result !== null && typeof result === "object";
-      const pct = isObj ? result.pct : result;
-      const locked = isObj && result.locked;
+      const pct = getPct(idx);
       const h = pct === null ? 0 : pct;
-      const color = locked ? "#3a4356" : cefrBarColor(pct);
+      const color = cefrBarColor(pct);
       const label = cefrLabel(idx).replace(/^(A1|A2|B1|B2|C1|C2) /, "");
-      const tooltip = locked ? `${cefrLabel(idx)}: not unlocked yet` : `${cefrLabel(idx)}: ${pct===null?'no items':pct+'%'}`;
+      const tooltip = `${cefrLabel(idx)}: ${pct===null?'no items':pct+'%'}`;
       return `<div class="cefr-bar" title="${tooltip}">
-        <div class="cefr-track"><div class="cefr-fill" style="height:${locked?100:h}%;background:${color};"></div></div>
-        <div class="cefr-pct">${locked ? "🔒" : (pct===null?"–":pct+"%")}</div>
+        <div class="cefr-track"><div class="cefr-fill" style="height:${h}%;background:${color};"></div></div>
+        <div class="cefr-pct">${pct===null?"–":pct+"%"}</div>
         <div class="cefr-lbl">${label}</div>
       </div>`;
     }).join("");
@@ -4232,18 +4219,15 @@ function renderStats(){
   if(neverEl) neverEl.textContent = neverShown;
 
   // Grammatica-KPI's: zelfde soort tellingen, maar dan voor de 46 grammatica-onderwerpen
-  const unlockedKeys = unlockedGrammarTopicSet();
-  let gTotal=0, gUnlocked=0, gMastered=0, gDue=0, gShownTotal=0, gShownLevelSum=0;
+  let gTotal=0, gMastered=0, gDue=0, gShownTotal=0, gShownLevelSum=0;
   for(const t of GRAMMAR_TOPICS){
     const p = getGrammarProgress(t.key);
     gTotal++;
-    if(unlockedKeys.has(t.key)) gUnlocked++;
     if(p.level === 10) gMastered++;
     if(p.reps > 0){ gShownTotal++; gShownLevelSum += p.level; }
     if(p.due <= now && p.reps > 0) gDue++;
   }
   el("kpi-gram-total").textContent = gTotal;
-  el("kpi-gram-unlocked").textContent = gUnlocked;
   el("kpi-gram-mastered").textContent = gMastered;
   el("kpi-gram-due").textContent = gDue;
   el("kpi-gram-avg").textContent = gShownTotal ? (gShownLevelSum/gShownTotal).toFixed(1) : "—";
@@ -4256,20 +4240,19 @@ function renderStats(){
 function renderGrammarList(){
   const list = el("grammar-list");
   if(!list) return;
-  const unlockedKeys = unlockedGrammarTopicSet();
-  const rows = GRAMMAR_TOPICS.map(t=>({t, p: getGrammarProgress(t.key), locked: !unlockedKeys.has(t.key)}))
-    .sort((a,b)=> (a.locked - b.locked) || (a.p.level - b.p.level)); // bereikbare eerst, daarbinnen zwakste eerst
-  list.innerHTML = rows.map(({t,p,locked})=>{
+  const rows = GRAMMAR_TOPICS.map(t=>({t, p: getGrammarProgress(t.key)}))
+    .sort((a,b)=> a.p.level - b.p.level); // zwakste eerst
+  list.innerHTML = rows.map(({t,p})=>{
     const pct = p.level*10;
-    const color = locked ? "#3a4356" : (p.reps===0 ? "#4a5568" : (p.level<=3 ? "#e0333f" : p.level<=6 ? "#e0a733" : "#2fae6a"));
-    const statusTxt = locked ? `🔒 not unlocked yet` : (p.reps===0 ? "not practised yet" : `level ${p.level}/10 · practised ${p.reps}x`);
-    return `<div style="margin-bottom:10px;${locked?'opacity:.55;':''}">
+    const color = p.reps===0 ? "#4a5568" : (p.level<=3 ? "#e0333f" : p.level<=6 ? "#e0a733" : "#2fae6a");
+    const statusTxt = p.reps===0 ? "not practised yet" : `level ${p.level}/10 · practised ${p.reps}x`;
+    return `<div style="margin-bottom:10px;">
       <div class="row space-between" style="font-size:.85rem;margin-bottom:3px;">
         <span title="${t.hint}">${t.label}</span>
         <span class="muted">${statusTxt}</span>
       </div>
       <div style="height:6px;border-radius:4px;background:#0d1720;overflow:hidden;">
-        <div style="height:100%;width:${locked?100:pct}%;background:${color};"></div>
+        <div style="height:100%;width:${pct}%;background:${color};"></div>
       </div>
     </div>`;
   }).join("");
