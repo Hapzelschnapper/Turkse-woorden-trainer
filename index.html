@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.25</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.28</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -302,7 +302,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-07 09:00</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-12 20:21</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -2942,16 +2942,40 @@ function pickKnownVocabSample(count){
 /* De AI geeft naast de zin zelf ook een lijst van "betekenisvolle woorden" terug (voor de klikbare
    woord-chips in het oefenscherm) -- af en toe komt het voor dat die lijst een woord bevat dat de AI
    uiteindelijk niet daadwerkelijk in de zin heeft verwerkt (een inconsistentie tussen de zin en de eigen
-   metadata). Filtert zulke "spookwoorden" eruit: een woord telt alleen mee als zijn basisvorm ook
-   daadwerkelijk als substring in de zin voorkomt (Turkse achtervoegsels plakken aan de stam vast, dus de
-   stam blijft normaliter gewoon herkenbaar aanwezig). */
+   metadata). Filtert zulke "spookwoorden" eruit: een woord telt mee als zijn basisvorm (of een
+   herkenbare verbogen/verzachte vorm ervan) als substring in de zin voorkomt. */
+// Turkse medeklinkerverzachting bij een klinker-achtervoegsel: p->b, ç->c, t->d, k->ğ (kitap->kitabı,
+// ağaç->ağacı, kanat->kanadı, köpek->köpeğe/git->gid-). Levert de verzachte variant van de LAATSTE
+// letter van de stam, of null als die letter niet in dit patroon valt.
+function softenedStemVariant(w){
+  const map = {p:"b", "ç":"c", t:"d", k:"ğ"};
+  const last = w.slice(-1);
+  return map[last] ? w.slice(0, -1) + map[last] : null;
+}
+// Bepaalt of een los doelwoord daadwerkelijk (in wat voor vervoegde/verzachte vorm dan ook) in de zin
+// voorkomt: eerst de letterlijke basisvorm, dan de verzachte stam, en als laatste vangnet een kortere
+// stam-prefix (achtervoegsels plakken altijd ACHTERAAN, dus de eerste paar letters blijven vrijwel
+// altijd staan, op de allerlaatste letter na) -- dit voorkomt dat een woord onterecht als "spookwoord"
+// uit de lijst verdwijnt puur omdat het in de zin een suffix heeft gekregen.
+function turkishWordLikelyInSentence(normSentence, trWord){
+  const w = String(trWord || "").toLocaleLowerCase("tr").trim();
+  if(!w) return false;
+  if(normSentence.includes(w)) return true;
+  if(w.includes(" ")) return false; // meerwoordige uitdrukkingen niet af-prefix-kappen
+  const softened = softenedStemVariant(w);
+  if(softened && normSentence.includes(softened)) return true;
+  const minLen = 3;
+  for(let cut = 1; cut <= 2 && w.length - cut >= minLen; cut++){
+    if(normSentence.includes(w.slice(0, w.length - cut))) return true;
+  }
+  return false;
+}
 function filterWordsActuallyInSentence(sentenceTr, words){
   if(!Array.isArray(words) || !words.length) return words || [];
   const normSentence = sentenceTr.toLocaleLowerCase("tr");
-  const filtered = words.filter(w => w.tr && normSentence.includes(String(w.tr).toLocaleLowerCase("tr")));
-  // Vangnet: Turkse medeklinker-verzachting (kitap -> kitabı, bv.) kan een substring-check soms laten
-  // mislukken voor een woord dat wel degelijk gebruikt is. Liever een enkel spookwoord laten staan dan
-  // per ongeluk de hele woordenlijst leegvegen.
+  const filtered = words.filter(w => w.tr && turkishWordLikelyInSentence(normSentence, w.tr));
+  // Vangnet: mocht dit alsnog te streng blijken voor een specifieke zin, dan liever een spookwoord
+  // laten staan dan per ongeluk de hele woordenlijst leegvegen.
   return filtered.length ? filtered : words;
 }
 
@@ -4700,20 +4724,34 @@ const MIX_TRIANGLE = {
   questions: {x: 150, y: 20},
 };
 // Dezelfde drie hulplijntjes als in de SVG-markup hierboven (zijde-midden -> middelpunt) -- gebruikt
-// voor een lichte magneetwerking tijdens het slepen: alleen als de dot al heel dicht bij zo'n lijn zit,
+// voor een lichte magneetwerking tijdens het slepen: alleen als de dot al dicht bij zo'n lijn zit,
 // wordt 'ie er precies op vastgezet, zodat de 50%-/middelpuntstand makkelijker exact te raken is.
 const MIX_GUIDE_LINES = [
-  {x1: 85,  y1: 130, x2: 150, y2: 166.7}, // Woorden-Vragen-zijde -> middelpunt
-  {x1: 215, y1: 130, x2: 150, y2: 166.7}, // Vragen-Zinnen-zijde -> middelpunt
-  {x1: 150, y1: 240, x2: 150, y2: 166.7}, // Woorden-Zinnen-zijde -> middelpunt
+  {x1: 85,  y1: 130, x2: 150, y2: 166.7, kind: "guide"}, // Woorden-Vragen-zijde -> middelpunt
+  {x1: 215, y1: 130, x2: 150, y2: 166.7, kind: "guide"}, // Vragen-Zinnen-zijde -> middelpunt
+  {x1: 150, y1: 240, x2: 150, y2: 166.7, kind: "guide"}, // Woorden-Zinnen-zijde -> middelpunt
 ];
-const MIX_SNAP_DIST = 7; // in SVG-eenheden (viewBox 0 0 300 260) -- klein houden, dit moet licht aanvoelen, niet dwingend
+// De drie buitenzijden van de driehoek zelf -- ook een magneetpunt/trilmoment waard (0% van de
+// tegenoverliggende categorie exact raken is net zo'n nuttig ankerpunt als het middelpunt).
+const MIX_EDGES = [
+  {x1: MIX_TRIANGLE.words.x,     y1: MIX_TRIANGLE.words.y,     x2: MIX_TRIANGLE.sentences.x, y2: MIX_TRIANGLE.sentences.y, kind: "edge"}, // onderzijde: Woorden-Zinnen (0% Vragen)
+  {x1: MIX_TRIANGLE.words.x,     y1: MIX_TRIANGLE.words.y,     x2: MIX_TRIANGLE.questions.x, y2: MIX_TRIANGLE.questions.y, kind: "edge"}, // linkerzijde: Woorden-Vragen (0% Zinnen)
+  {x1: MIX_TRIANGLE.sentences.x, y1: MIX_TRIANGLE.sentences.y, x2: MIX_TRIANGLE.questions.x, y2: MIX_TRIANGLE.questions.y, kind: "edge"}, // rechterzijde: Zinnen-Vragen (0% Woorden)
+];
+const MIX_SNAP_TARGETS = [...MIX_GUIDE_LINES, ...MIX_EDGES];
+// Magneetafstand in SVG-eenheden (viewBox 0 0 300 260). Twee drempels i.p.v. één: AANTREKKEN gebeurt
+// pas heel dichtbij (MIX_SNAP_ACQUIRE), maar zodra je eenmaal vastzit, laat het pas los bij een grotere
+// afstand (MIX_SNAP_RELEASE) -- die hysterese zorgt dat de dot op de lijn "blijft plakken" zolang je in
+// de buurt sleept, in plaats van bij elke kleine trilling van je vinger/cursor meteen weer los te laten
+// en terug te vallen op de rauwe aanwijzerpositie (dat voelde uit als "geen magneet, gewoon volgen").
+const MIX_SNAP_ACQUIRE = 8;
+const MIX_SNAP_RELEASE = 16;
 // Op een touchscreen zit je vinger precies op de bolletje-positie, waardoor je 'm niet meer ziet. Bij
-// touch-input (pointerType "touch") tillen we het geraakte punt daarom een stukje omhoog t.o.v. de
+// touch-input (pointerType "touch") tillen we het geraakte punt daarom een stuk omhoog t.o.v. de
 // werkelijke vingerpositie -- de bolletje-positie schuift zo 1-op-1 mee met je vinger, maar blijft
 // zichtbaar boven je vingertop i.p.v. eronder verdwenen. Met muis/pen (cursor blokkeert niets) blijft
-// dit uit.
-const MIX_TOUCH_LIFT = 40;
+// dit uit. 40 bleek in de praktijk nog te weinig (dot dook nog deels onder de vingertop weg) -> groter.
+const MIX_TOUCH_LIFT = 64;
 function closestPointOnSegment(px, py, x1, y1, x2, y2){
   const dx = x2-x1, dy = y2-y1;
   const lenSq = dx*dx + dy*dy;
@@ -4722,13 +4760,19 @@ function closestPointOnSegment(px, py, x1, y1, x2, y2){
   const x = x1 + t*dx, y = y1 + t*dy;
   return {x, y, dist: Math.hypot(px-x, py-y)};
 }
-function snapToGuideLines(px, py){
-  let best = null;
-  for(const seg of MIX_GUIDE_LINES){
+// Vindt het dichtstbijzijnde magneetdoel (hulplijn of buitenzijde), met HYSTERESE: het doel waar je nu
+// al aan vastzit (currentIdx) krijgt de ruimere MIX_SNAP_RELEASE-drempel, alle andere doelen (incl. een
+// nieuw doel aantrekken) krijgen de krappere MIX_SNAP_ACQUIRE-drempel. Zonder dit verschil voelde het
+// magneeteffect niet als "vasthouden" aan, maar als gewoon de rauwe aanwijzerpositie blijven volgen,
+// omdat elke kleine trilling net buiten de (te krappe, symmetrische) drempel viel en de snap losliet.
+function findMixSnapTarget(px, py, currentIdx){
+  let best = null, bestIdx = -1;
+  MIX_SNAP_TARGETS.forEach((seg, i)=>{
     const c = closestPointOnSegment(px, py, seg.x1, seg.y1, seg.x2, seg.y2);
-    if(c.dist <= MIX_SNAP_DIST && (!best || c.dist < best.dist)) best = c;
-  }
-  return best ? {x: best.x, y: best.y, snapped: true} : {x: px, y: py, snapped: false};
+    const threshold = (i === currentIdx) ? MIX_SNAP_RELEASE : MIX_SNAP_ACQUIRE;
+    if(c.dist <= threshold && (!best || c.dist < best.dist)){ best = c; bestIdx = i; }
+  });
+  return best ? {x: best.x, y: best.y, idx: bestIdx, kind: MIX_SNAP_TARGETS[bestIdx].kind} : null;
 }
 function vibrateLight(){
   // Stille no-op op apparaten/browsers zonder Vibration API (bv. iOS Safari) -- geen feature-detect-gedoe nodig
@@ -4792,30 +4836,34 @@ function setMixFromPoint(px, py){
 function wireMixTriangle(){
   const svg = el("mix-triangle");
   let dragging = false;
-  let wasSnapped = false; // alleen trillen bij het RAKEN van een hulplijn (overgang niet-gesnapt -> gesnapt), niet continu terwijl je erop blijft
+  let snappedIdx = -1; // index in MIX_SNAP_TARGETS waar we nu aan vastzitten, of -1 (zie hysterese hierboven)
   function handleMove(evt){
     if(!dragging) return;
     const raw = svgPointFromEvent(svg, evt); // werkelijke vinger-/cursorpositie, ongewijzigd
     // Snap-detectie gebeurt op de WERKELIJKE aanraakpositie, niet op de al-getilde -- anders moet je
     // fysiek een stukje richting het midden compenseren voordat de (getilde) positie de vaste,
-    // getekende stippellijn raakt. Zo voel/zie je het al zodra je vinger de lijn zelf aanraakt.
-    const snapResult = snapToGuideLines(raw.x, raw.y);
-    if(snapResult.snapped && !wasSnapped) vibrateLight();
-    wasSnapped = snapResult.snapped;
-    let logical = snapResult.snapped ? {x: snapResult.x, y: snapResult.y} : raw;
-    if(evt.pointerType === "touch") logical = {x: logical.x, y: logical.y - MIX_TOUCH_LIFT}; // bolletje blijft zichtbaar boven de vinger
+    // getekende stippellijn/zijde raakt. Zo voel/zie je het al zodra je vinger/cursor de lijn zelf raakt.
+    const snap = findMixSnapTarget(raw.x, raw.y, snappedIdx);
+    const isTouch = evt.pointerType === "touch";
+    // Trilling alleen bij het NIEUW raken van een zijde/hulplijn (niet continu terwijl je erop blijft
+    // hangen), en alleen met muis/pen -- niet met de vinger (het touchscreen geeft daar al zijn eigen,
+    // systeemeigen aanraakgevoel; dit JS-trilsignaal is specifiek de cursor-feedback).
+    if(snap && snap.idx !== snappedIdx && !isTouch) vibrateLight();
+    snappedIdx = snap ? snap.idx : -1;
+    let logical = snap ? {x: snap.x, y: snap.y} : raw;
+    if(isTouch) logical = {x: logical.x, y: logical.y - MIX_TOUCH_LIFT}; // bolletje blijft zichtbaar boven de vinger
     setMixFromPoint(logical.x, logical.y);
     evt.preventDefault();
   }
   svg.addEventListener("pointerdown", (evt)=>{
     dragging = true;
-    wasSnapped = false;
+    snappedIdx = -1;
     svg.setPointerCapture(evt.pointerId);
     handleMove(evt);
   });
   svg.addEventListener("pointermove", handleMove);
-  svg.addEventListener("pointerup", ()=>{ dragging = false; });
-  svg.addEventListener("pointercancel", ()=>{ dragging = false; });
+  svg.addEventListener("pointerup", ()=>{ dragging = false; snappedIdx = -1; });
+  svg.addEventListener("pointercancel", ()=>{ dragging = false; snappedIdx = -1; });
 }
 
 function initSettingsUI(){
