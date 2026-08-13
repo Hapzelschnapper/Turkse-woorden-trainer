@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.39</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.40</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -302,7 +302,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-13 v2.39</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-13 v2.40</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -878,33 +878,96 @@ async function fetchDeepSeekBalance(silent){
 // Vaste lijst Turkse grammaticale onderwerpen (A1 t/m C1/C2), die de app zelf kan volgen
 // en gericht kan invlechten in gegenereerde zinnen/vragen — los van losse woordenschat.
 const GRAMMAR_TOPICS = [
-  {key:"copula_basic",     label:"Copula — singular forms (\"to be\" as a suffix)", hint:"ONLY singular persons: ben/sen/o (I am / you are / he-she-it is), attached to a noun or adjective predicate — e.g. \"öğretmenim\" (I am a teacher), \"iyisin\" (you are good). Do NOT use plural persons (biz/siz/onlar) here.", minCefr:0},
-  {key:"copula_plural",    label:"Copula — plural forms & buffer letters", hint:"ONLY plural persons: biz/siz/onlar (we are / you[pl.] are / they are), attached to a noun or adjective predicate — e.g. \"öğretmeniz\" (we are teachers), \"mutlular\" (they are happy). Vary which vowel-harmony/buffer-letter variant of the ending is used across different examples. Do NOT use singular persons (ben/sen/o) here.", minCefr:0},
-  {key:"copula_soru_olumsuz", label:"Copula — questions & negation", hint:"EITHER a yes/no question using the copula with the mi/mı/mu/mü particle placed correctly BEFORE the personal ending (e.g. \"öğretmen misin?\" = are you a teacher?), OR a negative statement using değil (e.g. \"öğretmen değilim\" = I am not a teacher). Any grammatical person is fine here — the focus is the question/negation mechanic, not the person.", minCefr:1},
+  {key:"copula_basic",     label:"Copula — singular forms (\"to be\" as a suffix)", hint:"ONLY singular persons: ben/sen/o (I am / you are / he-she-it is), attached to a noun or adjective predicate — e.g. \"öğretmenim\" (I am a teacher), \"iyisin\" (you are good). Do NOT use plural persons (biz/siz/onlar) here.", minCefr:0,
+    variants: [
+      {id:"ben", hint:"1st person singular \"ben\" (I am) — e.g. \"öğretmenim\" (I am a teacher)"},
+      {id:"sen", hint:"2nd person singular \"sen\" (you are) — e.g. \"iyisin\" (you are good)"},
+      {id:"o",   hint:"3rd person singular \"o\" (he/she/it is) — e.g. \"öğretmen\" (he/she is a teacher — often no visible suffix in 3rd person)"},
+    ]},
+  {key:"copula_plural",    label:"Copula — plural forms & buffer letters", hint:"ONLY plural persons: biz/siz/onlar (we are / you[pl.] are / they are), attached to a noun or adjective predicate — e.g. \"öğretmeniz\" (we are teachers), \"mutlular\" (they are happy). Vary which vowel-harmony/buffer-letter variant of the ending is used across different examples. Do NOT use singular persons (ben/sen/o) here.", minCefr:0,
+    variants: [
+      {id:"biz",    hint:"1st person plural \"biz\" (we are) — e.g. \"öğretmeniz\" (we are teachers)"},
+      {id:"siz",    hint:"2nd person plural/formal \"siz\" (you[pl./formal] are) — e.g. \"iyisiniz\" (you are well)"},
+      {id:"onlar",  hint:"3rd person plural \"onlar\" (they are) — e.g. \"mutlular\" (they are happy)"},
+    ]},
+  {key:"copula_soru_olumsuz", label:"Copula — questions & negation", hint:"EITHER a yes/no question using the copula with the mi/mı/mu/mü particle placed correctly BEFORE the personal ending (e.g. \"öğretmen misin?\" = are you a teacher?), OR a negative statement using değil (e.g. \"öğretmen değilim\" = I am not a teacher). Any grammatical person is fine here — the focus is the question/negation mechanic, not the person.", minCefr:1,
+    // Was "EITHER...OR" in één hint gebundeld -- dat leidt er (net als bij isaret_zamirleri) toe dat het
+    // model bijna altijd naar dezelfde helft van de EITHER/OR trekt.
+    variants: [
+      {id:"soru",     hint:"yes/no question with mi/mı/mu/mü BEFORE the personal ending — e.g. \"öğretmen misin?\" (are you a teacher?)"},
+      {id:"olumsuz",  hint:"negative statement using değil — e.g. \"öğretmen değilim\" (I am not a teacher)"},
+    ]},
   {key:"olumsuzluk",      label:"Negation (-me/-mi, değil)",         hint:"e.g. \"gitmiyorum\" (I'm not going), \"iyi değil\" (not good)", minCefr:0},
-  {key:"soru_eki",        label:"Question particle mi/mı/mu/mü",    hint:"e.g. \"geldin mi?\" (did you come?)", minCefr:0},
-  {key:"cogul_eki",       label:"Plural (-ler/-lar)",                hint:"e.g. \"kitaplar\" (books)", minCefr:0},
+  {key:"soru_eki",        label:"Question particle mi/mı/mu/mü",    hint:"e.g. \"geldin mi?\" (did you come?) — vary which of the four vowel-harmony forms (mi/mı/mu/mü) comes up across repeated exercises, rather than always the same one", minCefr:0},
+  {key:"cogul_eki",       label:"Plural (-ler/-lar)",                hint:"e.g. \"kitaplar\" (books) — vary which of the two vowel-harmony forms (-ler/-lar) comes up across repeated exercises, rather than always the same one", minCefr:0},
   {key:"simdiki_zaman",   label:"Present continuous -iyor",          hint:"e.g. \"geliyorum\" (I'm coming)", minCefr:0},
   {key:"mastar",          label:"Infinitive -mek/-mak",              hint:"e.g. \"gitmek istiyorum\" (I want to go)", minCefr:1},
-  {key:"sayilar_siralar", label:"Numbers & ordinals (-inci)",        hint:"e.g. \"üçüncü\" (third)", minCefr:1},
-  {key:"iyelik_ekleri",   label:"Possessive suffixes",               hint:"my/your/his..., e.g. \"evim, evin, evi\" (my/your/his house)", minCefr:1},
-  {key:"bulunma_hali",    label:"Locative (-de/-da)",                hint:"location, e.g. \"evde\" (at home)", minCefr:1},
-  {key:"emir_kipi",       label:"Imperative (all persons)",          hint:"e.g. \"gel!\" (come!), \"gidin\" (go, pl./formal)", minCefr:2},
-  {key:"yonelme_hali",    label:"Dative (-e/-a)",                    hint:"direction/goal, e.g. \"okula gidiyorum\" (I'm going to school)", minCefr:2},
-  {key:"ayrilma_hali",    label:"Ablative (-den/-dan)",              hint:"origin/from, e.g. \"okuldan geldim\" (I came from school)", minCefr:2},
-  {key:"belirtme_hali",   label:"Accusative (-i/-ı/-u/-ü)",          hint:"marks a definite direct object, e.g. \"kitabı okudum\" (I read the book)", minCefr:2},
+  {key:"sayilar_siralar", label:"Numbers & ordinals (-inci)",        hint:"e.g. \"üçüncü\" (third)", minCefr:1,
+    variants: [
+      {id:"kardinal", hint:"cardinal numbers — e.g. \"üç kitap\" (three books)"},
+      {id:"ordinal",  hint:"ordinal numbers with -inci — e.g. \"üçüncü\" (third)"},
+    ]},
+  {key:"iyelik_ekleri",   label:"Possessive suffixes",               hint:"my/your/his..., e.g. \"evim, evin, evi\" (my/your/his house)", minCefr:1,
+    // Hint hierboven toonde alleen enkelvoud (evim/evin/evi) -- zonder splitsing werd meervoud
+    // (evimiz/eviniz/evleri) vermoedelijk nooit specifiek geoefend.
+    variants: [
+      {id:"ben",   hint:"1st person singular \"my\" — e.g. \"evim\" (my house)"},
+      {id:"sen",   hint:"2nd person singular \"your\" — e.g. \"evin\" (your house)"},
+      {id:"o",     hint:"3rd person singular \"his/her/its\" — e.g. \"evi\" (his/her house)"},
+      {id:"biz",   hint:"1st person plural \"our\" — e.g. \"evimiz\" (our house)"},
+      {id:"siz",   hint:"2nd person plural/formal \"your\" — e.g. \"eviniz\" (your[pl./formal] house)"},
+      {id:"onlar", hint:"3rd person plural \"their\" — e.g. \"evleri\" (their house)"},
+    ]},
+  {key:"bulunma_hali",    label:"Locative (-de/-da)",                hint:"location, e.g. \"evde\" (at home) — vary which of the vowel-harmony/hardening forms (-de/-da/-te/-ta) comes up across repeated exercises", minCefr:1},
+  {key:"emir_kipi",       label:"Imperative (all persons)",          hint:"e.g. \"gel!\" (come!), \"gidin\" (go, pl./formal)", minCefr:2,
+    variants: [
+      {id:"sen",   hint:"informal singular \"sen\" imperative — e.g. \"gel!\" (come!)"},
+      {id:"siz",   hint:"plural/formal \"siz\" imperative — e.g. \"gidin\" (go)"},
+      {id:"3.kisi", hint:"3rd person imperative/optative (-sin/-sinler) — e.g. \"gelsin\" (let him/her come), \"gelsinler\" (let them come)"},
+    ]},
+  {key:"yonelme_hali",    label:"Dative (-e/-a)",                    hint:"direction/goal, e.g. \"okula gidiyorum\" (I'm going to school) — vary which of the vowel-harmony forms (-e/-a) comes up across repeated exercises", minCefr:2},
+  {key:"ayrilma_hali",    label:"Ablative (-den/-dan)",              hint:"origin/from, e.g. \"okuldan geldim\" (I came from school) — vary which of the vowel-harmony/hardening forms (-den/-dan/-ten/-tan) comes up across repeated exercises", minCefr:2},
+  {key:"belirtme_hali",   label:"Accusative (-i/-ı/-u/-ü)",          hint:"marks a definite direct object, e.g. \"kitabı okudum\" (I read the book) — vary which of the four vowel-harmony forms (-i/-ı/-u/-ü) comes up across repeated exercises", minCefr:2},
   {key:"gecmis_copula",   label:"Past copula -ydi",                  hint:"e.g. \"öğrenciydim\" (I was a student)", minCefr:3},
   {key:"yeterlik_kipi",   label:"Ability -ebilmek (can)",            hint:"e.g. \"gidebilirim\" (I can go), \"yüzebilir misin?\" (can you swim?)", minCefr:3},
   {key:"gecmis_di",       label:"Past tense -di (witnessed/certain)", hint:"e.g. \"geldim\" (I came)", minCefr:3},
-  {key:"tamlayan_hali",   label:"Genitive (-in/-ın/-un/-ün)",        hint:"possession/compounds, e.g. \"annemin evi\" (my mother's house)", minCefr:3},
+  {key:"tamlayan_hali",   label:"Genitive (-in/-ın/-un/-ün)",        hint:"possession/compounds, e.g. \"annemin evi\" (my mother's house) — vary which of the four vowel-harmony forms (-in/-ın/-un/-ün) comes up across repeated exercises", minCefr:3},
   {key:"isim_tamlamasi",  label:"Noun compounds (isim tamlaması)",   hint:"e.g. \"araba anahtarı\" (car key), \"okulun bahçesi\" (the school's garden)", minCefr:4},
-  {key:"hitap_bicimleri", label:"Address Forms & Politeness",        hint:"e.g. \"Ahmet Bey\" (Mr. Ahmet), \"anneciğim\" (mommy), sen vs. siz register", minCefr:4},
-  {key:"edatlar",         label:"Postpositions (için, ile, göre, rağmen)", hint:"e.g. \"senin için\" (for you), \"buna rağmen\" (despite this)", minCefr:4},
+  {key:"hitap_bicimleri", label:"Address Forms & Politeness",        hint:"e.g. \"Ahmet Bey\" (Mr. Ahmet), \"anneciğim\" (mommy), sen vs. siz register", minCefr:4,
+    variants: [
+      {id:"titel",     hint:"honorific titles after a first name — e.g. \"Ahmet Bey\" (Mr. Ahmet), \"Ayşe Hanım\" (Mrs./Ms. Ayşe)"},
+      {id:"diminutief", hint:"affectionate/diminutive address forms — e.g. \"anneciğim\" (mommy), \"canım\" (dear/darling)"},
+      {id:"register",  hint:"the sen (informal) vs. siz (formal/plural) address register — e.g. asking the same thing with \"Nasılsın?\" (informal) vs. \"Nasılsınız?\" (formal)"},
+    ]},
+  {key:"edatlar",         label:"Postpositions (için, ile, göre, rağmen)", hint:"e.g. \"senin için\" (for you), \"buna rağmen\" (despite this)", minCefr:4,
+    variants: [
+      {id:"icin",    hint:"\"için\" (for/because of) — e.g. \"senin için\" (for you)"},
+      {id:"ile",     hint:"\"ile\" (with) — e.g. \"seninle\" (with you)"},
+      {id:"gore",    hint:"\"göre\" (according to) — e.g. \"bana göre\" (according to me)"},
+      {id:"ragmen",  hint:"\"rağmen\" (despite) — e.g. \"buna rağmen\" (despite this)"},
+    ]},
   {key:"gelecek_zaman",   label:"Future tense -ecek",                hint:"e.g. \"geleceğim\" (I will come)", minCefr:4},
-  {key:"karsilastirma",   label:"Comparison (daha, en, kadar, gibi)", hint:"e.g. \"ondan daha büyük\" (bigger than that)", minCefr:5},
+  {key:"karsilastirma",   label:"Comparison (daha, en, kadar, gibi)", hint:"e.g. \"ondan daha büyük\" (bigger than that)", minCefr:5,
+    variants: [
+      {id:"daha", hint:"\"daha\" comparative (-er/more) — e.g. \"ondan daha büyük\" (bigger than that)"},
+      {id:"en",   hint:"\"en\" superlative (the most) — e.g. \"en büyük\" (the biggest)"},
+      {id:"kadar", hint:"\"kadar\" equative (as...as) — e.g. \"senin kadar uzun\" (as tall as you)"},
+      {id:"gibi", hint:"\"gibi\" simile (like/as) — e.g. \"aslan gibi\" (like a lion)"},
+    ]},
   {key:"genis_zaman",     label:"Aorist (general truth) -ir",        hint:"habits/facts, e.g. \"her gün koşarım\" (I run every day)", minCefr:5},
-  {key:"baglaclar",       label:"Conjunctions (ki, hem...hem, ya...ya)", hint:"e.g. \"hem yorgunum hem açım\" (I'm both tired and hungry)", minCefr:6},
-  {key:"vurgu_partikelleri", label:"Emphasis Particles (de/da, bile, üstelik, hatta)", hint:"e.g. \"ben de geliyorum\" (I'm coming too), \"bunu bile bilmiyor\" (he doesn't even know this)", minCefr:6},
+  {key:"baglaclar",       label:"Conjunctions (ki, hem...hem, ya...ya)", hint:"e.g. \"hem yorgunum hem açım\" (I'm both tired and hungry)", minCefr:6,
+    variants: [
+      {id:"ki",      hint:"\"ki\" linking clause (that/who/which, or surprise/emphasis) — e.g. \"öyle bir şey söyledi ki herkes şaşırdı\" (he said something such that everyone was surprised)"},
+      {id:"hem_hem", hint:"\"hem...hem\" (both...and) — e.g. \"hem yorgunum hem açım\" (I'm both tired and hungry)"},
+      {id:"ya_ya",   hint:"\"ya...ya\" (either...or) — e.g. \"ya gel ya git\" (either come or go)"},
+    ]},
+  {key:"vurgu_partikelleri", label:"Emphasis Particles (de/da, bile, üstelik, hatta)", hint:"e.g. \"ben de geliyorum\" (I'm coming too), \"bunu bile bilmiyor\" (he doesn't even know this)", minCefr:6,
+    variants: [
+      {id:"de_da",   hint:"\"de/da\" (also/too) — e.g. \"ben de geliyorum\" (I'm coming too)"},
+      {id:"bile",    hint:"\"bile\" (even) — e.g. \"bunu bile bilmiyor\" (he doesn't even know this)"},
+      {id:"ustelik", hint:"\"üstelik\" (moreover/on top of that) — e.g. \"üstelik geç de kaldı\" (moreover, he was also late)"},
+      {id:"hatta",   hint:"\"hatta\" (in fact/even) — e.g. \"hatta bana yardım etti\" (he even helped me)"},
+    ]},
   {key:"gereklilik_kipi", label:"Necessitative -meli",               hint:"must/have to, e.g. \"gitmeliyim\" (I must go)", minCefr:6},
   {key:"gecmis_mis",      label:"Past tense -miş (hearsay/inferred)", hint:"e.g. \"gelmiş\" (apparently came)", minCefr:6},
   {key:"gecmis_devam",    label:"Past continuous -iyordu",           hint:"e.g. \"geliyordum\" (I was coming)", minCefr:7},
@@ -917,7 +980,12 @@ const GRAMMAR_TOPICS = [
   {key:"diginde",         label:"Converb -diğinde (when/at the time that)", hint:"e.g. \"eve geldiğinde\" (when he arrived home)", minCefr:9},
   {key:"inca",            label:"Converb -ınca (as soon as/when)",   hint:"e.g. \"okula varınca\" (as soon as he got to school)", minCefr:9},
   {key:"kucultme_eki",    label:"Diminutive -cik",                   hint:"e.g. \"azıcık\" (just a little bit)", minCefr:9},
-  {key:"ortac",           label:"Participles (-en/-dik/-ecek)",      hint:"used as adjectives, e.g. \"gelen adam\" (the man who came), \"okuduğum kitap\" (the book I read)", minCefr:9},
+  {key:"ortac",           label:"Participles (-en/-dik/-ecek)",      hint:"used as adjectives, e.g. \"gelen adam\" (the man who came), \"okuduğum kitap\" (the book I read)", minCefr:9,
+    variants: [
+      {id:"en",   hint:"agent participle -en (the one who does X) — e.g. \"gelen adam\" (the man who came)"},
+      {id:"dik",  hint:"past/relative participle -dik (what X did/the fact that) — e.g. \"okuduğum kitap\" (the book I read)"},
+      {id:"ecek", hint:"future participle -ecek (what will/is going to) — e.g. \"okuyacağım kitap\" (the book I will read)"},
+    ]},
   {key:"birlesik_gecmis", label:"Compound past combinations -mişti", hint:"e.g. \"gitmişti\" (he had apparently gone)", minCefr:10},
   {key:"dolayli_anlatim", label:"Direct/indirect speech",            hint:"e.g. \"'geliyorum' dedi\" (he said 'I'm coming') vs \"geleceğini söyledi\" (he said he'd come)", minCefr:10},
   {key:"dikce",           label:"Converb -dıkça (the more.../every time)", hint:"e.g. \"okudukça öğrenirsin\" (the more you read, the more you learn)", minCefr:11},
@@ -929,10 +997,26 @@ const GRAMMAR_TOPICS = [
   {key:"sart_bilesik",    label:"Compound conditional (hypothetical past, -seydi)", hint:"e.g. \"gitseydim\" (if I had gone), \"gitmiş olsaydı\" (if he had [reportedly] gone) — a hypothetical about something that did NOT happen, distinct from the basic -se conditional", minCefr:13},
   {key:"tezlik_fiili",    label:"Rapid-action verb -(y)Iver",         hint:"e.g. \"gidiver\" (just go / go right away), \"bakıver\" (just take a quick look) — adds a sense of speed, ease, or suddenness to the action", minCefr:13},
   {key:"rivayet_bilesik", label:"Compound hearsay tenses (-(i)yormuş, -mişmiş)", hint:"e.g. \"gidiyormuş\" (apparently he's going), \"gitmişmiş\" (apparently he had [reportedly] gone) — layering the hearsay/inferential -miş onto another tense, distinct from the simple -miş past", minCefr:14},
-  {key:"ileri_baglaclar", label:"Correlative conjunctions (ne...ne de, gerek...gerek, ister...ister)", hint:"e.g. \"ne çay ne de kahve\" (neither tea nor coffee), \"gerek anne gerek baba\" (both mother and father), \"ister gel ister gelme\" (whether you come or not) — paired conjunctions linking two items/options", minCefr:14},
+  {key:"ileri_baglaclar", label:"Correlative conjunctions (ne...ne de, gerek...gerek, ister...ister)", hint:"e.g. \"ne çay ne de kahve\" (neither tea nor coffee), \"gerek anne gerek baba\" (both mother and father), \"ister gel ister gelme\" (whether you come or not) — paired conjunctions linking two items/options", minCefr:14,
+    variants: [
+      {id:"ne_ne_de",   hint:"\"ne...ne de\" (neither...nor) — e.g. \"ne çay ne de kahve\" (neither tea nor coffee)"},
+      {id:"gerek_gerek", hint:"\"gerek...gerek\" (both...and) — e.g. \"gerek anne gerek baba\" (both mother and father)"},
+      {id:"ister_ister", hint:"\"ister...ister\" (whether...or) — e.g. \"ister gel ister gelme\" (whether you come or not)"},
+    ]},
   {key:"devrik_cumle",    label:"Inverted word order (devrik cümle) for emphasis", hint:"moving the verb away from its normal sentence-final position to emphasize another element, common in spoken/literary Turkish — e.g. \"Geldi mektup sonunda.\" (It arrived, the letter, finally — emphasizing \"geldi\") instead of the neutral \"Mektup sonunda geldi.\"", minCefr:15},
-  {key:"ileri_edatlar",   label:"Formal/written postpositions (dair, ilişkin, itibaren, nazaran)", hint:"e.g. \"bu konuya dair\" (regarding this matter), \"yarından itibaren\" (starting from tomorrow), \"geçen yıla nazaran\" (compared to last year) — more formal/written register than için/ile/göre/rağmen", minCefr:15},
-  {key:"ikileme",         label:"Reduplication / echo words (ikileme)", hint:"e.g. \"büyük büyük\" (huge, emphatic repetition), \"kitap mitap\" (books and such — dismissive echo-word), \"yemyeşil\" (intensely green — intensifying prefix reduplication)", minCefr:16},
+  {key:"ileri_edatlar",   label:"Formal/written postpositions (dair, ilişkin, itibaren, nazaran)", hint:"e.g. \"bu konuya dair\" (regarding this matter), \"yarından itibaren\" (starting from tomorrow), \"geçen yıla nazaran\" (compared to last year) — more formal/written register than için/ile/göre/rağmen", minCefr:15,
+    variants: [
+      {id:"dair",     hint:"\"dair\" (regarding/concerning) — e.g. \"bu konuya dair\" (regarding this matter)"},
+      {id:"iliskin",  hint:"\"ilişkin\" (related to/concerning) — e.g. \"bu karara ilişkin\" (related to this decision)"},
+      {id:"itibaren", hint:"\"itibaren\" (starting from) — e.g. \"yarından itibaren\" (starting from tomorrow)"},
+      {id:"nazaran",  hint:"\"nazaran\" (compared to) — e.g. \"geçen yıla nazaran\" (compared to last year)"},
+    ]},
+  {key:"ikileme",         label:"Reduplication / echo words (ikileme)", hint:"e.g. \"büyük büyük\" (huge, emphatic repetition), \"kitap mitap\" (books and such — dismissive echo-word), \"yemyeşil\" (intensely green — intensifying prefix reduplication)", minCefr:16,
+    variants: [
+      {id:"emfatisch", hint:"emphatic word-doubling — e.g. \"büyük büyük\" (huge/really big, emphatic repetition)"},
+      {id:"afwijzend", hint:"dismissive m-echo word (word + \"m\"-initial rhyming copy, meaning \"X and such/or whatever\") — e.g. \"kitap mitap\" (books and such)"},
+      {id:"versterkend", hint:"intensifying reduplicated prefix before an adjective — e.g. \"yemyeşil\" (intensely green), \"masmavi\" (deep blue)"},
+    ]},
   {key:"resmi_dil",       label:"Formal/bureaucratic register constructions", hint:"e.g. \"toplantının yapılmakta olduğu\" (the meeting that is [formally] taking place), \"geç kalınması durumunda\" (in the event of being late) — the nominalized, impersonal style used in official/written Turkish", minCefr:16},
   {key:"surerlik_fiili",  label:"Literary durative aspect -(y)Adur/-(y)Idur", hint:"e.g. \"bakadur\" (keep on looking), \"güledur\" (keep on laughing) — an archaic/literary construction for an ongoing action, rare in everyday speech", minCefr:17},
   {key:"atasozu_deyim",   label:"Proverbs & fixed idiomatic expressions", hint:"the grammatical patterns behind common Turkish proverbs/idioms — often elliptical or parallel structures, e.g. \"Ne ekersen onu biçersin.\" (You reap what you sow, lit. whatever you sow, that you harvest)", minCefr:17},
@@ -958,13 +1042,22 @@ const GRAMMAR_TOPICS = [
       {id:"su", hint:"\"şu\" (that, near the listener / pointed out close by) — e.g. \"şu adam\" (that man), \"Şunu görüyor musun?\" (Do you see that one?)"},
       {id:"o",  hint:"\"o\" (that, far from both speaker and listener) — e.g. \"o ev\" (that house), \"O kadın öğretmen.\" (That woman is a teacher)"},
     ]},
-  {key:"zarflar",           label:"Adverbs — formation & position", hint:"e.g. \"hızlı\" (fast, adjective) vs \"hızlıca\"/\"hızlı\" (quickly, adverb) — most Turkish adverbs are unmarked or use -ca/-ce", minCefr:4},
-  {key:"arac_hali",         label:"Instrumental case (-(y)la/-(y)le)", hint:"e.g. \"otobüsle\" (by bus), \"kalemle yazdım\" (I wrote with a pen) — the suffixed form of \"ile\"", minCefr:6},
+  {key:"zarflar",           label:"Adverbs — formation & position", hint:"e.g. \"hızlı\" (fast, adjective) vs \"hızlıca\"/\"hızlı\" (quickly, adverb) — most Turkish adverbs are unmarked or use -ca/-ce", minCefr:4,
+    variants: [
+      {id:"vorming", hint:"how an adverb is FORMED from an adjective (unmarked, or with -ca/-ce) — e.g. \"hızlı\" (fast) -> \"hızlıca\"/\"hızlı\" (quickly)"},
+      {id:"positie", hint:"where the adverb is PLACED in the sentence (typically right before the verb it modifies) — e.g. \"çok hızlı koştu\" (he ran very fast)"},
+    ]},
+  {key:"arac_hali",         label:"Instrumental case (-(y)la/-(y)le)", hint:"e.g. \"otobüsle\" (by bus), \"kalemle yazdım\" (I wrote with a pen) — the suffixed form of \"ile\" — vary which of the two vowel-harmony forms (-(y)la/-(y)le) comes up across repeated exercises", minCefr:6},
   {key:"belirsiz_zamirler", label:"Indefinite pronouns & quantifiers", hint:"e.g. \"biri\" (someone), \"herkes\" (everyone), \"hiç kimse\" (no one), \"bazı\" (some), \"her\" (every)", minCefr:6},
   {key:"kendi_zamiri",      label:"The reflexive pronoun kendi", hint:"e.g. \"kendim\" (myself), \"kendine bak\" (look after yourself) — distinct from the reflexive verb suffix -in", minCefr:8},
   {key:"diktan_sonra",      label:"Converb -DIktan sonra (after doing)", hint:"e.g. \"yemek yedikten sonra\" (after eating), \"eve geldikten sonra\" (after coming home) — the counterpart to -madan önce", minCefr:8},
   {key:"ip_baglaci",        label:"Converb -Ip (sequential actions)", hint:"e.g. \"gidip aldım\" (I went and got it), \"alıp geldi\" (he took it and came) — links same-subject actions without repeating tense/person", minCefr:9},
-  {key:"yardimci_fiiller",  label:"Light verb constructions (etmek/olmak/yapmak)", hint:"e.g. \"yardım etmek\" (to help), \"teşekkür etmek\" (to thank), \"hasta olmak\" (to become sick)", minCefr:10},
+  {key:"yardimci_fiiller",  label:"Light verb constructions (etmek/olmak/yapmak)", hint:"e.g. \"yardım etmek\" (to help), \"teşekkür etmek\" (to thank), \"hasta olmak\" (to become sick)", minCefr:10,
+    variants: [
+      {id:"etmek",  hint:"light verb \"etmek\" (to do/perform, with a borrowed/Arabic-origin noun) — e.g. \"yardım etmek\" (to help), \"teşekkür etmek\" (to thank)"},
+      {id:"olmak",  hint:"light verb \"olmak\" (to become) — e.g. \"hasta olmak\" (to become sick), \"mutlu olmak\" (to become/be happy)"},
+      {id:"yapmak", hint:"light verb \"yapmak\" (to do/make, with a native Turkish noun) — e.g. \"yardım yapmak\" (to do a favor/help), \"spor yapmak\" (to do sports)"},
+    ]},
   {key:"aliskanlik_gecmis", label:"Habitual past — \"used to\" (-ArdI)", hint:"e.g. \"eskiden sigara içerdim\" (I used to smoke), \"her gün koşardık\" (we used to run every day)", minCefr:10},
 ];
 // Sommige grammatica-onderwerpen bundelen meerdere, onderling duidelijk te onderscheiden vormen onder
