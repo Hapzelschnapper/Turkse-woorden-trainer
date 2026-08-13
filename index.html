@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.40</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.39</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -302,7 +302,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-13 v2.40</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-13 v2.39</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -1003,7 +1003,12 @@ const GRAMMAR_TOPICS = [
       {id:"gerek_gerek", hint:"\"gerek...gerek\" (both...and) — e.g. \"gerek anne gerek baba\" (both mother and father)"},
       {id:"ister_ister", hint:"\"ister...ister\" (whether...or) — e.g. \"ister gel ister gelme\" (whether you come or not)"},
     ]},
-  {key:"devrik_cumle",    label:"Inverted word order (devrik cümle) for emphasis", hint:"moving the verb away from its normal sentence-final position to emphasize another element, common in spoken/literary Turkish — e.g. \"Geldi mektup sonunda.\" (It arrived, the letter, finally — emphasizing \"geldi\") instead of the neutral \"Mektup sonunda geldi.\"", minCefr:15},
+  {key:"devrik_cumle",    label:"Inverted word order (devrik cümle) for emphasis", hint:"moving the verb away from its normal sentence-final position to emphasize another element, common in spoken/literary Turkish — e.g. \"Geldi mektup sonunda.\" (It arrived, the letter, finally — emphasizing \"geldi\") instead of the neutral \"Mektup sonunda geldi.\"", minCefr:15,
+    // Stilistische keuze, geen verplichte constructie -- het neutrale alternatief is ook gewoon correct
+    // Turks. Een productie-/vertaaloefening test dan niet of de gebruiker het HERKENT (zie ook ikileme
+    // hieronder). recognitionStyle routeert dit onderwerp altijd via een herkennings-vraag (twee
+    // voorbeeldzinnen, welke gebruikt de constructie) i.p.v. de gewone productieoefening.
+    recognitionStyle: true},
   {key:"ileri_edatlar",   label:"Formal/written postpositions (dair, ilişkin, itibaren, nazaran)", hint:"e.g. \"bu konuya dair\" (regarding this matter), \"yarından itibaren\" (starting from tomorrow), \"geçen yıla nazaran\" (compared to last year) — more formal/written register than için/ile/göre/rağmen", minCefr:15,
     variants: [
       {id:"dair",     hint:"\"dair\" (regarding/concerning) — e.g. \"bu konuya dair\" (regarding this matter)"},
@@ -1012,6 +1017,7 @@ const GRAMMAR_TOPICS = [
       {id:"nazaran",  hint:"\"nazaran\" (compared to) — e.g. \"geçen yıla nazaran\" (compared to last year)"},
     ]},
   {key:"ikileme",         label:"Reduplication / echo words (ikileme)", hint:"e.g. \"büyük büyük\" (huge, emphatic repetition), \"kitap mitap\" (books and such — dismissive echo-word), \"yemyeşil\" (intensely green — intensifying prefix reduplication)", minCefr:16,
+    recognitionStyle: true, // zelfde reden als devrik_cumle hierboven
     variants: [
       {id:"emfatisch", hint:"emphatic word-doubling — e.g. \"büyük büyük\" (huge/really big, emphatic repetition)"},
       {id:"afwijzend", hint:"dismissive m-echo word (word + \"m\"-initial rhyming copy, meaning \"X and such/or whatever\") — e.g. \"kitap mitap\" (books and such)"},
@@ -1048,7 +1054,14 @@ const GRAMMAR_TOPICS = [
       {id:"positie", hint:"where the adverb is PLACED in the sentence (typically right before the verb it modifies) — e.g. \"çok hızlı koştu\" (he ran very fast)"},
     ]},
   {key:"arac_hali",         label:"Instrumental case (-(y)la/-(y)le)", hint:"e.g. \"otobüsle\" (by bus), \"kalemle yazdım\" (I wrote with a pen) — the suffixed form of \"ile\" — vary which of the two vowel-harmony forms (-(y)la/-(y)le) comes up across repeated exercises", minCefr:6},
-  {key:"belirsiz_zamirler", label:"Indefinite pronouns & quantifiers", hint:"e.g. \"biri\" (someone), \"herkes\" (everyone), \"hiç kimse\" (no one), \"bazı\" (some), \"her\" (every)", minCefr:6},
+  {key:"belirsiz_zamirler", label:"Indefinite pronouns & quantifiers", hint:"e.g. \"biri\" (someone), \"herkes\" (everyone), \"hiç kimse\" (no one), \"bazı\" (some), \"her\" (every)", minCefr:6,
+    variants: [
+      {id:"biri",     hint:"\"biri\" (someone/one of them) — e.g. \"biri geldi\" (someone came)"},
+      {id:"herkes",   hint:"\"herkes\" (everyone) — e.g. \"herkes biliyor\" (everyone knows)"},
+      {id:"kimse",    hint:"\"hiç kimse\" (no one) — e.g. \"hiç kimse gelmedi\" (no one came)"},
+      {id:"bazi",     hint:"\"bazı\" (some) — e.g. \"bazı insanlar\" (some people)"},
+      {id:"her",      hint:"\"her\" (every) — e.g. \"her gün\" (every day)"},
+    ]},
   {key:"kendi_zamiri",      label:"The reflexive pronoun kendi", hint:"e.g. \"kendim\" (myself), \"kendine bak\" (look after yourself) — distinct from the reflexive verb suffix -in", minCefr:8},
   {key:"diktan_sonra",      label:"Converb -DIktan sonra (after doing)", hint:"e.g. \"yemek yedikten sonra\" (after eating), \"eve geldikten sonra\" (after coming home) — the counterpart to -madan önce", minCefr:8},
   {key:"ip_baglaci",        label:"Converb -Ip (sequential actions)", hint:"e.g. \"gidip aldım\" (I went and got it), \"alıp geldi\" (he took it and came) — links same-subject actions without repeating tense/person", minCefr:9},
@@ -3347,6 +3360,13 @@ async function pickSentenceFocus(){
 
 async function generateSentence(){
   const {target, grammarTopic} = await pickSentenceFocus();
+  if(grammarTopic && grammarTopic.recognitionStyle){
+    // Stilistisch/pragmatisch onderwerp (devrik_cumle, ikileme): geen verplichte constructie, dus een
+    // vertaal-/productieoefening test niet of de gebruiker 'm herkent. Route daarom altijd via de
+    // herkennings-vraag-opzet (buildQuestionItem + de isRecognition-tak in generateQuestionCandidate),
+    // ook al koos de planner toevallig "sentence" i.p.v. "question" als oefentype.
+    return buildQuestionItem(target, grammarTopic);
+  }
   const targetWord = target ? target.tr : "ev"; // veiligheidsnet, zou niet moeten voorkomen
 
   let parsed = await generateSentenceCandidate(targetWord, grammarTopic);
@@ -3409,7 +3429,21 @@ async function generateQuestionCandidate(targetWord, grammarTopic, _levelOverrid
   const level = _levelOverride ?? pickSentenceComplexityLevel();
   const vocabLevel = _vocabLevelOverride ?? pickLevelInRange(settings.cefrMin, settings.cefrMax); // zelfde bereik als de gewone woordoefening (samengevoegd)
   const knownSample = pickKnownVocabSample(35);
-  const sys = `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
+  const isRecognition = !!(grammarTopic && grammarTopic.recognitionStyle);
+  // Herkennings-vorm: voor stilistische/pragmatische onderwerpen (devrik_cumle, ikileme) is er geen
+  // "foute" neutrale zin -- die is ook gewoon correct Turks. Testen door de gebruiker de constructie te
+  // laten PRODUCEREN test dus niet of hij/zij 'm HERKENT. Deze branch vraagt in plaats daarvan: welke
+  // van twee voorbeeldzinnen gebruikt de constructie? Zelfde infrastructuur (Turkse vraag + Turks
+  // antwoord, gradeQuestionAnswer), dus geen nieuwe UI/schema nodig -- alleen een ander soort vraag.
+  const sys = isRecognition ? `Je maakt een HERKENNINGSVRAAG voor een taalleerapp, over het stilistische/pragmatische onderwerp "${grammarTopic.label}". Dit is GEEN verplichte constructie — het neutrale alternatief is ook gewoon correct Turks. Een gewone productie-/vertaaloefening test daarom niet of de gebruiker de constructie herkent; deze vraag doet dat wel.
+Verzin TWEE korte, natuurlijke Turkse zinnen over eenzelfde soort situatie, gelabeld A en B:
+- Precies ÉÉN van de twee (verdeel willekeurig over A/B, niet altijd dezelfde kant) gebruikt de opgegeven constructie duidelijk en correct: ${grammarTopic.hint}.
+- De ANDERE zin is een gewoon, neutraal, even correct alternatief ZONDER die constructie — geen typefout, geen onzin, gewoon een andere natuurlijke manier om iets vergelijkbaars te zeggen.
+Bouw daaromheen, in het Turks, een vraag die vraagt welke van de twee (A of B) de constructie gebruikt — bijvoorbeeld in de trant van: "A: [zin A] B: [zin B] Hangi cümlede [korte Turkse omschrijving van de constructie] var, A mı B mi?"
+KRITIEK: het resultaat MOET eindigen op een vraagteken.
+Probeer het doelwoord er waar natuurlijk in te verwerken, maar dit is ONDERGESCHIKT aan het duidelijk demonstreren van de constructie in precies één van de twee zinnen.
+Geef ook een lijst van alle betekenisvolle woorden uit BEIDE voorbeeldzinnen samen (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — geen losse achtervoegsels), in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling en een schatting van het CEFR-niveau (0-17).
+Antwoord in JSON.` : `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
 Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv. rekenen, geografie, een feit uit de zin zelf), ofwel een PERSOONLIJKE/OPEN vraag waarop elk contextueel passend Turks antwoord goed is (bv. "Bugün ne yaptın?").
 KRITIEK: het resultaat MOET een echte vraag zijn, GEEN mededelende stelling. Eindig ALTIJD met een vraagteken, en gebruik een vraagwoord (ne, nasıl, kim, nerede, kaç, hangi, neden, niçin, ...) of het vraagpartikel (mi/mı/mu/mü). Een zin als "Hava soğuktu ama dışarı çıktık." is FOUT (dat is een stelling); "Hava soğuk olmasına rağmen neden dışarı çıktınız?" is GOED (dat is een echte vraag).
 Als een grammaticaal onderwerp is opgegeven: bouw de vraag zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft. Wissel af in hoe je dat onderwerp verwerkt (bv. als onderwerp, lijdend voorwerp, of vlak vóór een zelfstandig naamwoord) en in het soort vraag (feitelijk vs. persoonlijk/open) — verzin niet steeds hetzelfde vraagpatroon.
@@ -3420,7 +3454,13 @@ BELANGRIJK: zinscomplexiteit (zinsbouw, lengte, aantal bijzinnen) en woordmoeili
 Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde woordniveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de vraag buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven WOORDNIVEAU (niet het zinscomplexiteitsniveau). Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger woordniveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken -- eenvoud van woordkeuze weegt hier zwaarder dan een verfraaiing.
 Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
 Antwoord in JSON.`;
-  const user = `Zinscomplexiteit: ${cefrLabel(level)}. ${cefrGuidance(level)}
+  const user = isRecognition ? `Zinscomplexiteit: ${cefrLabel(level)}. ${cefrGuidance(level)}
+Woordniveau-plafond: ${cefrLabel(vocabLevel)} — elk woord in beide voorbeeldzinnen (behalve het doelwoord en simpele functiewoorden) moet op of onder dit niveau liggen.
+Doelwoord (ondergeschikt, zie hierboven): "${targetWord}".
+Te herkennen constructie: "${grammarTopic.label}" (${grammarTopic.hint}).
+${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}
+${recentGeneratedTr.length ? `Vermijd een opzet die qua voorbeeldzinnen sterk lijkt op deze recent gegenereerde zinnen/vragen: ${recentGeneratedTr.map(s=>`"${s}"`).join(" / ")}` : ""}
+${_correctionNote || ""}` : `Zinscomplexiteit: ${cefrLabel(level)}. ${cefrGuidance(level)}
 Woordniveau-plafond (apart van de complexiteit hierboven): ${cefrLabel(vocabLevel)} — ELK woord in de vraag (behalve het doelwoord en simpele functiewoorden) moet op of onder dit niveau liggen, ongeacht hoe complex de zinsbouw zelf moet zijn.
 Doelwoord: "${targetWord}" (vervoegd/verbogen mag).
 ${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
@@ -3481,6 +3521,12 @@ function looksLikeQuestion(tr){
 
 async function generateQuestion(){
   const {target, grammarTopic} = await pickSentenceFocus(); // zelfde gecombineerde vocab/grammatica-logica als bij zinnen
+  return buildQuestionItem(target, grammarTopic);
+}
+
+// Losgetrokken uit generateQuestion() zodat generateSentence() hetzelfde pad kan hergebruiken voor
+// recognitionStyle-onderwerpen (zie daar) -- zonder pickSentenceFocus() twee keer aan te roepen.
+async function buildQuestionItem(target, grammarTopic){
   const targetWord = target ? target.tr : "ev";
 
   let parsed = await generateQuestionCandidate(targetWord, grammarTopic);
