@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.38</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.39</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -302,7 +302,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-13 01:00</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-13 v2.39</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -588,6 +588,27 @@ function repairLessonProgressGaps(){
 let checkupState = null;  // state machine van de nieuwe adaptieve trapsgewijze kennischeck (of null)
 let skillPracticeState = null; // { lesson, results:[] } — gerichte oefensessie op precies 1 les (of null)
 let adaptiveWindow = loadJSON(LS_ADAPTIVE_WINDOW, []); // laatste N (correct/fout) van reguliere oefeningen
+// Kleine in-memory buffer (niet persistent, reset bij herladen) met de laatst gegenereerde TR-zinnen/
+// vragen -- meegegeven aan de AI als "vermijd dit" lijst, puur om te voorkomen dat opeenvolgende
+// oefeningen sterk op elkaar lijken. Bewust klein (RECENT_SENTENCES_MAX) en niet opgeslagen: dit is
+// alleen bedoeld om de eerstvolgende paar generaties uit elkaar te trekken, geen lange-termijn-log.
+let recentGeneratedTr = [];
+const RECENT_SENTENCES_MAX = 6;
+function noteRecentSentence(tr){
+  if(!tr) return;
+  recentGeneratedTr.push(tr);
+  if(recentGeneratedTr.length > RECENT_SENTENCES_MAX) recentGeneratedTr.shift();
+}
+// Zelfde idee, maar dan voor de "veilige tegenpool"-woorden uit pickWellKnownWord() -- ook een kleine,
+// niet-persistente pool kan bij pure random-keuze een paar keer na elkaar hetzelfde woord opleveren.
+// Onthoudt de laatst GEKOZEN vulwoorden en sluit ze tijdelijk uit, mits de resterende pool nog bruikbaar is.
+let recentWellKnownWords = [];
+const RECENT_WELLKNOWN_MAX = 5;
+function noteRecentWellKnownWord(en){
+  if(!en) return;
+  recentWellKnownWords.push(en);
+  if(recentWellKnownWords.length > RECENT_WELLKNOWN_MAX) recentWellKnownWords.shift();
+}
 let costUsage = loadJSON(LS_COST, {byModel:{}});
 let costPending = loadJSON(LS_COST_PENDING, {byModel:{}});
 
@@ -916,8 +937,27 @@ const GRAMMAR_TOPICS = [
   {key:"surerlik_fiili",  label:"Literary durative aspect -(y)Adur/-(y)Idur", hint:"e.g. \"bakadur\" (keep on looking), \"güledur\" (keep on laughing) — an archaic/literary construction for an ongoing action, rare in everyday speech", minCefr:17},
   {key:"atasozu_deyim",   label:"Proverbs & fixed idiomatic expressions", hint:"the grammatical patterns behind common Turkish proverbs/idioms — often elliptical or parallel structures, e.g. \"Ne ekersen onu biçersin.\" (You reap what you sow, lit. whatever you sow, that you harvest)", minCefr:17},
   {key:"var_yok",           label:"Existence & possession (var/yok)", hint:"e.g. \"param var\" (I have money, lit. my money exists), \"zamanım yok\" (I don't have time)", minCefr:0},
-  {key:"soru_kelimeleri",   label:"Question words (ne/kim/nerede/ne zaman/nasıl/kaç/hangi)", hint:"e.g. \"Bu ne?\" (What is this?), \"Nerede oturuyorsun?\" (Where do you live?)", minCefr:0},
-  {key:"isaret_zamirleri",  label:"Demonstrative pronouns (bu/şu/o)", hint:"e.g. \"bu kitap\" (this book, near speaker), \"şu adam\" (that man, near listener), \"o ev\" (that house, far from both)", minCefr:1},
+  {key:"soru_kelimeleri",   label:"Question words (ne/kim/nerede/ne zaman/nasıl/kaç/hangi)", hint:"e.g. \"Bu ne?\" (What is this?), \"Nerede oturuyorsun?\" (Where do you live?)", minCefr:0,
+    // Zeven losse ondervormen i.p.v. één gedeelde hint -- zie VARIANTS_NOTE hierboven grammarTopicByKey
+    // voor waarom: zonder dit werd vrijwel altijd hetzelfde vraagwoord (meestal "ne") geoefend.
+    variants: [
+      {id:"ne",       hint:"\"ne\" (what) — e.g. \"Bu ne?\" (What is this?)"},
+      {id:"kim",      hint:"\"kim\" (who) — e.g. \"O kim?\" (Who is that?)"},
+      {id:"nerede",   hint:"\"nerede\" (where) — e.g. \"Nerede oturuyorsun?\" (Where do you live?)"},
+      {id:"nezaman",  hint:"\"ne zaman\" (when) — e.g. \"Ne zaman geliyorsun?\" (When are you coming?)"},
+      {id:"nasil",    hint:"\"nasıl\" (how) — e.g. \"Nasılsın?\" (How are you?)"},
+      {id:"kac",      hint:"\"kaç\" (how many/how much) — e.g. \"Kaç yaşındasın?\" (How old are you?)"},
+      {id:"hangi",    hint:"\"hangi\" (which) — e.g. \"Hangi kitap?\" (Which book?)"},
+    ]},
+  {key:"isaret_zamirleri",  label:"Demonstrative pronouns (bu/şu/o)", hint:"e.g. \"bu kitap\" (this book, near speaker), \"şu adam\" (that man, near listener), \"o ev\" (that house, far from both)", minCefr:1,
+    // Drie losse ondervormen -- zie de toelichting bij grammarTopicByKey/getTopicProgress hieronder.
+    // Zonder dit koos de AI vrijwel altijd "bu" (de prototypische/makkelijkste vorm), en telde dat als
+    // voortgang op het HELE onderwerp mee, waardoor şu en o nooit echt geoefend werden.
+    variants: [
+      {id:"bu", hint:"\"bu\" (this, near the speaker) — e.g. \"bu kitap\" (this book), \"Bunu istiyorum.\" (I want this one)"},
+      {id:"su", hint:"\"şu\" (that, near the listener / pointed out close by) — e.g. \"şu adam\" (that man), \"Şunu görüyor musun?\" (Do you see that one?)"},
+      {id:"o",  hint:"\"o\" (that, far from both speaker and listener) — e.g. \"o ev\" (that house), \"O kadın öğretmen.\" (That woman is a teacher)"},
+    ]},
   {key:"zarflar",           label:"Adverbs — formation & position", hint:"e.g. \"hızlı\" (fast, adjective) vs \"hızlıca\"/\"hızlı\" (quickly, adverb) — most Turkish adverbs are unmarked or use -ca/-ce", minCefr:4},
   {key:"arac_hali",         label:"Instrumental case (-(y)la/-(y)le)", hint:"e.g. \"otobüsle\" (by bus), \"kalemle yazdım\" (I wrote with a pen) — the suffixed form of \"ile\"", minCefr:6},
   {key:"belirsiz_zamirler", label:"Indefinite pronouns & quantifiers", hint:"e.g. \"biri\" (someone), \"herkes\" (everyone), \"hiç kimse\" (no one), \"bazı\" (some), \"her\" (every)", minCefr:6},
@@ -927,7 +967,60 @@ const GRAMMAR_TOPICS = [
   {key:"yardimci_fiiller",  label:"Light verb constructions (etmek/olmak/yapmak)", hint:"e.g. \"yardım etmek\" (to help), \"teşekkür etmek\" (to thank), \"hasta olmak\" (to become sick)", minCefr:10},
   {key:"aliskanlik_gecmis", label:"Habitual past — \"used to\" (-ArdI)", hint:"e.g. \"eskiden sigara içerdim\" (I used to smoke), \"her gün koşardık\" (we used to run every day)", minCefr:10},
 ];
-function grammarTopicByKey(key){ return GRAMMAR_TOPICS.find(t=>t.key===key); }
+// Sommige grammatica-onderwerpen bundelen meerdere, onderling duidelijk te onderscheiden vormen onder
+// één label (bv. isaret_zamirleri = bu/şu/o, soru_kelimeleri = ne/kim/nerede/...). Die krijgen een eigen
+// `variants`-array (zie hierboven); onderwerpen zonder `variants` gedragen zich exact als voorheen.
+// Elke variant krijgt zijn EIGEN voortgangsteller (opgeslagen onder "<topicKey>::<variantId>"), zodat het
+// systeem per vorm kan zien of die al voldoende geoefend is, i.p.v. één gedeelde teller voor het hele
+// onderwerp die al na de makkelijkste/meest voorkomende vorm "vol" leek te zitten.
+function getTopicVariants(topic){
+  return (topic.variants && topic.variants.length) ? topic.variants : [{id:null, hint:topic.hint}];
+}
+function variantProgressKey(topic, variantId){
+  return variantId ? `${topic.key}::${variantId}` : topic.key;
+}
+// Geeft het onderwerp met exact dezelfde vorm terug als voorheen ({key,label,hint,minCefr,...}), maar dan
+// toegespitst op ÉÉN specifieke variant: `key` wordt de samengestelde variant-sleutel (voor opslag/lookup)
+// en `hint` wordt de hint van die ene variant. Downstream code (promptopbouw, recordGrammarResult, opslag
+// op het oefen-item) hoeft hierdoor niet te weten dat variants bestaan -- het ziet gewoon een gewoon
+// topic-object, alleen preciezer.
+function effectiveTopicForVariant(topic, variant){
+  return {...topic, key: variantProgressKey(topic, variant.id), hint: variant.hint || topic.hint};
+}
+// Kiest, binnen één onderwerp, de zwakst-beoefende variant (laagste niveau; bij gelijke stand willekeurig)
+// -- dit is wat zorgt dat bv. şu en o ook echt aan de beurt komen zodra bu al vaker gebruikt is.
+function pickWeakestVariant(topic){
+  const variants = getTopicVariants(topic);
+  if(variants.length === 1) return variants[0];
+  const withLevel = variants.map(v => ({v, level: getGrammarProgress(variantProgressKey(topic, v.id)).level}));
+  const minLevel = Math.min(...withLevel.map(x=>x.level));
+  const pool = withLevel.filter(x=>x.level===minLevel).map(x=>x.v);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+// Geaggregeerde voortgang van een heel onderwerp, over al zijn varianten heen -- gebruikt voor alles wat
+// het onderwerp als GEHEEL beoordeelt (lesvoltooiing, statistiekschermen, CEFR-balkjes). `level` is het
+// MINIMUM over alle varianten (dus de bottleneck: pas "voltooid" als ELKE vorm voldoende beheerst wordt,
+// niet zodra de gemakkelijkste vorm vaak genoeg goed ging), `reps`/`correct` zijn de som, `due` is de
+// vroegste due-datum (de eerstvolgende variant die aan herhaling toe is).
+function getTopicProgress(topic){
+  const variants = getTopicVariants(topic);
+  const progresses = variants.map(v => getGrammarProgress(variantProgressKey(topic, v.id)));
+  return {
+    level: Math.min(...progresses.map(p=>p.level)),
+    reps: progresses.reduce((s,p)=>s+p.reps, 0),
+    correct: progresses.reduce((s,p)=>s+(p.correct||0), 0),
+    due: Math.min(...progresses.map(p=>p.due)),
+  };
+}
+function grammarTopicByKey(key){
+  if(!key) return null;
+  const [baseKey, variantId] = key.includes("::") ? key.split("::") : [key, null];
+  const topic = GRAMMAR_TOPICS.find(t=>t.key===baseKey);
+  if(!topic) return null;
+  if(!variantId) return topic;
+  const variant = getTopicVariants(topic).find(v=>v.id===variantId);
+  return variant ? effectiveTopicForVariant(topic, variant) : topic;
+}
 
 /* ===================== STRUCTURED COURSE (LESSONS) ===================== */
 /* ===================== CEFR TAALNIVEAU (moet vóór GRAMMAR_LESSONS/LESSONS staan, want cefrLabel wordt
@@ -1111,16 +1204,21 @@ function pickLessonGrammarTopic(){
   // toevallig staat -- de twee systemen (lesvoortgang vs. CEFR-slider) hielden geen rekening met elkaar.
   if(cur && cur.grammarTopics && cur.grammarTopics.length){
     const topic = grammarTopicByKey(cur.grammarTopics[0]);
-    if(topic && topic.minCefr <= cefrCeiling && getGrammarProgress(topic.key).level < 10) return topic;
+    // getTopicProgress().level is de bottleneck over alle varianten -- dus dit onderwerp blijft actief
+    // zolang ook maar ÉÉN vorm (bv. şu) nog niet voldoende beheerst wordt, niet alleen de makkelijkste.
+    if(topic && topic.minCefr <= cefrCeiling && getTopicProgress(topic).level < 10){
+      return effectiveTopicForVariant(topic, pickWeakestVariant(topic));
+    }
   }
   // anders: herhaling — zwakste onderwerp binnen alles wat al ontgrendeld is, EN binnen het CEFR-plafond
   const unlockedKeys = [...unlockedGrammarTopicSet()];
   const candidateKeys = unlockedKeys.length ? unlockedKeys : GRAMMAR_TOPICS.map(t=>t.key);
   let topics = candidateKeys.map(grammarTopicByKey).filter(t => t.minCefr <= cefrCeiling);
   if(!topics.length) topics = candidateKeys.map(grammarTopicByKey); // veiligheidsnet: nooit een lege pool
-  const minLevel = Math.min(...topics.map(t=>getGrammarProgress(t.key).level));
-  const pool = topics.filter(t=>getGrammarProgress(t.key).level === minLevel);
-  return pool[Math.floor(Math.random()*pool.length)];
+  const minLevel = Math.min(...topics.map(t=>getTopicProgress(t).level));
+  const pool = topics.filter(t=>getTopicProgress(t).level === minLevel);
+  const topic = pool[Math.floor(Math.random()*pool.length)];
+  return effectiveTopicForVariant(topic, pickWeakestVariant(topic));
 }
 
 /* ===================== KENNISCHECK (adaptieve trapsgewijze toets) ===================== */
@@ -1902,8 +2000,12 @@ function advanceCheckupStaircase(){
       const topic = topics[Math.min(topics.length-1, checkupState.grammarTopicIdx)];
       if(pct >= CHECKUP_LEVEL_PASS_THRESHOLD){
         checkupState.grammarCeiling = topic.minCefr; // dit onderwerp is nu met genoeg vragen bevestigd
-        const gp = getGrammarProgress(topic.key);
-        if(gp.level < CHECKUP_PASS_LEVEL) gp.level = CHECKUP_PASS_LEVEL;
+        // Zet de vloer op ELKE variant van dit onderwerp, niet alleen de basissleutel -- anders ziet de
+        // gewone oefenlogica (die per variant leest) deze checkup-bevestiging niet.
+        for(const v of getTopicVariants(topic)){
+          const gp = getGrammarProgress(variantProgressKey(topic, v.id));
+          if(gp.level < CHECKUP_PASS_LEVEL) gp.level = CHECKUP_PASS_LEVEL;
+        }
         saveJSON(LS_GRAMMAR, grammar);
         checkupState.grammarTopicIdx++;
         checkupState.grammarTopicResults = [];
@@ -2224,7 +2326,10 @@ function advanceTrackSession(track){
     done = attempted.length >= l.words.length;
   } else if(l.grammarTopics && l.grammarTopics.length){
     const topic = grammarTopicByKey(l.grammarTopics[0]);
-    done = getGrammarProgress(topic.key).reps >= l.targetExercises;
+    // Voltooid vereist nu ZOWEL genoeg herhalingen in totaal ALS dat elke variant (bu/şu/o e.d.)
+    // level 10 heeft gehaald -- niet langer alleen een totaal-repscore over het onderwerp als geheel.
+    const tp = getTopicProgress(topic);
+    done = tp.reps >= l.targetExercises && tp.level >= 10;
   } else {
     return ""; // pure leesles: geen eigen oefenstof
   }
@@ -3000,7 +3105,8 @@ De zin moet vooral grammaticaal correct en natuurlijk klinken voor een moedertaa
 Vermijd zinnen die zichzelf tegenspreken of onlogisch klinken (bv. een vraag en het antwoord daarop in één zin proppen).
 Let op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Is een naamwoord in de zin bedoeld als lijdend voorwerp van een overgankelijk werkwoord, geef het dan de juiste accusatief-uitgang (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü) — anders verandert de betekenis van de zin ongemerkt (bv. "Kitaplar tanıyor" betekent "de boeken kennen [iets]", niet "hij/zij kent de boeken"; dat laatste vereist "Kitapları tanıyor").
 Let ook op bezittelijkheid-consistentie: gebruik je een bezittelijk voornaamwoord (benim/senin/onun/bizim/sizin/onların) vóór een zelfstandig naamwoord, dan moet dat naamwoord ALTIJD ook zijn eigen bezittelijke uitgang dragen — het voornaamwoord alleen is in het Turks nooit voldoende, in tegenstelling tot het Engels waar "my house" zonder extra uitgang werkt (bv. "benim ev" is FOUT, het moet "benim evim" zijn: ev + -im; "Benim inek çok süt veriyor" is om dezelfde reden fout, het moet "Benim ineğim çok süt veriyor" zijn: inek + -im, met k→ğ verzachting).
-Als een grammaticaal onderwerp is opgegeven: bouw de zin zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
+Als een grammaticaal onderwerp is opgegeven: bouw de zin zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft. Gebruik het onderwerp op een gevarieerde manier: wissel bijvoorbeeld af tussen het woord/de vorm los als onderwerp/lijdend voorwerp, vlak vóór een zelfstandig naamwoord, en (waar van toepassing) in een vraagzin — verzin niet steeds hetzelfde soort zin (bv. niet steeds een simpele "X is van mij"-bezitszin).
+Varieer ook actief in zinsstructuur over aanroepen heen: wissel af tussen bevestigende zinnen, ontkennende zinnen, vragen (waar dat past bij het onderwerp), en verschillende werkwoorden/situaties — vermijd een vast sjabloon dat je telkens herhaalt.
 BELANGRIJK: zinscomplexiteit (zinsbouw, lengte, aantal bijzinnen) en woordmoeilijkheid (welke woorden je gebruikt) zijn TWEE APARTE dingen die je per aanroep los te horen krijgt. Een complexe zinsbouw kan en moet met simpele woorden gebouwd worden als het opgegeven woordniveau laag is — een lang, formeel, ambtelijk-klinkend of literair register is dan GEEN excuus om toch moeilijke woorden te gebruiken. Bouw liever een langere zin met alleen eenvoudige woorden en veel herhaling/omschrijving dan een kortere zin met één moeilijk woord.
 Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde woordniveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de zin buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven WOORDNIVEAU (niet het zinscomplexiteitsniveau — die twee kunnen ver uit elkaar liggen). Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger woordniveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken of beter bij het formele register past -- eenvoud van woordkeuze weegt hier zwaarder dan een verfraaiing.
 Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin.
@@ -3010,6 +3116,7 @@ Woordniveau-plafond (apart van de complexiteit hierboven): ${cefrLabel(vocabLeve
 Doelwoord: "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als de zinscomplexiteit dat vraagt).
 ${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
 ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}
+${recentGeneratedTr.length ? `Vermijd een zin die qua opbouw/structuur sterk lijkt op deze recent gegenereerde zinnen (ander doelwoord is niet genoeg — verzin een andere zinsvorm/situatie): ${recentGeneratedTr.map(s=>`"${s}"`).join(" / ")}` : ""}
 ${_correctionNote || ""}`;
   const schema = {
     name: "zin_kandidaat",
@@ -3034,11 +3141,15 @@ ${_correctionNote || ""}`;
       required: ["tr","words"]
     }
   };
-  const raw = await callAI("sentence", sys, user, 4000, 0.3, schema);
+  // Temperature was 0.3 -- samen met de vaste systeemprompt (bewust identiek voor prompt-caching, zie
+  // hierboven) en een instructie die eenvoud boven alles stelde, duwde dat het model structureel naar
+  // dezelfde "veiligste" zinsvorm. 0.6 geeft meer variatie zonder de striktere eisen (naamval, woordniveau)
+  // los te laten -- die worden hierna nog steeds los gecontroleerd (checkSentenceNatural, vocab-check).
+  const raw = await callAI("sentence", sys, user, 4000, 0.6, schema);
   let parsed = parseAIJson(raw);
   if(!parsed.tr){
     // Zelfde stille-herkansing-redenering als bij generateSingleTestItem/generateQuestionCandidate.
-    const raw2 = await callAI("sentence", sys, user, 4000, 0.3, schema);
+    const raw2 = await callAI("sentence", sys, user, 4000, 0.6, schema);
     parsed = parseAIJson(raw2);
   }
   if(!parsed.tr) throw new Error("AI did not return a sentence.");
@@ -3071,15 +3182,34 @@ Antwoord in JSON.`;
   }catch(e){ return true; } // check zelf mislukt -> kandidaat gewoon accepteren, niet blokkeren
 }
 
-/* Een goed beheerst (niveau >=7) woord binnen wat ontgrendeld is — gebruikt als "veilige" tegenpool
-   wanneer een oefening juist gericht is op een zwak grammatica-onderwerp, zodat niet twee onbekende
-   dingen tegelijk getest worden. */
+/* Een redelijk bekend woord binnen wat ontgrendeld is — gebruikt als "veilige" tegenpool wanneer een
+   oefening juist gericht is op een zwak grammatica-onderwerp, zodat niet twee onbekende dingen tegelijk
+   getest worden. Drempel getrapt (7 -> 4 -> 1) i.p.v. altijd hard >=7: vroeg in het leerproces zijn er
+   vaak maar een paar (soms zelfs 1) woorden met level>=7, waardoor telkens exact datzelfde ene woord
+   ("cd", "ev", ...) als doelwoord terugkwam in bijna elke zin van een grammatica-les. Door de drempel te
+   verlagen zodra de striktere pool te klein is, wordt de pool woorden vroeg in de app een stuk groter,
+   zonder de voorkeur voor beter-beheerste woorden helemaal los te laten wanneer die pool wél groot genoeg is.
+   Sluit daarnaast de laatst gekozen woorden (recentWellKnownWords) tijdelijk uit: ook een pool van pak 'm
+   beet 8 woorden kan bij kale random-keuze een paar keer op rij hetzelfde woord opleveren. */
 function pickWellKnownWord(){
-  const allKnown = [...unlockedWordSet()].filter(en => { const p = getProgress(en); return p.reps > 0 && p.level >= 7; });
-  const inRange = allKnown.filter(inCefrRangeEn);
-  const words = inRange.length ? inRange : allKnown;
+  const unlocked = [...unlockedWordSet()];
+  const MIN_POOL = 5; // onder dit aantal proberen we een soepelere drempel
+  let words = [];
+  for(const minLevel of [7, 4, 1]){
+    const allKnown = unlocked.filter(en => { const p = getProgress(en); return p.reps > 0 && p.level >= minLevel; });
+    const inRange = allKnown.filter(inCefrRangeEn);
+    words = inRange.length >= MIN_POOL ? inRange : allKnown;
+    if(words.length >= MIN_POOL) break;
+  }
   if(!words.length) return null;
-  return words[Math.floor(Math.random()*words.length)];
+  // Recent gekozen vulwoorden tijdelijk uitsluiten, zodat een kleine pool niet alsnog telkens hetzelfde
+  // woord teruggeeft door pure toevalsherhaling. Alleen toepassen als er na uitsluiting nog genoeg
+  // overblijft -- anders (heel kleine pool) liever een keer herhalen dan helemaal niets kunnen kiezen.
+  const fresh = words.filter(en => !recentWellKnownWords.includes(en));
+  const pool = fresh.length ? fresh : words;
+  const chosen = pool[Math.floor(Math.random()*pool.length)];
+  noteRecentWellKnownWord(chosen);
+  return chosen;
 }
 /* Zelfde idee, maar dan een goed beheerst grammatica-onderwerp — gebruikt als "veilige" grammatica
    wanneer een oefening juist gericht is op een nog niet goed gekend woord. */
@@ -3088,8 +3218,12 @@ function pickWellKnownGrammarTopic(){
   const unlockedKeys = [...unlockedGrammarTopicSet()];
   const keys = unlockedKeys.length ? unlockedKeys : GRAMMAR_TOPICS.map(t=>t.key);
   const topics = keys.map(grammarTopicByKey).filter(t => t.minCefr <= cefrCeiling);
-  const known = topics.filter(t => getGrammarProgress(t.key).level >= 7);
-  return known.length ? known[Math.floor(Math.random()*known.length)] : null;
+  // level >= 7 hier is de bottleneck over alle varianten (zie getTopicProgress) -- een onderwerp telt pas
+  // als "goed beheerst" zodra ELKE vorm dat niveau haalt, niet zodra gemiddeld genomen goed gescoord wordt.
+  const known = topics.filter(t => getTopicProgress(t).level >= 7);
+  if(!known.length) return null;
+  const topic = known[Math.floor(Math.random()*known.length)];
+  return effectiveTopicForVariant(topic, pickWeakestVariant(topic)); // ook als "veilige" filler: nog steeds per variant rouleren
 }
 
 /* Combineert de vocabulaire- en grammaticastand tot ÉÉN keuze per oefening: ofwel een zwak
@@ -3173,6 +3307,7 @@ async function generateSentence(){
   const seen = new Set();
   const words = items.filter(it=>{ if(seen.has(it.en)) return false; seen.add(it.en); return true; });
 
+  noteRecentSentence(parsed.tr);
   return {tr: parsed.tr, type:"sentence", words, grammarTopic: grammarTopic.key};
 }
 
@@ -3184,7 +3319,7 @@ async function generateQuestionCandidate(targetWord, grammarTopic, _levelOverrid
   const sys = `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
 Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv. rekenen, geografie, een feit uit de zin zelf), ofwel een PERSOONLIJKE/OPEN vraag waarop elk contextueel passend Turks antwoord goed is (bv. "Bugün ne yaptın?").
 KRITIEK: het resultaat MOET een echte vraag zijn, GEEN mededelende stelling. Eindig ALTIJD met een vraagteken, en gebruik een vraagwoord (ne, nasıl, kim, nerede, kaç, hangi, neden, niçin, ...) of het vraagpartikel (mi/mı/mu/mü). Een zin als "Hava soğuktu ama dışarı çıktık." is FOUT (dat is een stelling); "Hava soğuk olmasına rağmen neden dışarı çıktınız?" is GOED (dat is een echte vraag).
-Als een grammaticaal onderwerp is opgegeven: bouw de vraag zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft.
+Als een grammaticaal onderwerp is opgegeven: bouw de vraag zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft. Wissel af in hoe je dat onderwerp verwerkt (bv. als onderwerp, lijdend voorwerp, of vlak vóór een zelfstandig naamwoord) en in het soort vraag (feitelijk vs. persoonlijk/open) — verzin niet steeds hetzelfde vraagpatroon.
 De vraag moet grammaticaal correct en natuurlijk klinken voor een moedertaalspreker.
 Let op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Is een naamwoord bedoeld als lijdend voorwerp van een overgankelijk werkwoord, geef het dan de juiste accusatief-uitgang (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü) — anders verandert de betekenis van de zin ongemerkt.
 Let ook op bezittelijkheid-consistentie: gebruik je een bezittelijk voornaamwoord (benim/senin/onun/bizim/sizin/onların) vóór een zelfstandig naamwoord, dan moet dat naamwoord ALTIJD ook zijn eigen bezittelijke uitgang dragen (bv. "benim evim", nooit kaal "benim ev") — het voornaamwoord alleen is in het Turks nooit voldoende.
@@ -3197,6 +3332,7 @@ Woordniveau-plafond (apart van de complexiteit hierboven): ${cefrLabel(vocabLeve
 Doelwoord: "${targetWord}" (vervoegd/verbogen mag).
 ${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
 ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}
+${recentGeneratedTr.length ? `Vermijd een vraag die qua opbouw/structuur sterk lijkt op deze recent gegenereerde zinnen/vragen: ${recentGeneratedTr.map(s=>`"${s}"`).join(" / ")}` : ""}
 ${_correctionNote || ""}`;
   const schema = {
     name: "vraag_kandidaat",
@@ -3222,12 +3358,12 @@ ${_correctionNote || ""}`;
       required: ["tr","feitelijk","words"]
     }
   };
-  const raw = await callAI("sentence", sys, user, 4000, 0.4, schema);
+  const raw = await callAI("sentence", sys, user, 4000, 0.6, schema); // 0.4 -> 0.6, zelfde reden als generateSentenceCandidate
   let parsed = parseAIJson(raw);
   if(!parsed.tr){
     // Zelfde stille-herkansing-redenering als bij generateSingleTestItem/generateSentenceCandidate --
     // dit is precies de plek die eerder "AI did not return a question" liet zien zonder herkansing.
-    const raw2 = await callAI("sentence", sys, user, 4000, 0.4, schema);
+    const raw2 = await callAI("sentence", sys, user, 4000, 0.6, schema);
     parsed = parseAIJson(raw2);
   }
   if(!parsed.tr) throw new Error("AI did not return a question.");
@@ -3304,6 +3440,7 @@ async function generateQuestion(){
   const seen = new Set();
   const words = items.filter(it=>{ if(seen.has(it.en)) return false; seen.add(it.en); return true; });
 
+  noteRecentSentence(parsed.tr);
   return {tr: parsed.tr, type:"question", words, grammarTopic: grammarTopic.key};
 }
 
@@ -4225,7 +4362,7 @@ function cefrWordProgress(idx){
 function cefrGrammarProgress(idx){
   const topics = GRAMMAR_TOPICS.filter(t => t.minCefr === idx);
   if(!topics.length) return null;
-  const avg = topics.reduce((a,t)=>a+getGrammarProgress(t.key).level, 0) / topics.length;
+  const avg = topics.reduce((a,t)=>a+getTopicProgress(t).level, 0) / topics.length;
   return Math.round(avg / 10 * 100);
 }
 
@@ -4284,7 +4421,7 @@ function renderStats(){
   // Grammatica-KPI's: zelfde soort tellingen, maar dan voor de 46 grammatica-onderwerpen
   let gTotal=0, gMastered=0, gDue=0, gShownTotal=0, gShownLevelSum=0;
   for(const t of GRAMMAR_TOPICS){
-    const p = getGrammarProgress(t.key);
+    const p = getTopicProgress(t);
     gTotal++;
     if(p.level === 10) gMastered++;
     if(p.reps > 0){ gShownTotal++; gShownLevelSum += p.level; }
@@ -4303,7 +4440,7 @@ function renderStats(){
 function renderGrammarList(){
   const list = el("grammar-list");
   if(!list) return;
-  const rows = GRAMMAR_TOPICS.map(t=>({t, p: getGrammarProgress(t.key)}))
+  const rows = GRAMMAR_TOPICS.map(t=>({t, p: getTopicProgress(t)}))
     .sort((a,b)=> a.p.level - b.p.level); // zwakste eerst
   list.innerHTML = rows.map(({t,p})=>{
     const pct = p.level*10;
@@ -4409,7 +4546,7 @@ function macroCefrOfLesson(l){
 // zonder eigen oefenstof (bv. "How Turkish Works") hebben geen cijfer.
 function lessonProficiency(l){
   if(l.grammarTopics && l.grammarTopics.length){
-    const avg = l.grammarTopics.reduce((s,k)=>s+getGrammarProgress(k).level, 0) / l.grammarTopics.length;
+    const avg = l.grammarTopics.reduce((s,k)=>s+getTopicProgress(grammarTopicByKey(k)).level, 0) / l.grammarTopics.length;
     return Math.round(avg*10)/10;
   }
   if(l.words && l.words.length){
@@ -4645,8 +4782,11 @@ function skipLessonsToLevel(cefrIdx){
   }
   for(const t of GRAMMAR_TOPICS){
     if(t.minCefr <= cefrIdx){
-      const gp = getGrammarProgress(t.key);
-      if(gp.level < CHECKUP_PASS_LEVEL){ gp.level = CHECKUP_PASS_LEVEL; grammarCount++; }
+      // Idem als bij de checkup: elke variant apart op de vloer zetten, anders mist de oefenlogica dit.
+      for(const v of getTopicVariants(t)){
+        const gp = getGrammarProgress(variantProgressKey(t, v.id));
+        if(gp.level < CHECKUP_PASS_LEVEL){ gp.level = CHECKUP_PASS_LEVEL; grammarCount++; }
+      }
     }
   }
   if(vocabCount) saveJSON(LS_PROGRESS, progress);
