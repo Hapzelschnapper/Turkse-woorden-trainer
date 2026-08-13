@@ -4770,6 +4770,8 @@ const MIX_SNAP_RELEASE = 16;
 // werkelijke vingerpositie -- de bolletje-positie schuift zo 1-op-1 mee met je vinger, maar blijft
 // zichtbaar boven je vingertop i.p.v. eronder verdwenen. Met muis/pen (cursor blokkeert niets) blijft
 // dit uit. 40 bleek in de praktijk nog te weinig (dot dook nog deels onder de vingertop weg) -> groter.
+// Belangrijk: deze lift wordt VOOR de magneetdetectie toegepast (zie wireMixTriangle), zodat het
+// magneeteffect het getilde/zichtbare bolletje aan een lijn plakt, niet de rauwe vingerpositie eronder.
 const MIX_TOUCH_LIFT = 64;
 function closestPointOnSegment(px, py, x1, y1, x2, y2){
   const dx = x2-x1, dy = y2-y1;
@@ -4858,19 +4860,21 @@ function wireMixTriangle(){
   let snappedIdx = -1; // index in MIX_SNAP_TARGETS waar we nu aan vastzitten, of -1 (zie hysterese hierboven)
   function handleMove(evt){
     if(!dragging) return;
-    const raw = svgPointFromEvent(svg, evt); // werkelijke vinger-/cursorpositie, ongewijzigd
-    // Snap-detectie gebeurt op de WERKELIJKE aanraakpositie, niet op de al-getilde -- anders moet je
-    // fysiek een stukje richting het midden compenseren voordat de (getilde) positie de vaste,
-    // getekende stippellijn/zijde raakt. Zo voel/zie je het al zodra je vinger/cursor de lijn zelf raakt.
-    const snap = findMixSnapTarget(raw.x, raw.y, snappedIdx);
+    const raw = svgPointFromEvent(svg, evt); // werkelijke vinger-/cursorpositie
     const isTouch = evt.pointerType === "touch";
+    // Bij touch werken we vanaf hier in "bolletje-coördinaten" (raw, al omhoog getild) i.p.v. de rauwe
+    // vingerpositie. Het magneeteffect moet het ZICHTBARE bolletje aan de hulplijn/zijde laten plakken --
+    // niet de onzichtbare vingerpositie eronder. Met de oude volgorde (eerst snappen op raw, dan pas
+    // tillen) plakte de magneet aan je vinger terwijl het bolletje daarna alsnog 64 eenheden los van de
+    // lijn kwam te zweven.
+    const display = isTouch ? {x: raw.x, y: raw.y - MIX_TOUCH_LIFT} : raw;
+    const snap = findMixSnapTarget(display.x, display.y, snappedIdx);
     // Trilling alleen bij het NIEUW raken van een zijde/hulplijn (niet continu terwijl je erop blijft
     // hangen), en alleen met muis/pen -- niet met de vinger (het touchscreen geeft daar al zijn eigen,
     // systeemeigen aanraakgevoel; dit JS-trilsignaal is specifiek de cursor-feedback).
     if(snap && snap.idx !== snappedIdx && !isTouch) vibrateLight();
     snappedIdx = snap ? snap.idx : -1;
-    let logical = snap ? {x: snap.x, y: snap.y} : raw;
-    if(isTouch) logical = {x: logical.x, y: logical.y - MIX_TOUCH_LIFT}; // bolletje blijft zichtbaar boven de vinger
+    const logical = snap ? {x: snap.x, y: snap.y} : display;
     setMixFromPoint(logical.x, logical.y);
     evt.preventDefault();
   }
