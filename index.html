@@ -363,6 +363,19 @@
   </div>
 </div>
 
+<div class="modal-bg hidden" id="modal-lesson-grade">
+  <div class="modal">
+    <h3 id="lesson-grade-modal-title">✏️ Set your own grade</h3>
+    <div class="muted" style="margin-bottom:10px;">Already master this lesson? Set your own grade for it. This works as a personal minimum for this one lesson — your real practice results can still push it higher, but they'll never show lower than what you set here. Stored only in this browser, not synced and not shared with anyone else using this app.</div>
+    <input type="number" id="lesson-grade-input" min="0" max="10" step="1" style="width:100%;">
+    <div class="row" style="margin-top:10px;">
+      <button class="btn-primary" id="btn-lesson-grade-save" style="flex:1;">Save</button>
+      <button class="btn-ghost" id="btn-lesson-grade-close">Cancel</button>
+    </div>
+    <button class="btn-ghost btn-small hidden" id="btn-lesson-grade-clear" style="width:100%;margin-top:8px;">Remove personal grade</button>
+  </div>
+</div>
+
 <div class="modal-bg hidden" id="modal-home">
   <div class="modal">
     <h3>Add to home screen (Samsung S22 / Chrome)</h3>
@@ -483,6 +496,7 @@ const LS_ACTIVE_CHECKUP = "turks_active_checkup_v1";  // volledige activeCheckup
 const LS_ADAPTIVE_WINDOW = "turks_adaptive_v1";        // array van laatste N correct/fout-uitkomsten (reguliere oefeningen)
 const LS_COST      = "turks_cost_v1";          // { byModel: {...} } — bevestigd/gesynct totaal
 const LS_COST_PENDING = "turks_cost_pending_v1"; // { byModel: {...} } — lokaal verbruik nog niet samengevoegd met cloud
+const LS_LESSON_GRADE_OVERRIDES = "turks_lesson_grade_overrides_v1"; // { [lessonId]: grade 0-10 } — handmatig ingesteld persoonlijk minimumcijfer per les ("ik beheers dit al")
 
 function loadJSON(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
@@ -4850,13 +4864,18 @@ function lessonProficiency(l){
   return null;
 }
 
-// Het GETOONDE lescijfer: een vast cijfer per CEFR-macroniveau, los van de echte oefenresultaten
-// (die blijven wel meetellen voor "done"-status via lessonProficiency hierboven, en de afzonderlijk
-// geoefende woorden/onderwerpen krijgen gewoon hun eigen echte score). Lessen t/m B1 krijgen een hoog
-// cijfer; hoe hoger het niveau, hoe lager het vaste cijfer.
-const FIXED_LESSON_GRADE = {Fundamentals:10, A1:10, A2:10, B1:8, B2:7, C1:5, C2:3};
+// Het GETOONDE lescijfer: normaal gewoon de echte, op je antwoorden gebaseerde proficiency. Via het
+// potloodje bij een les (renderCourseLessonRow) kun je zelf een cijfer instellen voor een les die je
+// vindt dat je al beheerst, ook al is er hier nog niet (genoeg) op geoefend -- dat werkt als een
+// PERSOONLIJK MINIMUM voor precies die ene les, geen vaste waarde: je echte proficiency kan het gewoon
+// overtreffen zodra je verder oefent. Puur lokaal (per browser), dus niet gesynct en niet van invloed
+// op anderen die dezelfde app-link gebruiken.
+let lessonGradeOverrides = loadJSON(LS_LESSON_GRADE_OVERRIDES, {});
 function displayLessonGrade(l){
-  return lessonProficiency(l) !== null ? FIXED_LESSON_GRADE[macroCefrOfLesson(l)] : null;
+  const real = lessonProficiency(l);
+  if(real === null) return null;
+  const override = lessonGradeOverrides[l.id];
+  return override !== undefined ? Math.max(real, override) : real;
 }
 
 function isLessonDone(l){
@@ -4874,7 +4893,9 @@ function renderCourseLessonRow(l, idx){
     sub = isLessonCompleted(l.id) ? "✅ Read" : "Reference — tap to read";
   } else {
     const color = level<=3 ? "#e0333f" : level<=6 ? "#e0a733" : level<9 ? "#2fae6a" : "#4fd88a";
-    rightHtml = `<div style="font-size:1rem;font-weight:700;color:${color};">${level}/10</div>`;
+    const hasOverride = lessonGradeOverrides[l.id] !== undefined;
+    rightHtml = `<div style="font-size:1rem;font-weight:700;color:${color};">${level}/10</div>
+      <button class="btn-ghost btn-small grade-override-btn" data-id="${l.id}" style="padding:1px 6px;font-size:.68rem;margin-top:2px;" title="Set your own grade for this lesson">${hasOverride ? "✏️ own" : "✏️"}</button>`;
     sub = (level === 0 ? "Not tried yet" : level >= 9 ? "Well in hand" : "In progress") + scoreTxt;
   }
   return `<div class="word-row" style="cursor:pointer;" data-idx="${idx}">
@@ -4942,6 +4963,12 @@ function renderCourseColumn(containerEl, items, currentMacro, track){
     const idx = parseInt(row.dataset.idx, 10);
     row.addEventListener("click", ()=> openLessonModal(idx));
   });
+  containerEl.querySelectorAll(".grade-override-btn").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.stopPropagation(); // niet ook de les-modal openen
+      openLessonGradeModal(btn.dataset.id);
+    });
+  });
   // Onthoud in-/uitklappen: de native <details>-"toggle"-event vuurt zowel bij open- als dichtklikken.
   // Sub-secties (start/mid/end) hebben data-sub en worden niet apart onthouden -- ze staan gewoon
   // standaard open zodra hun macro-sectie openstaat.
@@ -4968,6 +4995,41 @@ function renderCourseTab(){
   renderCourseColumn(el("vocab-tree"), vocabItems, curVocabMacro, "vocab");
 }
 
+/* ===== Persoonlijk lescijfer (potloodje) — handmatig ingesteld minimum voor precies één les ===== */
+let gradeOverrideLessonId = null;
+function openLessonGradeModal(lessonId){
+  const l = LESSONS.find(x=>x.id===lessonId);
+  if(!l) return;
+  gradeOverrideLessonId = lessonId;
+  el("lesson-grade-modal-title").textContent = `✏️ ${l.icon} ${l.title}`;
+  const current = lessonGradeOverrides[lessonId];
+  const real = lessonProficiency(l);
+  el("lesson-grade-input").value = current !== undefined ? current : Math.round(real ?? 0);
+  el("btn-lesson-grade-clear").classList.toggle("hidden", current === undefined);
+  el("modal-lesson-grade").classList.remove("hidden");
+  el("lesson-grade-input").focus();
+}
+function saveLessonGradeOverride(){
+  if(!gradeOverrideLessonId) return;
+  const v = parseFloat(el("lesson-grade-input").value);
+  if(!Number.isFinite(v)){ el("modal-lesson-grade").classList.add("hidden"); return; }
+  lessonGradeOverrides[gradeOverrideLessonId] = Math.max(0, Math.min(10, v));
+  saveJSON(LS_LESSON_GRADE_OVERRIDES, lessonGradeOverrides);
+  closeLessonGradeModal();
+}
+function clearLessonGradeOverride(){
+  if(!gradeOverrideLessonId) return;
+  delete lessonGradeOverrides[gradeOverrideLessonId];
+  saveJSON(LS_LESSON_GRADE_OVERRIDES, lessonGradeOverrides);
+  closeLessonGradeModal();
+}
+function closeLessonGradeModal(){
+  el("modal-lesson-grade").classList.add("hidden");
+  gradeOverrideLessonId = null;
+  renderCourseTab();
+  if(openLessonIdx !== null && !el("modal-lesson").classList.contains("hidden")) openLessonModal(openLessonIdx);
+}
+
 async function openLessonModal(idx){
   openLessonIdx = idx;
   const l = LESSONS[idx];
@@ -4977,8 +5039,9 @@ async function openLessonModal(idx){
   const level = displayLessonGrade(l);
   const lastScore = lastSkillPracticeScore[l.id];
   el("lesson-modal-progress").innerHTML = level !== null
-    ? `<div class="muted">Current proficiency: <b>${level}/10</b>` + (lastScore ? ` · Last practice round: <b>${lastScore.correct}/${lastScore.total}</b>` : "") + `</div>`
+    ? `<div class="muted">Current proficiency: <b>${level}/10</b>` + (lastScore ? ` · Last practice round: <b>${lastScore.correct}/${lastScore.total}</b>` : "") + ` · <button class="btn-ghost btn-small" id="btn-lesson-modal-grade" style="padding:1px 6px;font-size:.75rem;">✏️ ${lessonGradeOverrides[l.id] !== undefined ? "edit" : "set"} my own grade</button></div>`
     : (isLessonCompleted(l.id) ? `<div class="muted">✅ Marked as read.</div>` : "");
+  if(level !== null) el("btn-lesson-modal-grade").addEventListener("click", ()=> openLessonGradeModal(l.id));
   if(needsPractice){
     el("btn-lesson-action").classList.add("hidden"); // "Practice this skill" hieronder is de weg
   } else {
@@ -5471,6 +5534,9 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-edit-word-save").addEventListener("click", saveEditWord);
   el("btn-edit-word-close").addEventListener("click", closeEditWordModal);
   el("btn-edit-word-clear").addEventListener("click", clearEditWord);
+  el("btn-lesson-grade-save").addEventListener("click", saveLessonGradeOverride);
+  el("btn-lesson-grade-close").addEventListener("click", closeLessonGradeModal);
+  el("btn-lesson-grade-clear").addEventListener("click", clearLessonGradeOverride);
   el("edit-word-en-input").addEventListener("keydown", e=>{
     if(e.key === "Enter"){ e.preventDefault(); saveEditWord(); }
   });
