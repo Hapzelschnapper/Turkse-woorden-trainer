@@ -85,7 +85,7 @@
         </div>
         <div style="flex:1 1 100%;min-width:0;margin-top:8px;">
           <h4 style="margin:4px 0 8px;">🎯 Weakest words</h4>
-          <div class="muted" style="margin-bottom:8px;">Words within your current CEFR range that score lowest (or that you get wrong most often).</div>
+          <div class="muted" style="margin-bottom:8px;">Words within your current CEFR range that score lowest, combining their level and how often you get them wrong into one weakness score.</div>
           <div class="row" style="gap:6px;">
             <select id="weak-words-count" class="select-input" style="flex:1;">
               <option value="25">25 words</option>
@@ -94,12 +94,6 @@
               <option value="custom">Custom…</option>
             </select>
             <input type="number" id="weak-words-count-custom" class="select-input hidden" style="flex:1;" min="1" max="4932" step="1" placeholder="Number of words">
-          </div>
-          <div class="row" style="gap:6px;margin-top:6px;">
-            <select id="weak-words-metric" class="select-input" style="flex:1;">
-              <option value="level">Weakest score (lowest level)</option>
-              <option value="wrong">Most often wrong</option>
-            </select>
           </div>
           <button id="btn-show-weak-words" class="btn-secondary" style="width:100%;margin-top:8px;">Show list</button>
           <div id="weak-words-list" style="margin-top:10px;"></div>
@@ -2348,13 +2342,21 @@ async function submitSkillPracticeAnswer(){
 
   let extra = "";
   let roundJustCompleted = false;
+  // De "weakest words"-sessie (25/50/100 slechtste woorden) is geen echte les en krijgt bewust geen
+  // eigen lescijfer -- de afzonderlijke woorden erin worden via recordResult() hierboven wél gewoon
+  // hoger of lager gewaardeerd op basis van het gegeven antwoord.
+  const isWeakWordsSession = skillPracticeState.lesson.id === "weak-words-session";
   if(skillPracticeState.roundResults.length >= SKILL_PRACTICE_ROUND_SIZE){
     const roundCorrect = skillPracticeState.roundResults.filter(Boolean).length;
-    lastSkillPracticeScore[skillPracticeState.lesson.id] = {correct: roundCorrect, total: SKILL_PRACTICE_ROUND_SIZE};
-    saveJSON(LS_SKILL_SCORES, lastSkillPracticeScore);
+    if(!isWeakWordsSession){
+      lastSkillPracticeScore[skillPracticeState.lesson.id] = {correct: roundCorrect, total: SKILL_PRACTICE_ROUND_SIZE};
+      saveJSON(LS_SKILL_SCORES, lastSkillPracticeScore);
+    }
     skillPracticeState.roundResults = [];
     roundJustCompleted = true;
-    extra = `<br><br>📊 <b>Round complete: ${roundCorrect}/${SKILL_PRACTICE_ROUND_SIZE} correct.</b> Saved as this lesson's score.`;
+    extra = isWeakWordsSession
+      ? `<br><br>📊 <b>Round complete: ${roundCorrect}/${SKILL_PRACTICE_ROUND_SIZE} correct.</b>`
+      : `<br><br>📊 <b>Round complete: ${roundCorrect}/${SKILL_PRACTICE_ROUND_SIZE} correct.</b> Saved as this lesson's score.`;
   }
   skillPracticeState.roundJustCompleted = roundJustCompleted;
   el("checkup-result-text").innerHTML = `<div class="muted" style="margin-bottom:6px;">${escapeHtml(promptShown)}</div>` +
@@ -2388,8 +2390,10 @@ async function skipSkillPracticeQuestion(){
   skillPracticeState.roundResults.push(false);
   if(skillPracticeState.roundResults.length >= SKILL_PRACTICE_ROUND_SIZE){
     const roundCorrect = skillPracticeState.roundResults.filter(Boolean).length;
-    lastSkillPracticeScore[skillPracticeState.lesson.id] = {correct: roundCorrect, total: SKILL_PRACTICE_ROUND_SIZE};
-    saveJSON(LS_SKILL_SCORES, lastSkillPracticeScore);
+    if(skillPracticeState.lesson.id !== "weak-words-session"){
+      lastSkillPracticeScore[skillPracticeState.lesson.id] = {correct: roundCorrect, total: SKILL_PRACTICE_ROUND_SIZE};
+      saveJSON(LS_SKILL_SCORES, lastSkillPracticeScore);
+    }
     skillPracticeState.roundResults = [];
   }
   await nextSkillPracticeQuestion();
@@ -4739,23 +4743,24 @@ function renderWordsTab(){
   });
 }
 
-/* Levert de N zwakst-scorende (of vaakst fout beantwoorde) woorden op, uitsluitend uit woorden die al
-   minstens één keer geoefend zijn -- een nog-nooit-getoond woord (level 0, reps 0) is niet "zwak", het
-   is simpelweg nog niet aan bod geweest, dus die tellen hier bewust niet mee. Alleen woorden binnen het
-   ingestelde CEFR-bereik komen in aanmerking, net als bij de gewone woordoefening. */
-function getWeakestWords(count, metric){
+/* Levert de N zwakst-scorende woorden op, uitsluitend uit woorden die al minstens één keer geoefend
+   zijn -- een nog-nooit-getoond woord (level 0, reps 0) is niet "zwak", het is simpelweg nog niet aan
+   bod geweest, dus die tellen hier bewust niet mee. Alleen woorden binnen het ingestelde CEFR-bereik
+   komen in aanmerking, net als bij de gewone woordoefening.
+   "Zwakte" wordt bepaald door niveau (level, 0-10) en foutenaantal samen in één score te combineren,
+   i.p.v. de gebruiker apart te laten kiezen tussen "laagste niveau" en "vaakst fout": het niveau weegt
+   het zwaarst (×2), het aantal fouten telt daarbovenop mee als extra straf, zodat een woord met een
+   laag niveau EN veel fouten altijd bovenaan staat, maar een woord met slechts een iets lager niveau
+   en veel fouten ook naar boven komt t.o.v. een woord dat enkel qua niveau iets lager scoort. */
+function weaknessScore(w){
+  return w.level * 2 - w.wrong;
+}
+function getWeakestWords(count){
   const practiced = allWords()
     .filter(w => inCefrRangeEn(w.en))
     .map(w => { const p = getProgress(w.en); return {...w, level: p.level, reps: p.reps, correct: p.correct || 0, wrong: p.reps - (p.correct || 0)}; })
     .filter(w => w.reps > 0);
-  const sorted = practiced.sort((a,b)=>{
-    if(metric === "wrong"){
-      if(b.wrong !== a.wrong) return b.wrong - a.wrong;
-      return a.level - b.level;
-    }
-    if(a.level !== b.level) return a.level - b.level;
-    return b.wrong - a.wrong;
-  });
+  const sorted = practiced.sort((a,b)=> weaknessScore(a) - weaknessScore(b));
   return sorted.slice(0, count);
 }
 
@@ -4770,8 +4775,7 @@ function currentWeakWordsCount(){
 
 function renderWeakWordsList(){
   const count = currentWeakWordsCount();
-  const metric = el("weak-words-metric").value;
-  const words = getWeakestWords(count, metric);
+  const words = getWeakestWords(count);
   if(!words.length){
     el("weak-words-list").innerHTML = `<div class="muted" style="padding:8px 0;">No practiced words in your current CEFR range yet — this list fills up as soon as you start practising.</div>`;
     return;
@@ -4799,6 +4803,21 @@ function renderWeakWordsList(){
   });
 }
 
+// Toont/verbergt de zwakste-woordenlijst met dezelfde knop -- "Show list" <-> "Hide list".
+function toggleWeakWordsList(){
+  const btn = el("btn-show-weak-words");
+  const showing = btn.dataset.showing === "1";
+  if(showing){
+    el("weak-words-list").innerHTML = "";
+    btn.textContent = "Show list";
+    btn.dataset.showing = "0";
+  } else {
+    renderWeakWordsList();
+    btn.textContent = "Hide list";
+    btn.dataset.showing = "1";
+  }
+}
+
 /* ===================== COURSE TAB ===================== */
 let openLessonIdx = null;
 
@@ -4816,7 +4835,9 @@ function macroCefrOfLesson(l){
 
 // Proficiency (0-10, één decimaal) van een les -- voor grammaticalessen het gemiddelde over de
 // gekoppelde onderwerpen, voor vocabulairelessen het gemiddelde over de woorden. Puur leeslessen
-// zonder eigen oefenstof (bv. "How Turkish Works") hebben geen cijfer.
+// zonder eigen oefenstof (bv. "How Turkish Works") hebben geen cijfer. Dit is het ECHTE, op de
+// gegeven antwoorden gebaseerde niveau -- gebruikt om te bepalen of een les "done" is, niet om te
+// tonen (zie displayLessonGrade hieronder).
 function lessonProficiency(l){
   if(l.grammarTopics && l.grammarTopics.length){
     const avg = l.grammarTopics.reduce((s,k)=>s+getTopicProgress(grammarTopicByKey(k)).level, 0) / l.grammarTopics.length;
@@ -4829,13 +4850,22 @@ function lessonProficiency(l){
   return null;
 }
 
+// Het GETOONDE lescijfer: een vast cijfer per CEFR-macroniveau, los van de echte oefenresultaten
+// (die blijven wel meetellen voor "done"-status via lessonProficiency hierboven, en de afzonderlijk
+// geoefende woorden/onderwerpen krijgen gewoon hun eigen echte score). Lessen t/m B1 krijgen een hoog
+// cijfer; hoe hoger het niveau, hoe lager het vaste cijfer.
+const FIXED_LESSON_GRADE = {Fundamentals:10, A1:10, A2:10, B1:8, B2:7, C1:5, C2:3};
+function displayLessonGrade(l){
+  return lessonProficiency(l) !== null ? FIXED_LESSON_GRADE[macroCefrOfLesson(l)] : null;
+}
+
 function isLessonDone(l){
   const p = lessonProficiency(l);
   return p !== null ? p >= CHECKUP_PASS_LEVEL : isLessonCompleted(l.id);
 }
 
 function renderCourseLessonRow(l, idx){
-  const level = lessonProficiency(l);
+  const level = displayLessonGrade(l);
   const lastScore = lastSkillPracticeScore[l.id];
   const scoreTxt = lastScore ? ` · Last score: ${lastScore.correct}/${lastScore.total}` : "";
   let rightHtml, sub;
@@ -4872,6 +4902,19 @@ function setMacroOpen(track, macro, val){
   saveJSON(LS_COURSE_SECTIONS, courseSectionOpen);
 }
 
+// Splitst een lessenlijst in (max) 3 zo gelijk mogelijke opeenvolgende delen: start/mid/end. Een
+// eventueel restant (n niet deelbaar door 3) gaat naar de eerste delen, niet naar het laatste, zodat
+// "end" nooit onbedoeld het grootste stuk wordt.
+function splitStartMidEnd(list){
+  const n = list.length;
+  const base = Math.floor(n/3);
+  const rem = n % 3;
+  const sizes = [base + (rem>0?1:0), base + (rem>1?1:0), base];
+  let i = 0;
+  return sizes.map(s=>{ const part = list.slice(i, i+s); i += s; return part; });
+}
+const SUB_LABELS = ["Start","Mid","End"];
+
 function renderCourseColumn(containerEl, items, currentMacro, track){
   const groups = {};
   for(const item of items){
@@ -4882,17 +4925,27 @@ function renderCourseColumn(containerEl, items, currentMacro, track){
     const list = groups[macro];
     const doneInGroup = list.filter(({l})=>isLessonDone(l)).length;
     const openAttr = isMacroOpen(track, macro, macro === currentMacro) ? " open" : "";
+    const subHtml = splitStartMidEnd(list).map((subList, i)=>{
+      if(!subList.length) return "";
+      const subDone = subList.filter(({l})=>isLessonDone(l)).length;
+      return `<details class="cefr-section cefr-subsection" data-macro="${macro}" data-sub="${SUB_LABELS[i].toLowerCase()}" style="margin-left:10px;" open>
+        <summary style="font-size:.92em;">${SUB_LABELS[i]} <span class="muted" style="font-weight:400;">(${subDone}/${subList.length})</span></summary>
+        <div class="cefr-section-body">${subList.map(({l,idx})=>renderCourseLessonRow(l, idx)).join("")}</div>
+      </details>`;
+    }).join("");
     return `<details class="cefr-section" data-macro="${macro}"${openAttr}>
       <summary>${macro} <span class="muted" style="font-weight:400;">(${doneInGroup}/${list.length} · ${list.length} lessons)</span></summary>
-      <div class="cefr-section-body">${list.map(({l,idx})=>renderCourseLessonRow(l, idx)).join("")}</div>
+      <div class="cefr-section-body">${subHtml}</div>
     </details>`;
   }).join("");
   containerEl.querySelectorAll("[data-idx]").forEach(row=>{
     const idx = parseInt(row.dataset.idx, 10);
     row.addEventListener("click", ()=> openLessonModal(idx));
   });
-  // Onthoud in-/uitklappen: de native <details>-"toggle"-event vuurt zowel bij open- als dichtklikken
-  containerEl.querySelectorAll(".cefr-section").forEach(det=>{
+  // Onthoud in-/uitklappen: de native <details>-"toggle"-event vuurt zowel bij open- als dichtklikken.
+  // Sub-secties (start/mid/end) hebben data-sub en worden niet apart onthouden -- ze staan gewoon
+  // standaard open zodra hun macro-sectie openstaat.
+  containerEl.querySelectorAll(".cefr-section:not(.cefr-subsection)").forEach(det=>{
     det.addEventListener("toggle", ()=> setMacroOpen(track, det.dataset.macro, det.open));
   });
 }
@@ -4921,7 +4974,7 @@ async function openLessonModal(idx){
   el("lesson-modal-title").textContent = `${l.icon} ${l.title}`;
   el("lesson-modal-explanation").innerHTML = l.explanation;
   const needsPractice = l.grammarTopics.length > 0 || (l.words && l.words.length > 0);
-  const level = lessonProficiency(l);
+  const level = displayLessonGrade(l);
   const lastScore = lastSkillPracticeScore[l.id];
   el("lesson-modal-progress").innerHTML = level !== null
     ? `<div class="muted">Current proficiency: <b>${level}/10</b>` + (lastScore ? ` · Last practice round: <b>${lastScore.correct}/${lastScore.total}</b>` : "") + `</div>`
@@ -5543,7 +5596,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("weak-words-count").addEventListener("change", ()=>{
     el("weak-words-count-custom").classList.toggle("hidden", el("weak-words-count").value !== "custom");
   });
-  el("btn-show-weak-words").addEventListener("click", renderWeakWordsList);
+  el("btn-show-weak-words").addEventListener("click", toggleWeakWordsList);
   el("btn-checkup-next").addEventListener("click", ()=> skillPracticeState ? submitSkillPracticeAnswer() : submitCheckupAnswer());
   el("btn-checkup-word-hint").addEventListener("click", ()=>{
     // dit scherm wordt gedeeld door checkup en skill-practice -- welke van de twee actief is, bepaalt waar de state staat
