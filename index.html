@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.44</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.45</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -27,7 +27,6 @@
       <div id="tr-word" class="tr-word">…</div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="word-meta" style="font-size:.78rem;margin-top:2px;"></div>
-        <button class="btn-ghost btn-small hidden" id="btn-word-hint" style="margin-top:0;padding:2px 8px;font-size:.75rem;" title="Show which specific meaning is being tested">🔍 Which meaning?</button>
         <button class="btn-ghost btn-small hidden" id="btn-edit-flashcard" style="margin-top:0;padding:2px 8px;font-size:.75rem;" title="Correct this word if it's wrong">✏️ Fix</button>
       </div>
       <div class="level-bar"><div class="level-bar-fill" id="level-fill" style="width:0%"></div></div>
@@ -318,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-14 v2.44</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-14 v2.45</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -399,7 +398,6 @@
       <div class="tr-word" id="checkup-word">…</div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="checkup-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
-        <button class="btn-ghost btn-small hidden" id="btn-checkup-word-hint" style="margin-top:0;padding:2px 8px;font-size:.75rem;" title="Show which specific meaning is being tested">🔍 Which meaning?</button>
       </div>
       <input type="text" id="checkup-answer-input" placeholder="Type your answer…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-top:10px;">
       <div class="row" style="margin-top:10px;">
@@ -1986,8 +1984,6 @@ async function nextCheckupQuestion(){
       el("checkup-word").textContent = checkupState.current.direction === "tr-en" ? checkupState.current.tr : displayEnglishWord(checkupState.current.en);
       el("checkup-word").className = "tr-word";
       checkupState.current.hintRevealed = false;
-      el("btn-checkup-word-hint").classList.toggle("hidden", !checkupState.current.gloss);
-      el("btn-checkup-word-hint").textContent = "🔍 Which meaning?";
       el("checkup-word-meta").textContent = [cefrLabel(word.cefr), wordCategoryOf(word.en) || null].filter(Boolean).join(" · ");
       el("checkup-answer-input").placeholder = checkupState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
       checkupState.consecutiveFailures = 0;
@@ -2273,8 +2269,6 @@ async function nextSkillPracticeQuestion(){
     el("checkup-word").textContent = skillPracticeState.current.direction === "tr-en" ? skillPracticeState.current.tr : displayEnglishWord(en);
     el("checkup-word").className = "tr-word";
     skillPracticeState.current.hintRevealed = false;
-    el("btn-checkup-word-hint").classList.toggle("hidden", !skillPracticeState.current.gloss);
-    el("btn-checkup-word-hint").textContent = "🔍 Which meaning?";
     el("checkup-word-meta").textContent = [typeof wordCefrOf(en) === "number" ? cefrLabel(wordCefrOf(en)) : null, wordCategoryOf(en) || null].filter(Boolean).join(" · ");
     el("checkup-answer-input").placeholder = skillPracticeState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
@@ -4139,8 +4133,6 @@ async function renderPractice(){
   el("btn-edit-flashcard").classList.toggle("hidden", !isWord);
   const wordEl = el("tr-word");
   wordEl.textContent = (isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || currentItem.en);
-  el("btn-word-hint").classList.toggle("hidden", !(isWord && currentItem.gloss));
-  el("btn-word-hint").textContent = "🔍 Which meaning?";
   currentItem.hintRevealed = false;
   wordEl.className = "tr-word" + ((isSentence||isQuestion) ? " sentence" : "");
 
@@ -5523,11 +5515,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("words-cefr-filter").addEventListener("change", renderWordsTab);
   el("words-search").addEventListener("input", renderWordsTab);
   el("btn-ask-ai").addEventListener("click", openAiModal);
-  el("btn-word-hint").addEventListener("click", ()=>{
-    if(!currentItem || !currentItem.gloss) return;
-    currentItem.hintRevealed = true;
-    el("btn-word-hint").textContent = "🔍 " + currentItem.gloss;
-  });
   el("btn-edit-flashcard").addEventListener("click", ()=>{
     if(currentItem && currentItem.type === "word") openEditWordModal(currentItem.en);
   });
@@ -5664,13 +5651,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
   });
   el("btn-show-weak-words").addEventListener("click", toggleWeakWordsList);
   el("btn-checkup-next").addEventListener("click", ()=> skillPracticeState ? submitSkillPracticeAnswer() : submitCheckupAnswer());
-  el("btn-checkup-word-hint").addEventListener("click", ()=>{
-    // dit scherm wordt gedeeld door checkup en skill-practice -- welke van de twee actief is, bepaalt waar de state staat
-    const cur = skillPracticeState ? skillPracticeState.current : (checkupState ? checkupState.current : null);
-    if(!cur || !cur.gloss) return;
-    cur.hintRevealed = true;
-    el("btn-checkup-word-hint").textContent = "🔍 " + cur.gloss;
-  });
   el("checkup-answer-input").addEventListener("keydown", e=>{
     if(e.key === "Enter"){
       e.preventDefault();
