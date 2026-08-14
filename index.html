@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.45</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.46</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -42,7 +42,7 @@
       </div>
 
       <div id="feedback-box"></div>
-      <div id="explanation-box" class="muted hidden" style="margin-top:8px;font-size:.9rem;"></div>
+      <div id="explanation-box" class="muted hidden" style="margin-top:8px;font-size:.9rem;white-space:pre-line;"></div>
 
       <div id="post-actions" class="row wrap hidden" style="margin-top:12px;">
         <button class="btn-ghost btn-small hidden" id="btn-show-explanation">💬 Explanation</button>
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-14 v2.45</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.46</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -407,7 +407,7 @@
     </div>
     <div id="checkup-result-box" class="hidden">
       <div class="feedback correct" id="checkup-result-text"></div>
-      <div id="checkup-explanation-box" class="muted hidden" style="margin-top:8px;font-size:.9rem;"></div>
+      <div id="checkup-explanation-box" class="muted hidden" style="margin-top:8px;font-size:.9rem;white-space:pre-line;"></div>
       <div id="checkup-post-actions" class="row wrap hidden" style="margin-top:10px;">
         <button class="btn-ghost btn-small hidden" id="btn-checkup-show-explanation">💬 Explanation</button>
         <button class="btn-ghost btn-small hidden" id="btn-checkup-ask-ai">🤖 Ask AI</button>
@@ -3927,7 +3927,11 @@ ${isTrEn
   : `Je krijgt een Engels woord, de reeds bekende Turkse vertaling(en), en het Turkse antwoord dat de gebruiker gaf. Beoordeel of het antwoord een acceptabele Turkse vertaling is — accepteer synoniemen, alternatieve (correcte) vervoegingen en kleine spelfouten. Is er hieronder een specifieke "bedoelde betekenis" vermeld (dit Engelse woord heeft meerdere losstaande betekenissen): beoordeel dan ALLEEN tegen die ene betekenis, ook al zou het antwoord bij een ANDERE betekenis van hetzelfde Engelse woord wel correct zijn.`}
 BELANGRIJK OVER TYPEFOUTEN: als het antwoord duidelijk een tikfout bevat en de bedoelde vertaling ondubbelzinnig duidelijk en correct is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", maar zet "correct" niet op false enkel vanwege een duidelijke tikfout.
 ALS HET ANTWOORD FOUT IS: geef in "betekenis_antwoord" aan wat het door de gebruiker ingevoerde woord ZELF betekent, VERTAALD NAAR ${isTrEn ? "het Turks" : "het Engels"} (dus NIET in dezelfde taal als het antwoord zelf — dat zou zinloos zijn, bv. nooit "great means great"), mits het een bestaand, betekenisvol woord is — dit helpt de gebruiker begrijpen welk ander woord hij in gedachten had. Is het antwoord geen bestaand woord, laat "betekenis_antwoord" dan leeg (""). Bij een GOED antwoord laat je "betekenis_antwoord" ook leeg.
-Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"), in het Engels. Bij een fout antwoord hoeft "uitleg" niet meer te herhalen wat het antwoord betekent (dat staat al in "betekenis_antwoord") — een korte aanvullende opmerking is genoeg, of laat leeg.
+"uitleg" is de tekst voor een apart, uitklapbaar "Explanation"-paneel dat de gebruiker vrijwillig opent -- hier mag en moet je ruim de tijd/ruimte voor nemen, dit hoeft GEEN korte tekst te zijn. Schrijf hem ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"), in het Engels, en behandel in aparte, korte alinea's (gescheiden door een lege regel):
+1) De betekenis van het geteste woord zelf (${isTrEn ? `het Turkse woord "${item.tr}"` : `het Engelse woord "${item.en}"`}) -- een heldere, wat rijkere uitleg dan alleen het kale vertaal-trefwoord, met relevante nuance of gebruikscontext.
+2) ALLEEN als het echt iets toevoegt: een korte, interessante etymologie van het woord, EN/OF -- als het woord meerdere losstaande betekenissen heeft -- die andere betekenissen kort genoemd (dit mag je overslaan of leeg laten als er niets noemenswaardigs is, forceer het niet).
+3) Bij een FOUT antwoord: wat het door de gebruiker gegeven woord zelf betekent (mag beknopt hetzelfde zeggen als "betekenis_antwoord", dat is geen probleem). Lag die betekenis dicht bij de bedoelde betekenis (bv. een verwant begrip, een deel-synoniem, een andere vorm/vervoeging, of een betekenis die overlapt maar net niet past)? Benoem dat dan expliciet en maak scherp wat het verschil/de nuance precies is, zodat de gebruiker leert wanneer je het ene woord gebruikt en wanneer het andere. Was het antwoord gewoon een heel ander/onverwant woord, dan hoeft dit punt niet uitgebreid; een enkele zin volstaat.
+Bij een GOED antwoord vervalt punt 3 vanzelf (er is dan geen "fout" antwoord om te bespreken) -- dan bestaat "uitleg" dus uit punt 1 en eventueel punt 2.
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder 'onjuist'-oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord toch (gedeeltelijk) correct kan zijn, bijvoorbeeld als minder gangbaar synoniem of alternatieve vorm." : ""}
 Antwoord in JSON.`;
   const user = (isTrEn
@@ -3940,13 +3944,13 @@ Antwoord in JSON.`;
       type: "object",
       properties: {
         correct: {type:"boolean"},
-        uitleg: {type:"string", description:"Korte uitleg in het Engels, max 1 zin, rechtstreeks tegen de gebruiker gericht, mag leeg zijn."},
+        uitleg: {type:"string", description:"Rijkere uitleg in het Engels voor het uitklapbare Explanation-paneel: betekenis van het geteste woord, evt. etymologie/deelbetekenissen, en bij een fout antwoord de betekenis van het gegeven woord plus (indien van toepassing) het verschil met de bedoelde betekenis. Meerdere zinnen/alinea's mogen, mag leeg zijn."},
         betekenis_antwoord: {type:"string", description:"Betekenis van het antwoord van de gebruiker (vertaald naar de andere taal), indien fout en een bestaand woord; anders leeg."},
       },
       required: ["correct","uitleg","betekenis_antwoord"]
     }
   };
-  const raw = await callAI("word", sys, user, 1000, 0, schema);
+  const raw = await callAI("word", sys, user, 2500, 0, schema);
   try{
     return parseAIJson(raw);
   }catch(e){
