@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.41</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.42</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -82,6 +82,27 @@
           <h4 style="margin:4px 0 8px;">📖 Vocabulary</h4>
           <div id="vocab-tree"></div>
         </div>
+        <div style="flex:1 1 100%;min-width:0;margin-top:8px;">
+          <h4 style="margin:4px 0 8px;">🎯 Weakest words</h4>
+          <div class="muted" style="margin-bottom:8px;">Words within your current CEFR range that score lowest (or that you get wrong most often).</div>
+          <div class="row" style="gap:6px;">
+            <select id="weak-words-count" class="select-input" style="flex:1;">
+              <option value="25">25 words</option>
+              <option value="50" selected>50 words</option>
+              <option value="100">100 words</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <input type="number" id="weak-words-count-custom" class="select-input hidden" style="flex:1;" min="1" max="4932" step="1" placeholder="Number of words">
+          </div>
+          <div class="row" style="gap:6px;margin-top:6px;">
+            <select id="weak-words-metric" class="select-input" style="flex:1;">
+              <option value="level">Weakest score (lowest level)</option>
+              <option value="wrong">Most often wrong</option>
+            </select>
+          </div>
+          <button id="btn-show-weak-words" class="btn-secondary" style="width:100%;margin-top:8px;">Show list</button>
+          <div id="weak-words-list" style="margin-top:10px;"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -119,29 +140,6 @@
     </div>
     <div class="card" style="max-height:65vh;overflow-y:auto;">
       <div id="words-list"></div>
-    </div>
-
-    <div class="card" style="margin-top:12px;">
-      <div class="row space-between" style="margin-bottom:8px;">
-        <span class="muted" style="font-weight:700;">🎯 Practice weakest words</span>
-      </div>
-      <div class="row" style="gap:6px;">
-        <select id="weak-words-count" class="select-input" style="flex:1;">
-          <option value="25">25 words</option>
-          <option value="50" selected>50 words</option>
-          <option value="100">100 words</option>
-          <option value="custom">Custom…</option>
-        </select>
-        <input type="number" id="weak-words-count-custom" class="select-input hidden" style="flex:1;" min="1" max="4932" step="1" placeholder="Number of words">
-      </div>
-      <div class="row" style="gap:6px;margin-top:6px;">
-        <select id="weak-words-metric" class="select-input" style="flex:1;">
-          <option value="level">Weakest score (lowest level)</option>
-          <option value="wrong">Most often wrong</option>
-        </select>
-      </div>
-      <button id="btn-show-weak-words" class="btn-secondary" style="width:100%;margin-top:8px;">Show list</button>
-      <div id="weak-words-list" style="margin-top:10px;"></div>
     </div>
   </section>
 
@@ -325,7 +323,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-14 v2.41</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-14 v2.42</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -4714,9 +4712,11 @@ function renderWordsTab(){
 
 /* Levert de N zwakst-scorende (of vaakst fout beantwoorde) woorden op, uitsluitend uit woorden die al
    minstens één keer geoefend zijn -- een nog-nooit-getoond woord (level 0, reps 0) is niet "zwak", het
-   is simpelweg nog niet aan bod geweest, dus die tellen hier bewust niet mee. */
+   is simpelweg nog niet aan bod geweest, dus die tellen hier bewust niet mee. Alleen woorden binnen het
+   ingestelde CEFR-bereik komen in aanmerking, net als bij de gewone woordoefening. */
 function getWeakestWords(count, metric){
   const practiced = allWords()
+    .filter(w => inCefrRangeEn(w.en))
     .map(w => { const p = getProgress(w.en); return {...w, level: p.level, reps: p.reps, correct: p.correct || 0, wrong: p.reps - (p.correct || 0)}; })
     .filter(w => w.reps > 0);
   const sorted = practiced.sort((a,b)=>{
@@ -4744,7 +4744,7 @@ function renderWeakWordsList(){
   const metric = el("weak-words-metric").value;
   const words = getWeakestWords(count, metric);
   if(!words.length){
-    el("weak-words-list").innerHTML = `<div class="muted" style="padding:8px 0;">No practiced words yet — this list fills up as soon as you start practising.</div>`;
+    el("weak-words-list").innerHTML = `<div class="muted" style="padding:8px 0;">No practiced words in your current CEFR range yet — this list fills up as soon as you start practising.</div>`;
     return;
   }
   const rows = words.map(w=>{
@@ -5374,10 +5374,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("words-filter").addEventListener("change", renderWordsTab);
   el("words-cefr-filter").addEventListener("change", renderWordsTab);
   el("words-search").addEventListener("input", renderWordsTab);
-  el("weak-words-count").addEventListener("change", ()=>{
-    el("weak-words-count-custom").classList.toggle("hidden", el("weak-words-count").value !== "custom");
-  });
-  el("btn-show-weak-words").addEventListener("click", renderWeakWordsList);
   el("btn-ask-ai").addEventListener("click", openAiModal);
   el("btn-word-hint").addEventListener("click", ()=>{
     if(!currentItem || !currentItem.gloss) return;
@@ -5512,6 +5508,10 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-practice-skill").addEventListener("click", ()=> startSkillPractice(LESSONS[openLessonIdx]));
   el("btn-start-test").addEventListener("click", startPlacementTest);
   el("btn-start-checkup").addEventListener("click", startCheckup);
+  el("weak-words-count").addEventListener("change", ()=>{
+    el("weak-words-count-custom").classList.toggle("hidden", el("weak-words-count").value !== "custom");
+  });
+  el("btn-show-weak-words").addEventListener("click", renderWeakWordsList);
   el("btn-checkup-next").addEventListener("click", ()=> skillPracticeState ? submitSkillPracticeAnswer() : submitCheckupAnswer());
   el("btn-checkup-word-hint").addEventListener("click", ()=>{
     // dit scherm wordt gedeeld door checkup en skill-practice -- welke van de twee actief is, bepaalt waar de state staat
