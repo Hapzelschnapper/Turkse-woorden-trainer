@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.63</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.66</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.63</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.66</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -997,7 +997,9 @@ const GRAMMAR_TOPICS = [
     ]},
   {key:"edatlar",         label:"Postpositions (için, ile, göre, rağmen)", hint:"e.g. \"senin için\" (for you), \"buna rağmen\" (despite this)", minCefr:4,
     variants: [
-      {id:"icin",    hint:"\"için\" (for/because of) — e.g. \"senin için\" (for you)"},
+      {id:"icin_amac",  hint:"\"için\" expressing PURPOSE, \"[in order] to\" (with an infinitive -mek/-mak için) — e.g. \"İngilizce öğrenmek için çalışıyorum.\" (I'm studying [in order] to learn English.). Do NOT use the reason or benefit sense here."},
+      {id:"icin_neden", hint:"\"için\" expressing REASON/CAUSE, \"because of\" — e.g. \"Trafik için geç kaldım.\" (I was late because of the traffic.). Do NOT use the purpose or benefit sense here."},
+      {id:"icin_fayda", hint:"\"için\" expressing BENEFIT, \"for (the sake of)/on behalf of\" a person — e.g. \"Senin için bunu yaptım.\" (I did this for you.). Do NOT use the purpose or reason sense here."},
       {id:"ile",     hint:"\"ile\" (with) — e.g. \"seninle\" (with you)"},
       {id:"gore",    hint:"\"göre\" (according to) — e.g. \"bana göre\" (according to me)"},
       {id:"ragmen",  hint:"\"rağmen\" (despite) — e.g. \"buna rağmen\" (despite this)"},
@@ -1007,19 +1009,25 @@ const GRAMMAR_TOPICS = [
     variants: [
       {id:"daha", hint:"\"daha\" comparative (-er/more) — e.g. \"ondan daha büyük\" (bigger than that)"},
       {id:"en",   hint:"\"en\" superlative (the most) — e.g. \"en büyük\" (the biggest)"},
-      {id:"kadar", hint:"\"kadar\" equative (as...as) — e.g. \"senin kadar uzun\" (as tall as you)"},
+      {id:"kadar_esitlik", hint:"\"kadar\" EQUATIVE, \"as...as\" — e.g. \"senin kadar uzun\" (as tall as you). Do NOT use the temporal \"until\" sense here."},
+      {id:"kadar_zaman",   hint:"\"kadar\" TEMPORAL/SPATIAL, \"until/as far as\" — e.g. \"akşama kadar çalıştım.\" (I worked until evening.), \"eve kadar yürüdük.\" (We walked as far as home.). Do NOT use the equative \"as...as\" comparison sense here."},
       {id:"gibi", hint:"\"gibi\" simile (like/as) — e.g. \"aslan gibi\" (like a lion)"},
     ]},
   {key:"genis_zaman",     label:"Aorist (general truth) -ir",        hint:"habits/facts, e.g. \"her gün koşarım\" (I run every day)", minCefr:5},
   {key:"baglaclar",       label:"Conjunctions (ki, hem...hem, ya...ya)", hint:"e.g. \"hem yorgunum hem açım\" (I'm both tired and hungry)", minCefr:6,
     variants: [
-      {id:"ki",      hint:"\"ki\" linking clause (that/who/which, or surprise/emphasis) — e.g. \"öyle bir şey söyledi ki herkes şaşırdı\" (he said something such that everyone was surprised)"},
+      {id:"ki_dat",       hint:"\"ki\" as a COMPLEMENTIZER meaning \"that\", introducing a clause explaining/completing the first (typically after biliyorum/umarım/eminim-type verbs) — e.g. \"Biliyorum ki haklısın.\" (I know that you're right.), \"Umarım ki gelirsin.\" (I hope that you come.). Do NOT use the purpose/result/surprise senses here."},
+      {id:"ki_zodat",     hint:"\"ki\" expressing PURPOSE, \"so that/in order that\" — e.g. \"Yüksek sesle konuş ki duyabilsin.\" (Speak loudly so that he can hear.), \"Erken çık ki geç kalma.\" (Leave early so you're not late.). Do NOT use the \"that\"-complementizer, result, or surprise senses here."},
+      {id:"ki_gevolg",    hint:"\"ki\" expressing RESULT, \"so...that\", almost always paired with o kadar/öyle in the first clause — e.g. \"O kadar yorgundum ki uyuyakaldım.\" (I was so tired that I fell asleep.), \"Öyle hızlı koştu ki herkesi geçti.\" (He ran so fast that he passed everyone.). Do NOT use the \"that\"-complementizer, purpose, or surprise senses here."},
+      {id:"ki_verrassing", hint:"\"ki\" marking SURPRISE/a sudden realization upon seeing something, often after \"bir baktım/bir de baktım\" (I looked, and...) — e.g. \"Bir baktım ki kimse yok.\" (I looked, and there was no one there!), \"Kapıyı açtım ki her yer karanlık.\" (I opened the door, and it was pitch dark!). Do NOT use the \"that\"-complementizer, purpose, or result senses here."},
       {id:"hem_hem", hint:"\"hem...hem\" (both...and) — e.g. \"hem yorgunum hem açım\" (I'm both tired and hungry)"},
       {id:"ya_ya",   hint:"\"ya...ya\" (either...or) — e.g. \"ya gel ya git\" (either come or go)"},
     ]},
   {key:"vurgu_partikelleri", label:"Emphasis Particles (de/da, bile, üstelik, hatta)", hint:"e.g. \"ben de geliyorum\" (I'm coming too), \"bunu bile bilmiyor\" (he doesn't even know this)", minCefr:6,
     variants: [
-      {id:"de_da",   hint:"\"de/da\" (also/too) — e.g. \"ben de geliyorum\" (I'm coming too)"},
+      {id:"de_da_ekleme", hint:"\"de/da\" ADDITIVE, \"also/too\" — e.g. \"ben de geliyorum\" (I'm coming too), \"o da hastaydı\" (he/she was sick too). Do NOT use the contrastive or emphatic sense here."},
+      {id:"de_da_karsit", hint:"\"de/da\" CONTRASTIVE/concessive, roughly \"and yet/but even so\" — e.g. \"Çalıştı da başaramadı.\" (He worked, and yet didn't succeed.). Do NOT use the additive \"also/too\" or emphatic sense here."},
+      {id:"de_da_vurgu",  hint:"\"de/da\" RHETORICAL emphasis, often with a question word in an indignant/insistent question — e.g. \"Sen de kimsin?\" (And just who are YOU?), \"Ne de güzel bir gün!\" (What a beautiful day!). Do NOT use the additive or contrastive sense here."},
       {id:"bile",    hint:"\"bile\" (even) — e.g. \"bunu bile bilmiyor\" (he doesn't even know this)"},
       {id:"ustelik", hint:"\"üstelik\" (moreover/on top of that) — e.g. \"üstelik geç de kaldı\" (moreover, he was also late)"},
       {id:"hatta",   hint:"\"hatta\" (in fact/even) — e.g. \"hatta bana yardım etti\" (he even helped me)"},
@@ -1033,7 +1041,14 @@ const GRAMMAR_TOPICS = [
       {id:"gecmis",  hint:"STATEMENT, PAST necessity -meliydi (should have / had to, in the past — often implying it did or didn't happen) — e.g. \"gitmeliydim\" (I should have gone), \"onu görmeliydin\" (you should have seen it). Statement only, no question. This is the more complex, past-tense form of the necessitative."},
       {id:"soru",    hint:"QUESTION form: a yes/no question about necessity, with mi/mı/mu/mü placed right after the necessitative-marked verb — e.g. \"Gitmeli miyim?\" (Must I go?), \"Erken kalkmalı mıyız?\" (Do we have to get up early?). Either the present or past necessitative form is fine here — the focus is purely the question mechanic, not which form is used."},
     ]},
-  {key:"gecmis_mis",      label:"Past tense -miş (hearsay/inferred)", hint:"e.g. \"gelmiş\" (apparently came)", minCefr:6},
+  {key:"gecmis_mis",      label:"Past tense -miş (hearsay/inferred)", hint:"e.g. \"gelmiş\" (apparently came)", minCefr:6,
+    // -miş bundelt drie taalkundig te onderscheiden functies (evidentialiteit vs. mirativiteit) die vaak
+    // door elkaar gehaald worden -- elk verdient eigen, gerichte oefening i.p.v. willekeurig gemengd.
+    variants: [
+      {id:"duyum",   hint:"HEARSAY use, reporting something told by someone else (not witnessed) — e.g. \"Ali gelmiş.\" (Apparently Ali came [I was told].), \"Çok zorluk çekmiş.\" (Apparently he/she had a hard time [as I heard]). Frame it as information passed on from someone else. Do NOT use the inferential-from-evidence or surprise/mirative sense here."},
+      {id:"cikarim", hint:"INFERENTIAL use, a conclusion drawn from present evidence rather than something told by someone — e.g. \"Yağmur yağmış.\" (It must have rained [the ground is wet].), \"Birisi burada yemek yapmış.\" (Someone must have cooked here [judging by the smell/mess]). Frame it around visible evidence leading to a conclusion. Do NOT use the hearsay or surprise/mirative sense here."},
+      {id:"sasirma", hint:"MIRATIVE use, a sudden personal realization/surprise upon discovering something yourself (not told, not inferred from clues — directly noticed) — e.g. \"Bak, kar yağmış!\" (Look, it's snowed!), \"Saat kaç olmuş!\" (Wow, look what time it's gotten to be!). Frame it as an exclamation of surprise at something just noticed. Do NOT use the hearsay or inferential-from-evidence sense here."},
+    ]},
   {key:"gecmis_devam",    label:"Past continuous -iyordu",           hint:"e.g. \"geliyordum\" (I was coming)", minCefr:7},
   {key:"sart_kipi",       label:"Conditional -se",                   hint:"if/should, e.g. \"gelirse\" (if he comes)", minCefr:12,
     // Vergezocht geval, daarom bewust op C1 ondergebracht i.p.v. B1: het onderscheid tussen -se direct op
@@ -1143,7 +1158,12 @@ const GRAMMAR_TOPICS = [
       {id:"vorming", hint:"how an adverb is FORMED from an adjective (unmarked, or with -ca/-ce) — e.g. \"hızlı\" (fast) -> \"hızlıca\"/\"hızlı\" (quickly)"},
       {id:"positie", hint:"where the adverb is PLACED in the sentence (typically right before the verb it modifies) — e.g. \"çok hızlı koştu\" (he ran very fast)"},
     ]},
-  {key:"arac_hali",         label:"Instrumental case (-(y)la/-(y)le)", hint:"e.g. \"otobüsle\" (by bus), \"kalemle yazdım\" (I wrote with a pen) — the suffixed form of \"ile\" — vary which of the two vowel-harmony forms (-(y)la/-(y)le) comes up across repeated exercises", minCefr:6},
+  {key:"arac_hali",         label:"Instrumental case (-(y)la/-(y)le)", hint:"e.g. \"otobüsle\" (by bus), \"kalemle yazdım\" (I wrote with a pen) — the suffixed form of \"ile\" — vary which of the two vowel-harmony forms (-(y)la/-(y)le) comes up across repeated exercises", minCefr:6,
+    variants: [
+      {id:"instrumentaal", hint:"INSTRUMENTAL, \"with/by means of\" a tool or method — e.g. \"kalemle yazdım\" (I wrote with a pen), \"otobüsle gittim\" (I went by bus). Do NOT use the comitative (accompanying a person) or conjunction sense here."},
+      {id:"comitatief",    hint:"COMITATIVE, \"together with\" a person — e.g. \"arkadaşımla gittim\" (I went with my friend), \"seninle konuşmak istiyorum\" (I want to talk with you). Do NOT use the instrumental-tool or conjunction sense here."},
+      {id:"baglac",        hint:"CONJUNCTION use, \"and\", linking two nouns together (equivalent to \"ve\" but attached as -ile/-la/-le) — e.g. \"sen ile ben\" / \"seninle ben\" (you and I), \"annem ile babam\" (my mother and father). Do NOT use the instrumental-tool or comitative-accompaniment sense here."},
+    ]},
   {key:"belirsiz_zamirler", label:"Indefinite pronouns & quantifiers", hint:"e.g. \"biri\" (someone), \"herkes\" (everyone), \"hiç kimse\" (no one), \"bazı\" (some), \"her\" (every)", minCefr:6,
     variants: [
       {id:"biri",     hint:"\"biri\" (someone/one of them) — e.g. \"biri geldi\" (someone came)"},
@@ -1152,7 +1172,12 @@ const GRAMMAR_TOPICS = [
       {id:"bazi",     hint:"\"bazı\" (some) — e.g. \"bazı insanlar\" (some people)"},
       {id:"her",      hint:"\"her\" (every) — e.g. \"her gün\" (every day)"},
     ]},
-  {key:"kendi_zamiri",      label:"The reflexive pronoun kendi", hint:"e.g. \"kendim\" (myself), \"kendine bak\" (look after yourself) — distinct from the reflexive verb suffix -in", minCefr:8},
+  {key:"kendi_zamiri",      label:"The reflexive pronoun kendi", hint:"e.g. \"kendim\" (myself), \"kendine bak\" (look after yourself) — distinct from the reflexive verb suffix -in", minCefr:8,
+    variants: [
+      {id:"nesne", hint:"REFLEXIVE OBJECT use, \"myself/yourself/...\" as the direct/indirect object of the sentence — e.g. \"Kendimi gördüm.\" (I saw myself.), \"Kendine iyi bak.\" (Take good care of yourself.). Do NOT use the emphatic-subject or possessive \"own\" sense here."},
+      {id:"vurgu", hint:"EMPHATIC use, stressing that the subject did something personally/themselves — e.g. \"Kendim yaptım.\" (I did it myself.), \"Kendi gördü.\" (He/she saw it themselves.). Do NOT use the reflexive-object or possessive \"own\" sense here."},
+      {id:"iyelik", hint:"POSSESSIVE \"own\" use, before a possessed noun to intensify ownership — e.g. \"kendi evim\" (my own house), \"kendi arabasıyla geldi\" (he/she came in his/her own car). Do NOT use the reflexive-object or emphatic-subject sense here."},
+    ]},
   {key:"diktan_sonra",      label:"Converb -DIktan sonra (after doing)", hint:"e.g. \"yemek yedikten sonra\" (after eating), \"eve geldikten sonra\" (after coming home) — the counterpart to -madan önce", minCefr:8},
   {key:"ip_baglaci",        label:"Converb -Ip (sequential actions)", hint:"e.g. \"gidip aldım\" (I went and got it), \"alıp geldi\" (he took it and came) — links same-subject actions without repeating tense/person", minCefr:9},
   {key:"yardimci_fiiller",  label:"Light verb constructions (etmek/olmak/yapmak)", hint:"e.g. \"yardım etmek\" (to help), \"teşekkür etmek\" (to thank), \"hasta olmak\" (to become sick)", minCefr:10,
