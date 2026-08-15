@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.57</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.58</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.57</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.58</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -462,6 +462,23 @@ function loadJSONSync(url){
   return JSON.parse(xhr.responseText);
 }
 const EN_WORDS_DATA = loadJSONSync("words.json"); // Oxford 3000/5000, {en, cefr} per item — no pre-translated Turkish
+// Voor woorden die zijn gesplitst op woordsoort (bv. "close__v"/"close__adj" voor het werkwoord
+// resp. bijvoeglijk naamwoord "close") bevat words.json een apart "base"-veld met de schone,
+// leesbare tekst ("close"). Voor alle niet-gesplitste woorden is er geen "base"-veld en is het
+// woord zelf al schoon. baseEnOf() geeft ALTIJD de tekst die aan een mens getoond of aan de AI
+// als natuurlijke taal doorgegeven mag worden -- gebruik dit overal waar het woord daadwerkelijk
+// zichtbaar wordt, in tegenstelling tot de kale `en`-sleutel die voor opslag/lookup blijft dienen.
+// Vroeg in het bestand gedefinieerd (direct na EN_WORDS_DATA) omdat LESSONS verderop al meteen bij
+// het laden van de pagina wordt opgebouwd en deze functie gebruikt.
+let _baseEnMap = null;
+function baseEnOf(en){
+  if(!en) return en;
+  if(!_baseEnMap){
+    _baseEnMap = {};
+    for(const w of EN_WORDS_DATA) _baseEnMap[w.en] = w.base || w.en;
+  }
+  return _baseEnMap[en] || en;
+}
 </script>
 <script>
 const VOCAB_LESSON_DATA = loadJSONSync("vocab-lessons.json"); // {title, cefr, words:[...]} per vocabulary lesson, 28-word batches grouped by level+POS
@@ -1482,21 +1499,6 @@ function wordCategoryOf(en){
   return _wordCategoryMap[en] || "";
 }
 let _wordCefrMap = null;
-// Voor woorden die zijn gesplitst op woordsoort (bv. "close__v"/"close__adj" voor het werkwoord
-// resp. bijvoeglijk naamwoord "close") bevat words.json een apart "base"-veld met de schone,
-// leesbare tekst ("close"). Voor alle niet-gesplitste woorden is er geen "base"-veld en is het
-// woord zelf al schoon. baseEnOf() geeft ALTIJD de tekst die aan een mens getoond of aan de AI
-// als natuurlijke taal doorgegeven mag worden -- gebruik dit overal waar het woord daadwerkelijk
-// zichtbaar wordt, in tegenstelling tot de kale `en`-sleutel die voor opslag/lookup blijft dienen.
-let _baseEnMap = null;
-function baseEnOf(en){
-  if(!en) return en;
-  if(!_baseEnMap){
-    _baseEnMap = {};
-    for(const w of EN_WORDS_DATA) _baseEnMap[w.en] = w.base || w.en;
-  }
-  return _baseEnMap[en] || en;
-}
 function wordCefrOf(en){
   if(!_wordCefrMap){
     _wordCefrMap = {};
