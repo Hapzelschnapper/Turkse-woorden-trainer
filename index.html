@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.47</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.48</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.47</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.48</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -4945,7 +4945,9 @@ function renderCourseColumn(containerEl, items, currentMacro, track){
     const subHtml = splitStartMidEnd(list).map((subList, i)=>{
       if(!subList.length) return "";
       const subDone = subList.filter(({l})=>isLessonDone(l)).length;
-      return `<details class="cefr-section cefr-subsection" data-macro="${macro}" data-sub="${SUB_LABELS[i].toLowerCase()}" style="margin-left:10px;" open>
+      const subKey = `${macro}:${SUB_LABELS[i].toLowerCase()}`;
+      const subOpenAttr = isMacroOpen(track, subKey, true) ? " open" : "";
+      return `<details class="cefr-section cefr-subsection" data-macro="${macro}" data-sub="${SUB_LABELS[i].toLowerCase()}" style="margin-left:10px;"${subOpenAttr}>
         <summary style="font-size:.92em;">${SUB_LABELS[i]} <span class="muted" style="font-weight:400;">(${subDone}/${subList.length})</span></summary>
         <div class="cefr-section-body">${subList.map(({l,idx})=>renderCourseLessonRow(l, idx)).join("")}</div>
       </details>`;
@@ -4966,10 +4968,14 @@ function renderCourseColumn(containerEl, items, currentMacro, track){
     });
   });
   // Onthoud in-/uitklappen: de native <details>-"toggle"-event vuurt zowel bij open- als dichtklikken.
-  // Sub-secties (start/mid/end) hebben data-sub en worden niet apart onthouden -- ze staan gewoon
-  // standaard open zodra hun macro-sectie openstaat.
+  // Sub-secties (start/mid/end) worden nu ook apart onthouden, onder hun eigen "macro:sub"-sleutel,
+  // zodat een dichtgeklapte sub-sectie niet steeds opnieuw openspringt bij elke her-render (bv. na
+  // het instellen van een eigen lescijfer).
   containerEl.querySelectorAll(".cefr-section:not(.cefr-subsection)").forEach(det=>{
     det.addEventListener("toggle", ()=> setMacroOpen(track, det.dataset.macro, det.open));
+  });
+  containerEl.querySelectorAll(".cefr-section.cefr-subsection").forEach(det=>{
+    det.addEventListener("toggle", ()=> setMacroOpen(track, `${det.dataset.macro}:${det.dataset.sub}`, det.open));
   });
 }
 
