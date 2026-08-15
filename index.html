@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.62</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.63</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.62</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.63</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -974,7 +974,18 @@ const GRAMMAR_TOPICS = [
   {key:"ayrilma_hali",    label:"Ablative (-den/-dan)",              hint:"origin/from, e.g. \"okuldan geldim\" (I came from school) — vary which of the vowel-harmony/hardening forms (-den/-dan/-ten/-tan) comes up across repeated exercises", minCefr:2},
   {key:"belirtme_hali",   label:"Accusative (-i/-ı/-u/-ü)",          hint:"marks a definite direct object, e.g. \"kitabı okudum\" (I read the book) — vary which of the four vowel-harmony forms (-i/-ı/-u/-ü) comes up across repeated exercises", minCefr:2},
   {key:"gecmis_copula",   label:"Past copula -ydi",                  hint:"e.g. \"öğrenciydim\" (I was a student)", minCefr:3},
-  {key:"yeterlik_kipi",   label:"Ability -ebilmek (can)",            hint:"e.g. \"gidebilirim\" (I can go), \"yüzebilir misin?\" (can you swim?)", minCefr:3},
+  {key:"yeterlik_kipi",   label:"Ability -ebilmek (can)",            hint:"e.g. \"gidebilirim\" (I can go), \"yüzebilir misin?\" (can you swim?)", minCefr:3,
+    // Zonder splitsing combineerde de AI de ability-uitgang vrij met ELKE tijd (incl. verleden/voltooid),
+    // wat tot onnodig complexe zinnen leidde (bv. "I can be born in Istanbul" -- ability + voltooide vorm
+    // tegelijk). Elke variant zet nu precies ÉÉN tijd vast, net als de losse tijd-topics elders
+    // (simdiki_zaman/genis_zaman/gecmis_di/gelecek_zaman) dat al doen voor de kale werkwoordsvorm.
+    variants: [
+      {id:"iyor",  hint:"STATEMENT, ability combined with PRESENT CONTINUOUS -ebiliyor (can, happening/possible right now) — e.g. \"gidebiliyorum\" (I can go [now]), \"yüzebiliyor\" (he/she can swim [right now]). Statement only, no question — do NOT add mi/mı/mu/mü. Do NOT combine with any other tense."},
+      {id:"ir",    hint:"STATEMENT, ability combined with AORIST -ebilir (can, general/habitual ability) — e.g. \"yüzebilirim\" (I can swim, in general), \"gidebilir\" (he/she can go). Statement only, no question — do NOT add mi/mı/mu/mü. Do NOT combine with any other tense."},
+      {id:"di",    hint:"STATEMENT, ability combined with PAST -ebildi (could/managed to, in the past) — e.g. \"gidebildim\" (I could go / managed to go), \"yüzebildi\" (he/she was able to swim). Statement only, no question — do NOT add mi/mı/mu/mü. Do NOT combine with any other tense."},
+      {id:"ecek",  hint:"STATEMENT, ability combined with FUTURE -ebilecek (will be able to) — e.g. \"gidebileceğim\" (I will be able to go), \"yüzebilecek\" (he/she will be able to swim). Statement only, no question — do NOT add mi/mı/mu/mü. Do NOT combine with any other tense."},
+      {id:"soru",  hint:"QUESTION form: a yes/no question about ability, with the mi/mı/mu/mü particle placed right after the ability-marked verb (before the personal ending) — e.g. \"Yüzebilir misin?\" (Can you swim?), \"Gelebilir misiniz?\" (Can you [formal/plural] come?), \"Gidebildin mi?\" (Were you able to go?). Any of the tenses above is fine here — the focus is purely the question mechanic (mi-placement), not which tense is used."},
+    ]},
   {key:"gecmis_di",       label:"Past tense -di (witnessed/certain)", hint:"e.g. \"geldim\" (I came)", minCefr:3},
   {key:"tamlayan_hali",   label:"Genitive (-in/-ın/-un/-ün)",        hint:"possession/compounds, e.g. \"annemin evi\" (my mother's house) — vary which of the four vowel-harmony forms (-in/-ın/-un/-ün) comes up across repeated exercises", minCefr:3},
   {key:"isim_tamlamasi",  label:"Noun compounds (isim tamlaması)",   hint:"e.g. \"araba anahtarı\" (car key), \"okulun bahçesi\" (the school's garden)", minCefr:4},
@@ -1013,10 +1024,25 @@ const GRAMMAR_TOPICS = [
       {id:"ustelik", hint:"\"üstelik\" (moreover/on top of that) — e.g. \"üstelik geç de kaldı\" (moreover, he was also late)"},
       {id:"hatta",   hint:"\"hatta\" (in fact/even) — e.g. \"hatta bana yardım etti\" (he even helped me)"},
     ]},
-  {key:"gereklilik_kipi", label:"Necessitative -meli",               hint:"must/have to, e.g. \"gitmeliyim\" (I must go)", minCefr:6},
+  {key:"gereklilik_kipi", label:"Necessitative -meli",               hint:"must/have to, e.g. \"gitmeliyim\" (I must go)", minCefr:6,
+    // "gitmeliyim" (moet nu) en "gitmeliydim" (had moeten gaan) zijn qua complexiteit erg verschillend
+    // (de tweede is een verleden-tijd-vorm van een modaliteit) -- daarom losgetrokken, zelfde reden als
+    // yeterlik_kipi hierboven.
+    variants: [
+      {id:"simdi",   hint:"STATEMENT, present necessity -meli (must/have to, right now or in general) — e.g. \"gitmeliyim\" (I must go), \"çalışmalısın\" (you have to work). Statement only, no question. Do NOT use the past form -meliydi."},
+      {id:"gecmis",  hint:"STATEMENT, PAST necessity -meliydi (should have / had to, in the past — often implying it did or didn't happen) — e.g. \"gitmeliydim\" (I should have gone), \"onu görmeliydin\" (you should have seen it). Statement only, no question. This is the more complex, past-tense form of the necessitative."},
+      {id:"soru",    hint:"QUESTION form: a yes/no question about necessity, with mi/mı/mu/mü placed right after the necessitative-marked verb — e.g. \"Gitmeli miyim?\" (Must I go?), \"Erken kalkmalı mıyız?\" (Do we have to get up early?). Either the present or past necessitative form is fine here — the focus is purely the question mechanic, not which form is used."},
+    ]},
   {key:"gecmis_mis",      label:"Past tense -miş (hearsay/inferred)", hint:"e.g. \"gelmiş\" (apparently came)", minCefr:6},
   {key:"gecmis_devam",    label:"Past continuous -iyordu",           hint:"e.g. \"geliyordum\" (I was coming)", minCefr:7},
-  {key:"sart_kipi",       label:"Conditional -se",                   hint:"if/should, e.g. \"gelirse\" (if he comes)", minCefr:7},
+  {key:"sart_kipi",       label:"Conditional -se",                   hint:"if/should, e.g. \"gelirse\" (if he comes)", minCefr:12,
+    // Vergezocht geval, daarom bewust op C1 ondergebracht i.p.v. B1: het onderscheid tussen -se direct op
+    // een werkwoord vs. de copula-vorm (olursa/ise) op een naamwoord/bijvoeglijk naamwoord is subtieler
+    // dan de andere splitsingen hierboven, maar leent zich er nog steeds voor.
+    variants: [
+      {id:"fiil", hint:"conditional -se attached DIRECTLY to a verb stem — e.g. \"gelirse\" (if he comes), \"yaparsam\" (if I do it). No copula/olursa here."},
+      {id:"isim", hint:"conditional on a NOUN or ADJECTIVE predicate, via the copula-conditional olursa/ise — e.g. \"hasta olursa\" (if he gets/is sick), \"zengin olursam\" (if I become/am rich). Do NOT attach -se directly to a plain verb here."},
+    ]},
   {key:"istek_kipi",      label:"Optative (wish) -e",                hint:"e.g. \"gideyim\" (let me go)", minCefr:8},
   {key:"ki_eki",          label:"The suffix -ki (relative/possessive)", hint:"e.g. \"benimki\" (mine), \"masadaki kitap\" (the book on the table)", minCefr:8},
   {key:"madan_once",      label:"Converb -madan/-meden (without/before doing)", hint:"e.g. \"yemeden gitti\" (he left without eating), \"gitmeden önce\" (before going)", minCefr:8},
@@ -1032,7 +1058,13 @@ const GRAMMAR_TOPICS = [
       {id:"ecek", hint:"future participle -ecek (what will/is going to) — e.g. \"okuyacağım kitap\" (the book I will read)"},
     ]},
   {key:"birlesik_gecmis", label:"Compound past combinations -mişti", hint:"e.g. \"gitmişti\" (he had apparently gone)", minCefr:10},
-  {key:"dolayli_anlatim", label:"Direct/indirect speech",            hint:"e.g. \"'geliyorum' dedi\" (he said 'I'm coming') vs \"geleceğini söyledi\" (he said he'd come)", minCefr:10},
+  {key:"dolayli_anlatim", label:"Direct/indirect speech",            hint:"e.g. \"'geliyorum' dedi\" (he said 'I'm coming') vs \"geleceğini söyledi\" (he said he'd come)", minCefr:10,
+    // Bundelde al twee wezenlijk verschillende constructies (letterlijke aanhaling vs. omgezette indirecte
+    // rede) -- net als rivayet_bilesik hierboven, nu losgetrokken zodat beide apart geoefend worden.
+    variants: [
+      {id:"direct",   hint:"DIRECT speech — a literal quotation in quote marks followed by \"dedi\" (said), with NO change to person/tense inside the quote — e.g. \"'Geliyorum' dedi.\" (He said, 'I'm coming'), \"'Yarın gideceğim' dedim.\" (I said, 'I'll go tomorrow')."},
+      {id:"indirect", hint:"INDIRECT/reported speech — no quote marks, the reported clause is nominalized with -diğini/-eceğini/-acağını etc. and the person shifts accordingly — e.g. \"Geleceğini söyledi.\" (He said that he would come), \"Yorgun olduğunu söyledim.\" (I said that I was tired)."},
+    ]},
   {key:"dikce",           label:"Converb -dıkça (the more.../every time)", hint:"e.g. \"okudukça öğrenirsin\" (the more you read, the more you learn)", minCefr:11},
   {key:"zarf_fiil",       label:"Converbs (-erek, -ken)",             hint:"e.g. \"koşarak geldi\" (he came running), \"gelirken\" (while coming)", minCefr:10},
   {key:"edilgen_cati",    label:"Passive voice (-il/-in)",            hint:"e.g. \"kapı kapatıldı\" (the door was closed)", minCefr:11},
@@ -1040,8 +1072,21 @@ const GRAMMAR_TOPICS = [
   {key:"ettirgen_cati",   label:"Causative (make/have done, -dir/-t)", hint:"e.g. \"yaptırdım\" (I had it made)", minCefr:12},
   {key:"donusluluk_cati", label:"Reflexive voice (-in)",              hint:"oneself, e.g. \"yıkandım\" (I washed myself)", minCefr:12},
   {key:"sart_bilesik",    label:"Compound conditional (hypothetical past, -seydi)", hint:"e.g. \"gitseydim\" (if I had gone), \"gitmiş olsaydı\" (if he had [reportedly] gone) — a hypothetical about something that did NOT happen, distinct from the basic -se conditional", minCefr:13},
-  {key:"tezlik_fiili",    label:"Rapid-action verb -(y)Iver",         hint:"e.g. \"gidiver\" (just go / go right away), \"bakıver\" (just take a quick look) — adds a sense of speed, ease, or suddenness to the action", minCefr:13},
-  {key:"rivayet_bilesik", label:"Compound hearsay tenses (-(i)yormuş, -mişmiş)", hint:"e.g. \"gidiyormuş\" (apparently he's going), \"gitmişmiş\" (apparently he had [reportedly] gone) — layering the hearsay/inferential -miş onto another tense, distinct from the simple -miş past", minCefr:14},
+  {key:"tezlik_fiili",    label:"Rapid-action verb -(y)Iver",         hint:"e.g. \"gidiver\" (just go / go right away), \"bakıver\" (just take a quick look) — adds a sense of speed, ease, or suddenness to the action", minCefr:15,
+    // Vergezocht geval, daarom bewust op C2 ondergebracht: zonder splitsing kon -(y)Iver met willekeurige
+    // tijden combineren (bv. een voltooide "gidiverdi"), wat de kernbetekenis (snelheid/gemak) onnodig
+    // liet vermengen met een tweede grammaticaal aspect.
+    variants: [
+      {id:"emir",  hint:"rapid-action in the IMPERATIVE (a command to do something quickly/right away) — e.g. \"gidiver!\" (just go already!), \"bakıver\" (just take a quick look). No past/future tense here."},
+      {id:"anlati", hint:"rapid-action layered onto PAST or FUTURE tense, narrating that something happened/will happen quickly or suddenly — e.g. \"gidiverdi\" (he suddenly left / went right away), \"bakıverecek\" (he'll just take a quick look)."},
+    ]},
+  {key:"rivayet_bilesik", label:"Compound hearsay tenses (-(i)yormuş, -mişmiş)", hint:"e.g. \"gidiyormuş\" (apparently he's going), \"gitmişmiş\" (apparently he had [reportedly] gone) — layering the hearsay/inferential -miş onto another tense, distinct from the simple -miş past", minCefr:14,
+    // De hint bundelde al twee duidelijk te onderscheiden vormen (-(i)yormuş vs -mişmiş) -- opgesplitst
+    // om te voorkomen dat de AI steeds naar dezelfde van de twee trekt.
+    variants: [
+      {id:"iyormus", hint:"hearsay layered onto PRESENT CONTINUOUS -(i)yormuş (apparently is/was doing) — e.g. \"gidiyormuş\" (apparently he's going), \"çalışıyormuşum\" (apparently I was working). Do NOT use -mişmiş here."},
+      {id:"mismis",  hint:"hearsay layered onto SIMPLE PAST -mişmiş (apparently had [reportedly] done) — e.g. \"gitmişmiş\" (apparently he had gone), \"yemek yapmışmış\" (apparently she had cooked). Do NOT use -(i)yormuş here."},
+    ]},
   {key:"ileri_baglaclar", label:"Correlative conjunctions (ne...ne de, gerek...gerek, ister...ister)", hint:"e.g. \"ne çay ne de kahve\" (neither tea nor coffee), \"gerek anne gerek baba\" (both mother and father), \"ister gel ister gelme\" (whether you come or not) — paired conjunctions linking two items/options", minCefr:14,
     variants: [
       {id:"ne_ne_de",   hint:"\"ne...ne de\" (neither...nor) — e.g. \"ne çay ne de kahve\" (neither tea nor coffee)"},
