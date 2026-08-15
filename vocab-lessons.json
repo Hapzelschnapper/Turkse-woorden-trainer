@@ -329,7 +329,7 @@
     "words": [
       "free",
       "high__adj",
-      "grey",
+      "gray",
       "full",
       "hard",
       "main",
@@ -1259,7 +1259,7 @@
       "paragraph",
       "newspaper",
       "policeman",
-      "programme"
+      "program__n"
     ]
   },
   {
@@ -1325,7 +1325,7 @@
       "have to",
       "prepare",
       "describe",
-      "practise",
+      "practice__v",
       "remember",
       "auxiliary",
       "can__modalv",
@@ -1735,7 +1735,7 @@
       "level__n",
       "light__n",
       "knife",
-      "maths",
+      "math",
       "media",
       "lorry",
       "metal",
@@ -2432,7 +2432,7 @@
       "purpose",
       "quality",
       "printer",
-      "railway",
+      "railroad",
       "process__n",
       "profile",
       "program__n",
@@ -2511,7 +2511,7 @@
       "medicine",
       "learning",
       "movement",
-      "per cent",
+      "percent",
       "musician",
       "platform",
       "quantity",
@@ -2575,7 +2575,7 @@
       "lifestyle",
       "knowledge",
       "invention",
-      "jewellery",
+      "jewelry",
       "passenger",
       "reception",
       "recording",
@@ -2860,7 +2860,7 @@
     "title": "Prepositions — A2 end",
     "cefr": 5,
     "words": [
-      "towards",
+      "toward",
       "including",
       "according to"
     ]
@@ -2964,7 +2964,7 @@
       "wing",
       "tube",
       "wool",
-      "tyre",
+      "tire",
       "yard"
     ]
   },
@@ -3273,7 +3273,7 @@
     "title": "Nouns — B1 mid (part 1)",
     "cefr": 7,
     "words": [
-      "favour",
+      "favor__n",
       "impact__n",
       "import__n",
       "growth",
@@ -4094,7 +4094,7 @@
       "bush",
       "bond",
       "debt",
-      "disc",
+      "disk",
       "crew",
       "crop",
       "core",
@@ -4322,7 +4322,7 @@
       "stall",
       "usage",
       "steam",
-      "tonne"
+      "ton"
     ]
   },
   {
@@ -4363,7 +4363,7 @@
     "words": [
       "heaven",
       "income",
-      "honour",
+      "honor__n",
       "humor",
       "master__n",
       "labor",
@@ -4853,7 +4853,7 @@
     "words": [
       "contest",
       "expense",
-      "enquiry",
+      "inquiry",
       "finance__n",
       "finding",
       "edition",
@@ -4953,7 +4953,7 @@
       "harbor",
       "lottery",
       "obesity",
-      "make-up",
+      "makeup",
       "penalty",
       "monster",
       "portion"
@@ -5435,7 +5435,7 @@
       "closely",
       "largely",
       "rapidly",
-      "upwards",
+      "upward",
       "briefly",
       "broadly"
     ]
@@ -6103,7 +6103,7 @@
       "terribly",
       "steadily",
       "basically",
-      "downwards",
+      "downward",
       "elsewhere",
       "gradually"
     ]
@@ -6514,7 +6514,7 @@
       "remedy",
       "rental",
       "seldom",
-      "set-up",
+      "setup",
       "reform__n",
       "refuge"
     ]
@@ -6895,7 +6895,7 @@
     "cefr": 12,
     "words": [
       "albeit",
-      "whilst"
+      "while"
     ]
   },
   {
@@ -6974,7 +6974,7 @@
       "liberty",
       "harmony",
       "harvest__n",
-      "line-up",
+      "lineup",
       "listing"
     ]
   },
@@ -7302,7 +7302,7 @@
       "distort",
       "endorse",
       "enforce",
-      "enquire",
+      "inquire",
       "entitle",
       "inflict",
       "inhibit",
@@ -7741,14 +7741,14 @@
     "words": [
       "confession",
       "corruption",
-      "councillor",
-      "counsellor",
+      "councilor",
+      "counselor",
       "conscience",
       "dependence",
       "deployment",
       "commentary",
       "constraint",
-      "film-maker"
+      "filmmaker"
     ]
   },
   {
@@ -7892,7 +7892,7 @@
       "resignation",
       "realization",
       "restoration",
-      "proceedings"
+      "proceeding"
     ]
   },
   {
@@ -8075,7 +8075,7 @@
       "mandatory",
       "municipal",
       "scattered",
-      "sceptical",
+      "skeptical",
       "selective"
     ]
   },
@@ -8122,7 +8122,7 @@
       "persistent",
       "meaningful",
       "nationwide",
-      "non-profit",
+      "nonprofit",
       "respective",
       "productive"
     ]

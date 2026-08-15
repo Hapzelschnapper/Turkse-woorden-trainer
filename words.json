@@ -28696,5 +28696,595 @@
     "en": "continue",
     "cefr": 5,
     "pos": "verb"
+  },
+  {
+    "en": "continuous",
+    "cefr": 8,
+    "pos": "adjective"
+  },
+  {
+    "en": "contract",
+    "cefr": 10,
+    "pos": "noun"
+  },
+  {
+    "en": "contrast",
+    "cefr": 7,
+    "pos": "noun"
+  },
+  {
+    "en": "contribute",
+    "cefr": 11,
+    "pos": "verb"
+  },
+  {
+    "en": "contribution",
+    "cefr": 11,
+    "pos": "noun"
+  },
+  {
+    "en": "control",
+    "cefr": 4,
+    "pos": "noun"
+  },
+  {
+    "en": "convenient",
+    "cefr": 8,
+    "pos": "adjective"
+  },
+  {
+    "en": "conversation",
+    "cefr": 2,
+    "pos": "noun"
+  },
+  {
+    "en": "convert",
+    "cefr": 10,
+    "pos": "verb"
+  },
+  {
+    "en": "convince",
+    "cefr": 7,
+    "pos": "verb"
+  },
+  {
+    "en": "convinced",
+    "cefr": 11,
+    "pos": "adjective"
+  },
+  {
+    "en": "cook",
+    "cefr": 0,
+    "pos": "verb"
+  },
+  {
+    "en": "cooker",
+    "cefr": 4,
+    "pos": "noun"
+  },
+  {
+    "en": "cooking",
+    "cefr": 2,
+    "pos": "noun"
+  },
+  {
+    "en": "cool",
+    "cefr": 0,
+    "pos": "adjective"
+  },
+  {
+    "en": "copy",
+    "cefr": 3,
+    "pos": "noun"
+  },
+  {
+    "en": "core",
+    "cefr": 9,
+    "pos": "noun"
+  },
+  {
+    "en": "corner",
+    "cefr": 4,
+    "pos": "noun"
+  },
+  {
+    "en": "corporate",
+    "cefr": 11,
+    "pos": "adjective"
+  },
+  {
+    "en": "correct",
+    "cefr": 2,
+    "pos": "adjective"
+  },
+  {
+    "en": "correctly",
+    "cefr": 5,
+    "pos": "adverb"
+  },
+  {
+    "en": "cost",
+    "cefr": 0,
+    "pos": "noun"
+  },
+  {
+    "en": "costume",
+    "cefr": 7,
+    "pos": "noun"
+  },
+  {
+    "en": "cottage",
+    "cefr": 7,
+    "pos": "noun"
+  },
+  {
+    "en": "cotton",
+    "cefr": 6,
+    "pos": "noun"
+  },
+  {
+    "en": "could",
+    "cefr": 2,
+    "pos": "modal verb"
+  },
+  {
+    "en": "council",
+    "cefr": 10,
+    "pos": "noun"
+  },
+  {
+    "en": "count",
+    "cefr": 3,
+    "pos": "verb"
+  },
+  {
+    "en": "country",
+    "cefr": 2,
+    "pos": "noun"
+  },
+  {
+    "en": "countryside",
+    "cefr": 8,
+    "pos": "noun"
+  },
+  {
+    "en": "county",
+    "cefr": 9,
+    "pos": "noun"
+  },
+  {
+    "en": "couple",
+    "cefr": 4,
+    "pos": "noun"
+  },
+  {
+    "en": "courage",
+    "cefr": 10,
+    "pos": "noun"
+  },
+  {
+    "en": "course",
+    "cefr": 1,
+    "pos": "noun"
+  },
+  {
+    "en": "court",
+    "cefr": 6,
+    "pos": "noun"
+  },
+  {
+    "en": "cousin",
+    "cefr": 1,
+    "pos": "noun"
+  },
+  {
+    "en": "cover",
+    "cefr": 3,
+    "pos": "verb"
+  },
+  {
+    "en": "covered",
+    "cefr": 7,
+    "pos": "adjective"
+  },
+  {
+    "en": "cow",
+    "cefr": 0,
+    "pos": "noun"
+  },
+  {
+    "en": "crash",
+    "cefr": 9,
+    "pos": "noun"
+  },
+  {
+    "en": "crazy",
+    "cefr": 4,
+    "pos": "adjective"
+  },
+  {
+    "en": "cream",
+    "cefr": 1,
+    "pos": "noun"
+  },
+  {
+    "en": "create",
+    "cefr": 1,
+    "pos": "verb"
+  },
+  {
+    "en": "creation",
+    "cefr": 10,
+    "pos": "noun"
+  },
+  {
+    "en": "creative",
+    "cefr": 5,
+    "pos": "adjective"
+  },
+  {
+    "en": "creature",
+    "cefr": 10,
+    "pos": "noun"
+  },
+  {
+    "en": "credit",
+    "cefr": 4,
+    "pos": "noun"
+  },
+  {
+    "en": "crew",
+    "cefr": 9,
+    "pos": "noun"
+  },
+  {
+    "en": "crime",
+    "cefr": 3,
+    "pos": "noun"
+  },
+  {
+    "en": "criminal",
+    "cefr": 4,
+    "pos": "noun"
+  },
+  {
+    "en": "crisis",
+    "cefr": 9,
+    "pos": "noun"
+  },
+  {
+    "en": "criterion",
+    "cefr": 11,
+    "pos": "noun"
+  },
+  {
+    "en": "critic",
+    "cefr": 9,
+    "pos": "noun"
+  },
+  {
+    "en": "critical",
+    "cefr": 10,
+    "pos": "adjective"
+  },
+  {
+    "en": "criticism",
+    "cefr": 11,
+    "pos": "noun"
+  },
+  {
+    "en": "criticize",
+    "cefr": 11,
+    "pos": "verb"
+  },
+  {
+    "en": "crop",
+    "cefr": 9,
+    "pos": "noun"
+  },
+  {
+    "en": "cross",
+    "cefr": 3,
+    "pos": "verb"
+  },
+  {
+    "en": "crowd",
+    "cefr": 3,
+    "pos": "noun"
+  },
+  {
+    "en": "crowded",
+    "cefr": 4,
+    "pos": "adjective"
+  },
+  {
+    "en": "crucial",
+    "cefr": 10,
+    "pos": "adjective"
+  },
+  {
+    "en": "cruel",
+    "cefr": 6,
+    "pos": "adjective"
+  },
+  {
+    "en": "cry",
+    "cefr": 3,
+    "pos": "verb"
+  },
+  {
+    "en": "cultural",
+    "cefr": 7,
+    "pos": "adjective"
+  },
+  {
+    "en": "culture",
+    "cefr": 2,
+    "pos": "noun"
+  },
+  {
+    "en": "cup",
+    "cefr": 0,
+    "pos": "noun"
+  },
+  {
+    "en": "cupboard",
+    "cefr": 5,
+    "pos": "noun"
+  },
+  {
+    "en": "cure",
+    "cefr": 9,
+    "pos": "verb"
+  },
+  {
+    "en": "curly",
+    "cefr": 3,
+    "pos": "adjective"
+  },
+  {
+    "en": "currency",
+    "cefr": 7,
+    "pos": "noun"
+  },
+  {
+    "en": "current",
+    "cefr": 7,
+    "pos": "adjective"
+  },
+  {
+    "en": "currently",
+    "cefr": 8,
+    "pos": "adverb"
+  },
+  {
+    "en": "curtain",
+    "cefr": 7,
+    "pos": "noun"
+  },
+  {
+    "en": "curve",
+    "cefr": 9,
+    "pos": "noun"
+  },
+  {
+    "en": "curved",
+    "cefr": 9,
+    "pos": "adjective"
+  },
+  {
+    "en": "custom",
+    "cefr": 6,
+    "pos": "noun"
+  },
+  {
+    "en": "customer",
+    "cefr": 2,
+    "pos": "noun"
+  },
+  {
+    "en": "cut",
+    "cefr": 0,
+    "pos": "verb"
+  },
+  {
+    "en": "cycle",
+    "cefr": 3,
+    "pos": "noun"
+  },
+  {
+    "en": "deem",
+    "cefr": 12,
+    "pos": "verb"
+  },
+  {
+    "en": "delight",
+    "cefr": 10,
+    "pos": "verb"
+  },
+  {
+    "en": "firstly",
+    "cefr": 4,
+    "pos": "adverb"
+  },
+  {
+    "en": "fixture",
+    "cefr": 13,
+    "pos": "noun"
+  },
+  {
+    "en": "fridge",
+    "cefr": 4,
+    "pos": "noun"
+  },
+  {
+    "en": "idiot",
+    "cefr": 12,
+    "pos": "noun"
+  },
+  {
+    "en": "imprisonment",
+    "cefr": 14,
+    "pos": "noun"
+  },
+  {
+    "en": "indictment",
+    "cefr": 14,
+    "pos": "noun"
+  },
+  {
+    "en": "junction",
+    "cefr": 13,
+    "pos": "noun"
+  },
+  {
+    "en": "lad",
+    "cefr": 12,
+    "pos": "noun"
+  },
+  {
+    "en": "leaflet",
+    "cefr": 10,
+    "pos": "noun"
+  },
+  {
+    "en": "long-time",
+    "cefr": 14,
+    "pos": "adjective"
+  },
+  {
+    "en": "lorry",
+    "cefr": 3,
+    "pos": "noun"
+  },
+  {
+    "en": "lovely",
+    "cefr": 4,
+    "pos": "adjective"
+  },
+  {
+    "en": "magistrate",
+    "cefr": 14,
+    "pos": "noun"
+  },
+  {
+    "en": "motorist",
+    "cefr": 13,
+    "pos": "noun"
+  },
+  {
+    "en": "mum",
+    "cefr": 0,
+    "pos": "noun"
+  },
+  {
+    "en": "parish",
+    "cefr": 12,
+    "pos": "noun"
+  },
+  {
+    "en": "parliamentary",
+    "cefr": 14,
+    "pos": "adjective"
+  },
+  {
+    "en": "petrol",
+    "cefr": 4,
+    "pos": "noun"
+  },
+  {
+    "en": "post-war",
+    "cefr": 13,
+    "pos": "adjective"
+  },
+  {
+    "en": "pub",
+    "cefr": 3,
+    "pos": "noun"
+  },
+  {
+    "en": "pupil",
+    "cefr": 9,
+    "pos": "noun"
+  },
+  {
+    "en": "queue",
+    "cefr": 6,
+    "pos": "noun"
+  },
+  {
+    "en": "rubbish",
+    "cefr": 5,
+    "pos": "noun"
+  },
+  {
+    "en": "rugby",
+    "cefr": 6,
+    "pos": "noun"
+  },
+  {
+    "en": "sack",
+    "cefr": 12,
+    "pos": "verb"
+  },
+  {
+    "en": "scheme",
+    "cefr": 9,
+    "pos": "noun"
+  },
+  {
+    "en": "sexy",
+    "cefr": 9,
+    "pos": "adjective"
+  },
+  {
+    "en": "shaped",
+    "cefr": 10,
+    "pos": "adjective"
+  },
+  {
+    "en": "solicitor",
+    "cefr": 14,
+    "pos": "noun"
+  },
+  {
+    "en": "sporting",
+    "cefr": 11,
+    "pos": "adjective"
+  },
+  {
+    "en": "teens",
+    "cefr": 9,
+    "pos": "noun"
+  },
+  {
+    "en": "tidy",
+    "cefr": 3,
+    "pos": "adjective"
+  },
+  {
+    "en": "tin",
+    "cefr": 6,
+    "pos": "noun"
+  },
+  {
+    "en": "tribunal",
+    "cefr": 13,
+    "pos": "noun"
+  },
+  {
+    "en": "trousers",
+    "cefr": 2,
+    "pos": "noun"
+  },
+  {
+    "en": "villager",
+    "cefr": 13,
+    "pos": "noun"
+  },
+  {
+    "en": "youngster",
+    "cefr": 14,
+    "pos": "noun"
   }
 ]

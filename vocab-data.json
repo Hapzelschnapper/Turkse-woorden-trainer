@@ -74876,5 +74876,1539 @@
         "note": ""
       }
     ]
+  },
+  "continuous": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "sürekli"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "contract": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "sözleşme"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "contrast": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "karşıtlık"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "contribute": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "katkıda bulunmak"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "contribution": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "katkı"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "control": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kontrol"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "convenient": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "uygun"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "conversation": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "sohbet"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "convert": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "dönüştürmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "convince": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "ikna etmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "convinced": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "ikna olmuş"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cook": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "pişirmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cooker": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "ocak"
+        ],
+        "register": "neutral",
+        "note": "keukenfornuis"
+      }
+    ]
+  },
+  "cooking": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "yemek pişirme"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cool": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "serin"
+        ],
+        "register": "neutral",
+        "note": "temperatuur; informele betekenis (\"cool/awesome\") niet meegenomen op dit basisniveau"
+      }
+    ]
+  },
+  "copy": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kopya"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "core": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "çekirdek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "corner": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "köşe"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "corporate": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "kurumsal"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "correct": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "doğru"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "correctly": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adverb",
+        "tr": [
+          "doğru bir şekilde"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cost": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "maliyet"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "costume": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kostüm"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cottage": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "yazlık ev"
+        ],
+        "register": "neutral",
+        "note": "klein huisje, vaak op het platteland"
+      }
+    ]
+  },
+  "cotton": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "pamuk"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "could": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "modal verb",
+        "tr": [
+          "-ebilirdi"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "council": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "konsey"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "count": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "saymak"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "country": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "ülke"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "countryside": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kırsal alan"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "county": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "il"
+        ],
+        "register": "neutral",
+        "note": "grofweg equivalent, Amerikaans bestuurlijk systeem heeft geen exacte Turkse tegenhanger"
+      }
+    ]
+  },
+  "couple": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "çift"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "courage": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "cesaret"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "course": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kurs"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "court": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "mahkeme"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cousin": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kuzen"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cover": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "örtmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "covered": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "örtülü"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cow": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "inek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "crash": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "çarpışma"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "crazy": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "çılgın"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cream": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "krema"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "create": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "yaratmak"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "creation": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "yaratım"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "creative": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "yaratıcı"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "creature": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "yaratık"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "credit": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kredi"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "crew": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "mürettebat"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "crime": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "suç"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "criminal": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "suçlu"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "crisis": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kriz"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "criterion": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kriter"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "critic": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "eleştirmen"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "critical": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "kritik"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "criticism": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "eleştiri"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "criticize": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "eleştirmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "crop": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "mahsul"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cross": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "geçmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "crowd": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kalabalık"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "crowded": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "kalabalık"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "crucial": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "hayati"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cruel": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "acımasız"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cry": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "ağlamak"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cultural": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "kültürel"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "culture": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kültür"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cup": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "fincan"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cupboard": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "dolap"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cure": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "iyileştirmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "curly": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "kıvırcık"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "currency": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "para birimi"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "current": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "güncel"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "currently": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adverb",
+        "tr": [
+          "şu anda"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "curtain": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "perde"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "curve": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "eğri"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "curved": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "kavisli"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "custom": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "gelenek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "customer": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "müşteri"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cut": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "kesmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "cycle": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "döngü"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "deem": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "saymak"
+        ],
+        "register": "neutral",
+        "note": "bv. \"deemed necessary\" = gerekli sayılmak"
+      }
+    ]
+  },
+  "delight": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "sevindirmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "firstly": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adverb",
+        "tr": [
+          "ilk olarak"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "fixture": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "sabit tesisat"
+        ],
+        "register": "neutral",
+        "note": "ook: vaste plek in een sportcompetitieschema (fikstür)"
+      }
+    ]
+  },
+  "fridge": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "buzdolabı"
+        ],
+        "register": "neutral",
+        "note": "informele/verkorte vorm van refrigerator"
+      }
+    ]
+  },
+  "idiot": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "aptal"
+        ],
+        "register": "neutral",
+        "note": "informeel — kan als belediging worden opgevat"
+      }
+    ]
+  },
+  "imprisonment": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "hapis"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "indictment": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "iddianame"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "junction": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kavşak"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "lad": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "delikanlı"
+        ],
+        "register": "neutral",
+        "note": "informeel, Brits"
+      }
+    ]
+  },
+  "leaflet": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "el ilanı"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "long-time": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "eski"
+        ],
+        "register": "neutral",
+        "note": "in de zin van langdurig/al lang bestaand, bv. \"long-time friend\" = eski dost"
+      }
+    ]
+  },
+  "lorry": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kamyon"
+        ],
+        "register": "neutral",
+        "note": "Brits Engels voor truck"
+      }
+    ]
+  },
+  "lovely": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "hoş"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "magistrate": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "sulh hakimi"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "motorist": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "sürücü"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "mum": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "anne"
+        ],
+        "register": "neutral",
+        "note": "informeel, Brits (vgl. mom)"
+      }
+    ]
+  },
+  "parish": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kilise bölgesi"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "parliamentary": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "parlamenter"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "petrol": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "benzin"
+        ],
+        "register": "neutral",
+        "note": "Brits Engels voor gas/gasoline"
+      }
+    ]
+  },
+  "post-war": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "savaş sonrası"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "pub": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "birahane"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "pupil": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "öğrenci"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "queue": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "sıra"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "rubbish": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "çöp"
+        ],
+        "register": "neutral",
+        "note": "Brits Engels voor garbage/trash"
+      }
+    ]
+  },
+  "rugby": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "ragbi"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "sack": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "kovmak"
+        ],
+        "register": "neutral",
+        "note": "informeel — bv. \"get sacked\" = kovulmak"
+      }
+    ]
+  },
+  "scheme": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "tasarı"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "sexy": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "seksi"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "shaped": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "şekilli"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "solicitor": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "avukat"
+        ],
+        "register": "neutral",
+        "note": "Brits type advocaat"
+      }
+    ]
+  },
+  "sporting": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "sportif"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "teens": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "gençlik çağı"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "tidy": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "derli toplu"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "tin": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "teneke kutu"
+        ],
+        "register": "neutral",
+        "note": "Brits Engels voor can"
+      }
+    ]
+  },
+  "tribunal": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "mahkeme heyeti"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "trousers": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "pantolon"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "villager": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "köylü"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "youngster": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "genç"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
   }
 }
