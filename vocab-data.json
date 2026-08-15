@@ -75,7 +75,7 @@
           "hakkında"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(concerning, regarding)"
       }
     ]
   },
@@ -88,7 +88,7 @@
           "yaklaşık"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(approximately)"
       }
     ]
   },
@@ -101,7 +101,7 @@
           "üstünde"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(higher than, over)"
       }
     ]
   },
@@ -114,7 +114,7 @@
           "yukarıda"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(higher up, overhead)"
       }
     ]
   },
@@ -797,7 +797,7 @@
           "boyunca"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(to/on the other side of)"
       }
     ]
   },
@@ -810,7 +810,7 @@
           "karşıya"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(from one side to the other)"
       }
     ]
   },
@@ -1669,7 +1669,7 @@
           "sonra"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(following in time)"
       }
     ]
   },
@@ -1682,7 +1682,7 @@
           "sonra"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(afterwards, later)"
       }
     ]
   },
@@ -6736,7 +6736,7 @@
           "dışında"
         ],
         "register": "neutral",
-        "note": "'besides' als voorzetsel — zie ook bijwoord"
+        "note": "(in addition to, apart from)"
       }
     ]
   },
@@ -6750,7 +6750,7 @@
           "üstelik"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(furthermore, also)"
       }
     ]
   },
@@ -9172,7 +9172,7 @@
           "-ebilmek"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(ability/permission)"
       }
     ]
   },
@@ -9186,7 +9186,7 @@
           "teneke kutu"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(a tin/container)"
       }
     ]
   },
@@ -11690,7 +11690,7 @@
           "kapatmak"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(to shut)"
       }
     ]
   },
@@ -11703,7 +11703,7 @@
           "yakın"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(nearby, not far)"
       }
     ]
   },
@@ -25902,7 +25902,7 @@
           "uçmak"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(to move through the air)"
       }
     ]
   },
@@ -25915,7 +25915,7 @@
           "sinek"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(the insect)"
       }
     ]
   },
@@ -32471,7 +32471,7 @@
           "içinde"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(inside, within)"
       }
     ]
   },
@@ -32484,7 +32484,7 @@
           "içeri"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(indoors, at home)"
       }
     ]
   },
@@ -33646,7 +33646,7 @@
           "içinde"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(within, on the inner side of)"
       }
     ]
   },
@@ -33659,7 +33659,7 @@
           "içeride"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(indoors)"
       }
     ]
   },
@@ -36460,7 +36460,7 @@
           "son"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(final, most recent)"
       }
     ]
   },
@@ -36473,7 +36473,7 @@
           "sürmek (zaman)"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(to continue, endure)"
       }
     ]
   },
@@ -37652,7 +37652,7 @@
           "gibi"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(similar to)"
       }
     ]
   },
@@ -37666,7 +37666,7 @@
           "sevmek"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(to enjoy, be fond of)"
       }
     ]
   },
@@ -45499,7 +45499,7 @@
           "dışarıda"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(out of doors)"
       }
     ]
   },
@@ -45512,7 +45512,7 @@
           "dışında"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(external to)"
       }
     ]
   },
@@ -57901,7 +57901,7 @@
           "ikinci"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(2nd, the ordinal number)"
       }
     ]
   },
@@ -57914,7 +57914,7 @@
           "saniye"
         ],
         "register": "neutral",
-        "note": ""
+        "note": "(a unit of time)"
       }
     ]
   },

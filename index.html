@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.67</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.63</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.67</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.63</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -974,18 +974,7 @@ const GRAMMAR_TOPICS = [
   {key:"ayrilma_hali",    label:"Ablative (-den/-dan)",              hint:"origin/from, e.g. \"okuldan geldim\" (I came from school) — vary which of the vowel-harmony/hardening forms (-den/-dan/-ten/-tan) comes up across repeated exercises", minCefr:2},
   {key:"belirtme_hali",   label:"Accusative (-i/-ı/-u/-ü)",          hint:"marks a definite direct object, e.g. \"kitabı okudum\" (I read the book) — vary which of the four vowel-harmony forms (-i/-ı/-u/-ü) comes up across repeated exercises", minCefr:2},
   {key:"gecmis_copula",   label:"Past copula -ydi",                  hint:"e.g. \"öğrenciydim\" (I was a student)", minCefr:3},
-  {key:"yeterlik_kipi",   label:"Ability -ebilmek (can)",            hint:"e.g. \"gidebilirim\" (I can go), \"yüzebilir misin?\" (can you swim?)", minCefr:3,
-    // Zonder splitsing combineerde de AI de ability-uitgang vrij met ELKE tijd (incl. verleden/voltooid),
-    // wat tot onnodig complexe zinnen leidde (bv. "I can be born in Istanbul" -- ability + voltooide vorm
-    // tegelijk). Elke variant zet nu precies ÉÉN tijd vast, net als de losse tijd-topics elders
-    // (simdiki_zaman/genis_zaman/gecmis_di/gelecek_zaman) dat al doen voor de kale werkwoordsvorm.
-    variants: [
-      {id:"iyor",  hint:"STATEMENT, ability combined with PRESENT CONTINUOUS -ebiliyor (can, happening/possible right now) — e.g. \"gidebiliyorum\" (I can go [now]), \"yüzebiliyor\" (he/she can swim [right now]). Statement only, no question — do NOT add mi/mı/mu/mü. Do NOT combine with any other tense."},
-      {id:"ir",    hint:"STATEMENT, ability combined with AORIST -ebilir (can, general/habitual ability) — e.g. \"yüzebilirim\" (I can swim, in general), \"gidebilir\" (he/she can go). Statement only, no question — do NOT add mi/mı/mu/mü. Do NOT combine with any other tense."},
-      {id:"di",    hint:"STATEMENT, ability combined with PAST -ebildi (could/managed to, in the past) — e.g. \"gidebildim\" (I could go / managed to go), \"yüzebildi\" (he/she was able to swim). Statement only, no question — do NOT add mi/mı/mu/mü. Do NOT combine with any other tense."},
-      {id:"ecek",  hint:"STATEMENT, ability combined with FUTURE -ebilecek (will be able to) — e.g. \"gidebileceğim\" (I will be able to go), \"yüzebilecek\" (he/she will be able to swim). Statement only, no question — do NOT add mi/mı/mu/mü. Do NOT combine with any other tense."},
-      {id:"soru",  hint:"QUESTION form: a yes/no question about ability, with the mi/mı/mu/mü particle placed right after the ability-marked verb (before the personal ending) — e.g. \"Yüzebilir misin?\" (Can you swim?), \"Gelebilir misiniz?\" (Can you [formal/plural] come?), \"Gidebildin mi?\" (Were you able to go?). Any of the tenses above is fine here — the focus is purely the question mechanic (mi-placement), not which tense is used."},
-    ]},
+  {key:"yeterlik_kipi",   label:"Ability -ebilmek (can)",            hint:"e.g. \"gidebilirim\" (I can go), \"yüzebilir misin?\" (can you swim?)", minCefr:3},
   {key:"gecmis_di",       label:"Past tense -di (witnessed/certain)", hint:"e.g. \"geldim\" (I came)", minCefr:3},
   {key:"tamlayan_hali",   label:"Genitive (-in/-ın/-un/-ün)",        hint:"possession/compounds, e.g. \"annemin evi\" (my mother's house) — vary which of the four vowel-harmony forms (-in/-ın/-un/-ün) comes up across repeated exercises", minCefr:3},
   {key:"isim_tamlamasi",  label:"Noun compounds (isim tamlaması)",   hint:"e.g. \"araba anahtarı\" (car key), \"okulun bahçesi\" (the school's garden)", minCefr:4},
@@ -997,9 +986,7 @@ const GRAMMAR_TOPICS = [
     ]},
   {key:"edatlar",         label:"Postpositions (için, ile, göre, rağmen)", hint:"e.g. \"senin için\" (for you), \"buna rağmen\" (despite this)", minCefr:4,
     variants: [
-      {id:"icin_amac",  hint:"\"için\" expressing PURPOSE, \"[in order] to\" (with an infinitive -mek/-mak için) — e.g. \"İngilizce öğrenmek için çalışıyorum.\" (I'm studying [in order] to learn English.). Do NOT use the reason or benefit sense here."},
-      {id:"icin_neden", hint:"\"için\" expressing REASON/CAUSE, \"because of\" — e.g. \"Trafik için geç kaldım.\" (I was late because of the traffic.). Do NOT use the purpose or benefit sense here."},
-      {id:"icin_fayda", hint:"\"için\" expressing BENEFIT, \"for (the sake of)/on behalf of\" a person — e.g. \"Senin için bunu yaptım.\" (I did this for you.). Do NOT use the purpose or reason sense here."},
+      {id:"icin",    hint:"\"için\" (for/because of) — e.g. \"senin için\" (for you)"},
       {id:"ile",     hint:"\"ile\" (with) — e.g. \"seninle\" (with you)"},
       {id:"gore",    hint:"\"göre\" (according to) — e.g. \"bana göre\" (according to me)"},
       {id:"ragmen",  hint:"\"rağmen\" (despite) — e.g. \"buna rağmen\" (despite this)"},
@@ -1009,55 +996,27 @@ const GRAMMAR_TOPICS = [
     variants: [
       {id:"daha", hint:"\"daha\" comparative (-er/more) — e.g. \"ondan daha büyük\" (bigger than that)"},
       {id:"en",   hint:"\"en\" superlative (the most) — e.g. \"en büyük\" (the biggest)"},
-      {id:"kadar_esitlik", hint:"\"kadar\" EQUATIVE, \"as...as\" — e.g. \"senin kadar uzun\" (as tall as you). Do NOT use the temporal \"until\" sense here."},
-      {id:"kadar_zaman",   hint:"\"kadar\" TEMPORAL/SPATIAL, \"until/as far as\" — e.g. \"akşama kadar çalıştım.\" (I worked until evening.), \"eve kadar yürüdük.\" (We walked as far as home.). Do NOT use the equative \"as...as\" comparison sense here."},
+      {id:"kadar", hint:"\"kadar\" equative (as...as) — e.g. \"senin kadar uzun\" (as tall as you)"},
       {id:"gibi", hint:"\"gibi\" simile (like/as) — e.g. \"aslan gibi\" (like a lion)"},
     ]},
   {key:"genis_zaman",     label:"Aorist (general truth) -ir",        hint:"habits/facts, e.g. \"her gün koşarım\" (I run every day)", minCefr:5},
   {key:"baglaclar",       label:"Conjunctions (ki, hem...hem, ya...ya)", hint:"e.g. \"hem yorgunum hem açım\" (I'm both tired and hungry)", minCefr:6,
     variants: [
-      {id:"ki_dat",       hint:"\"ki\" as a COMPLEMENTIZER meaning \"that\", introducing a clause explaining/completing the first (typically after biliyorum/umarım/eminim-type verbs) — e.g. \"Biliyorum ki haklısın.\" (I know that you're right.), \"Umarım ki gelirsin.\" (I hope that you come.). Do NOT use the purpose/result/surprise senses here."},
-      {id:"ki_zodat",     hint:"\"ki\" expressing PURPOSE, \"so that/in order that\" — e.g. \"Yüksek sesle konuş ki duyabilsin.\" (Speak loudly so that he can hear.), \"Erken çık ki geç kalma.\" (Leave early so you're not late.). Do NOT use the \"that\"-complementizer, result, or surprise senses here."},
-      {id:"ki_gevolg",    hint:"\"ki\" expressing RESULT, \"so...that\", almost always paired with o kadar/öyle in the first clause — e.g. \"O kadar yorgundum ki uyuyakaldım.\" (I was so tired that I fell asleep.), \"Öyle hızlı koştu ki herkesi geçti.\" (He ran so fast that he passed everyone.). Do NOT use the \"that\"-complementizer, purpose, or surprise senses here."},
-      {id:"ki_verrassing", hint:"\"ki\" marking SURPRISE/a sudden realization upon seeing something, often after \"bir baktım/bir de baktım\" (I looked, and...) — e.g. \"Bir baktım ki kimse yok.\" (I looked, and there was no one there!), \"Kapıyı açtım ki her yer karanlık.\" (I opened the door, and it was pitch dark!). Do NOT use the \"that\"-complementizer, purpose, or result senses here."},
+      {id:"ki",      hint:"\"ki\" linking clause (that/who/which, or surprise/emphasis) — e.g. \"öyle bir şey söyledi ki herkes şaşırdı\" (he said something such that everyone was surprised)"},
       {id:"hem_hem", hint:"\"hem...hem\" (both...and) — e.g. \"hem yorgunum hem açım\" (I'm both tired and hungry)"},
       {id:"ya_ya",   hint:"\"ya...ya\" (either...or) — e.g. \"ya gel ya git\" (either come or go)"},
     ]},
   {key:"vurgu_partikelleri", label:"Emphasis Particles (de/da, bile, üstelik, hatta)", hint:"e.g. \"ben de geliyorum\" (I'm coming too), \"bunu bile bilmiyor\" (he doesn't even know this)", minCefr:6,
     variants: [
-      {id:"de_da_ekleme", hint:"\"de/da\" ADDITIVE, \"also/too\" — e.g. \"ben de geliyorum\" (I'm coming too), \"o da hastaydı\" (he/she was sick too). Do NOT use the contrastive or emphatic sense here."},
-      {id:"de_da_karsit", hint:"\"de/da\" CONTRASTIVE/concessive, roughly \"and yet/but even so\" — e.g. \"Çalıştı da başaramadı.\" (He worked, and yet didn't succeed.). Do NOT use the additive \"also/too\" or emphatic sense here."},
-      {id:"de_da_vurgu",  hint:"\"de/da\" RHETORICAL emphasis, often with a question word in an indignant/insistent question — e.g. \"Sen de kimsin?\" (And just who are YOU?), \"Ne de güzel bir gün!\" (What a beautiful day!). Do NOT use the additive or contrastive sense here."},
+      {id:"de_da",   hint:"\"de/da\" (also/too) — e.g. \"ben de geliyorum\" (I'm coming too)"},
       {id:"bile",    hint:"\"bile\" (even) — e.g. \"bunu bile bilmiyor\" (he doesn't even know this)"},
       {id:"ustelik", hint:"\"üstelik\" (moreover/on top of that) — e.g. \"üstelik geç de kaldı\" (moreover, he was also late)"},
       {id:"hatta",   hint:"\"hatta\" (in fact/even) — e.g. \"hatta bana yardım etti\" (he even helped me)"},
     ]},
-  {key:"gereklilik_kipi", label:"Necessitative -meli",               hint:"must/have to, e.g. \"gitmeliyim\" (I must go)", minCefr:6,
-    // "gitmeliyim" (moet nu) en "gitmeliydim" (had moeten gaan) zijn qua complexiteit erg verschillend
-    // (de tweede is een verleden-tijd-vorm van een modaliteit) -- daarom losgetrokken, zelfde reden als
-    // yeterlik_kipi hierboven.
-    variants: [
-      {id:"simdi",   hint:"STATEMENT, present necessity -meli (must/have to, right now or in general) — e.g. \"gitmeliyim\" (I must go), \"çalışmalısın\" (you have to work). Statement only, no question. Do NOT use the past form -meliydi."},
-      {id:"gecmis",  hint:"STATEMENT, PAST necessity -meliydi (should have / had to, in the past — often implying it did or didn't happen) — e.g. \"gitmeliydim\" (I should have gone), \"onu görmeliydin\" (you should have seen it). Statement only, no question. This is the more complex, past-tense form of the necessitative."},
-      {id:"soru",    hint:"QUESTION form: a yes/no question about necessity, with mi/mı/mu/mü placed right after the necessitative-marked verb — e.g. \"Gitmeli miyim?\" (Must I go?), \"Erken kalkmalı mıyız?\" (Do we have to get up early?). Either the present or past necessitative form is fine here — the focus is purely the question mechanic, not which form is used."},
-    ]},
-  {key:"gecmis_mis",      label:"Past tense -miş (hearsay/inferred)", hint:"e.g. \"gelmiş\" (apparently came)", minCefr:6,
-    // -miş bundelt drie taalkundig te onderscheiden functies (evidentialiteit vs. mirativiteit) die vaak
-    // door elkaar gehaald worden -- elk verdient eigen, gerichte oefening i.p.v. willekeurig gemengd.
-    variants: [
-      {id:"duyum",   hint:"HEARSAY use, reporting something told by someone else (not witnessed) — e.g. \"Ali gelmiş.\" (Apparently Ali came [I was told].), \"Çok zorluk çekmiş.\" (Apparently he/she had a hard time [as I heard]). Frame it as information passed on from someone else. Do NOT use the inferential-from-evidence or surprise/mirative sense here."},
-      {id:"cikarim", hint:"INFERENTIAL use, a conclusion drawn from present evidence rather than something told by someone — e.g. \"Yağmur yağmış.\" (It must have rained [the ground is wet].), \"Birisi burada yemek yapmış.\" (Someone must have cooked here [judging by the smell/mess]). Frame it around visible evidence leading to a conclusion. Do NOT use the hearsay or surprise/mirative sense here."},
-      {id:"sasirma", hint:"MIRATIVE use, a sudden personal realization/surprise upon discovering something yourself (not told, not inferred from clues — directly noticed) — e.g. \"Bak, kar yağmış!\" (Look, it's snowed!), \"Saat kaç olmuş!\" (Wow, look what time it's gotten to be!). Frame it as an exclamation of surprise at something just noticed. Do NOT use the hearsay or inferential-from-evidence sense here."},
-    ]},
+  {key:"gereklilik_kipi", label:"Necessitative -meli",               hint:"must/have to, e.g. \"gitmeliyim\" (I must go)", minCefr:6},
+  {key:"gecmis_mis",      label:"Past tense -miş (hearsay/inferred)", hint:"e.g. \"gelmiş\" (apparently came)", minCefr:6},
   {key:"gecmis_devam",    label:"Past continuous -iyordu",           hint:"e.g. \"geliyordum\" (I was coming)", minCefr:7},
-  {key:"sart_kipi",       label:"Conditional -se",                   hint:"if/should, e.g. \"gelirse\" (if he comes)", minCefr:12,
-    // Vergezocht geval, daarom bewust op C1 ondergebracht i.p.v. B1: het onderscheid tussen -se direct op
-    // een werkwoord vs. de copula-vorm (olursa/ise) op een naamwoord/bijvoeglijk naamwoord is subtieler
-    // dan de andere splitsingen hierboven, maar leent zich er nog steeds voor.
-    variants: [
-      {id:"fiil", hint:"conditional -se attached DIRECTLY to a verb stem — e.g. \"gelirse\" (if he comes), \"yaparsam\" (if I do it). No copula/olursa here."},
-      {id:"isim", hint:"conditional on a NOUN or ADJECTIVE predicate, via the copula-conditional olursa/ise — e.g. \"hasta olursa\" (if he gets/is sick), \"zengin olursam\" (if I become/am rich). Do NOT attach -se directly to a plain verb here."},
-    ]},
+  {key:"sart_kipi",       label:"Conditional -se",                   hint:"if/should, e.g. \"gelirse\" (if he comes)", minCefr:7},
   {key:"istek_kipi",      label:"Optative (wish) -e",                hint:"e.g. \"gideyim\" (let me go)", minCefr:8},
   {key:"ki_eki",          label:"The suffix -ki (relative/possessive)", hint:"e.g. \"benimki\" (mine), \"masadaki kitap\" (the book on the table)", minCefr:8},
   {key:"madan_once",      label:"Converb -madan/-meden (without/before doing)", hint:"e.g. \"yemeden gitti\" (he left without eating), \"gitmeden önce\" (before going)", minCefr:8},
@@ -1073,13 +1032,7 @@ const GRAMMAR_TOPICS = [
       {id:"ecek", hint:"future participle -ecek (what will/is going to) — e.g. \"okuyacağım kitap\" (the book I will read)"},
     ]},
   {key:"birlesik_gecmis", label:"Compound past combinations -mişti", hint:"e.g. \"gitmişti\" (he had apparently gone)", minCefr:10},
-  {key:"dolayli_anlatim", label:"Direct/indirect speech",            hint:"e.g. \"'geliyorum' dedi\" (he said 'I'm coming') vs \"geleceğini söyledi\" (he said he'd come)", minCefr:10,
-    // Bundelde al twee wezenlijk verschillende constructies (letterlijke aanhaling vs. omgezette indirecte
-    // rede) -- net als rivayet_bilesik hierboven, nu losgetrokken zodat beide apart geoefend worden.
-    variants: [
-      {id:"direct",   hint:"DIRECT speech — a literal quotation in quote marks followed by \"dedi\" (said), with NO change to person/tense inside the quote — e.g. \"'Geliyorum' dedi.\" (He said, 'I'm coming'), \"'Yarın gideceğim' dedim.\" (I said, 'I'll go tomorrow')."},
-      {id:"indirect", hint:"INDIRECT/reported speech — no quote marks, the reported clause is nominalized with -diğini/-eceğini/-acağını etc. and the person shifts accordingly — e.g. \"Geleceğini söyledi.\" (He said that he would come), \"Yorgun olduğunu söyledim.\" (I said that I was tired)."},
-    ]},
+  {key:"dolayli_anlatim", label:"Direct/indirect speech",            hint:"e.g. \"'geliyorum' dedi\" (he said 'I'm coming') vs \"geleceğini söyledi\" (he said he'd come)", minCefr:10},
   {key:"dikce",           label:"Converb -dıkça (the more.../every time)", hint:"e.g. \"okudukça öğrenirsin\" (the more you read, the more you learn)", minCefr:11},
   {key:"zarf_fiil",       label:"Converbs (-erek, -ken)",             hint:"e.g. \"koşarak geldi\" (he came running), \"gelirken\" (while coming)", minCefr:10},
   {key:"edilgen_cati",    label:"Passive voice (-il/-in)",            hint:"e.g. \"kapı kapatıldı\" (the door was closed)", minCefr:11},
@@ -1087,21 +1040,8 @@ const GRAMMAR_TOPICS = [
   {key:"ettirgen_cati",   label:"Causative (make/have done, -dir/-t)", hint:"e.g. \"yaptırdım\" (I had it made)", minCefr:12},
   {key:"donusluluk_cati", label:"Reflexive voice (-in)",              hint:"oneself, e.g. \"yıkandım\" (I washed myself)", minCefr:12},
   {key:"sart_bilesik",    label:"Compound conditional (hypothetical past, -seydi)", hint:"e.g. \"gitseydim\" (if I had gone), \"gitmiş olsaydı\" (if he had [reportedly] gone) — a hypothetical about something that did NOT happen, distinct from the basic -se conditional", minCefr:13},
-  {key:"tezlik_fiili",    label:"Rapid-action verb -(y)Iver",         hint:"e.g. \"gidiver\" (just go / go right away), \"bakıver\" (just take a quick look) — adds a sense of speed, ease, or suddenness to the action", minCefr:15,
-    // Vergezocht geval, daarom bewust op C2 ondergebracht: zonder splitsing kon -(y)Iver met willekeurige
-    // tijden combineren (bv. een voltooide "gidiverdi"), wat de kernbetekenis (snelheid/gemak) onnodig
-    // liet vermengen met een tweede grammaticaal aspect.
-    variants: [
-      {id:"emir",  hint:"rapid-action in the IMPERATIVE (a command to do something quickly/right away) — e.g. \"gidiver!\" (just go already!), \"bakıver\" (just take a quick look). No past/future tense here."},
-      {id:"anlati", hint:"rapid-action layered onto PAST or FUTURE tense, narrating that something happened/will happen quickly or suddenly — e.g. \"gidiverdi\" (he suddenly left / went right away), \"bakıverecek\" (he'll just take a quick look)."},
-    ]},
-  {key:"rivayet_bilesik", label:"Compound hearsay tenses (-(i)yormuş, -mişmiş)", hint:"e.g. \"gidiyormuş\" (apparently he's going), \"gitmişmiş\" (apparently he had [reportedly] gone) — layering the hearsay/inferential -miş onto another tense, distinct from the simple -miş past", minCefr:14,
-    // De hint bundelde al twee duidelijk te onderscheiden vormen (-(i)yormuş vs -mişmiş) -- opgesplitst
-    // om te voorkomen dat de AI steeds naar dezelfde van de twee trekt.
-    variants: [
-      {id:"iyormus", hint:"hearsay layered onto PRESENT CONTINUOUS -(i)yormuş (apparently is/was doing) — e.g. \"gidiyormuş\" (apparently he's going), \"çalışıyormuşum\" (apparently I was working). Do NOT use -mişmiş here."},
-      {id:"mismis",  hint:"hearsay layered onto SIMPLE PAST -mişmiş (apparently had [reportedly] done) — e.g. \"gitmişmiş\" (apparently he had gone), \"yemek yapmışmış\" (apparently she had cooked). Do NOT use -(i)yormuş here."},
-    ]},
+  {key:"tezlik_fiili",    label:"Rapid-action verb -(y)Iver",         hint:"e.g. \"gidiver\" (just go / go right away), \"bakıver\" (just take a quick look) — adds a sense of speed, ease, or suddenness to the action", minCefr:13},
+  {key:"rivayet_bilesik", label:"Compound hearsay tenses (-(i)yormuş, -mişmiş)", hint:"e.g. \"gidiyormuş\" (apparently he's going), \"gitmişmiş\" (apparently he had [reportedly] gone) — layering the hearsay/inferential -miş onto another tense, distinct from the simple -miş past", minCefr:14},
   {key:"ileri_baglaclar", label:"Correlative conjunctions (ne...ne de, gerek...gerek, ister...ister)", hint:"e.g. \"ne çay ne de kahve\" (neither tea nor coffee), \"gerek anne gerek baba\" (both mother and father), \"ister gel ister gelme\" (whether you come or not) — paired conjunctions linking two items/options", minCefr:14,
     variants: [
       {id:"ne_ne_de",   hint:"\"ne...ne de\" (neither...nor) — e.g. \"ne çay ne de kahve\" (neither tea nor coffee)"},
@@ -1158,12 +1098,7 @@ const GRAMMAR_TOPICS = [
       {id:"vorming", hint:"how an adverb is FORMED from an adjective (unmarked, or with -ca/-ce) — e.g. \"hızlı\" (fast) -> \"hızlıca\"/\"hızlı\" (quickly)"},
       {id:"positie", hint:"where the adverb is PLACED in the sentence (typically right before the verb it modifies) — e.g. \"çok hızlı koştu\" (he ran very fast)"},
     ]},
-  {key:"arac_hali",         label:"Instrumental case (-(y)la/-(y)le)", hint:"e.g. \"otobüsle\" (by bus), \"kalemle yazdım\" (I wrote with a pen) — the suffixed form of \"ile\" — vary which of the two vowel-harmony forms (-(y)la/-(y)le) comes up across repeated exercises", minCefr:6,
-    variants: [
-      {id:"instrumentaal", hint:"INSTRUMENTAL, \"with/by means of\" a tool or method — e.g. \"kalemle yazdım\" (I wrote with a pen), \"otobüsle gittim\" (I went by bus). Do NOT use the comitative (accompanying a person) or conjunction sense here."},
-      {id:"comitatief",    hint:"COMITATIVE, \"together with\" a person — e.g. \"arkadaşımla gittim\" (I went with my friend), \"seninle konuşmak istiyorum\" (I want to talk with you). Do NOT use the instrumental-tool or conjunction sense here."},
-      {id:"baglac",        hint:"CONJUNCTION use, \"and\", linking two nouns together (equivalent to \"ve\" but attached as -ile/-la/-le) — e.g. \"sen ile ben\" / \"seninle ben\" (you and I), \"annem ile babam\" (my mother and father). Do NOT use the instrumental-tool or comitative-accompaniment sense here."},
-    ]},
+  {key:"arac_hali",         label:"Instrumental case (-(y)la/-(y)le)", hint:"e.g. \"otobüsle\" (by bus), \"kalemle yazdım\" (I wrote with a pen) — the suffixed form of \"ile\" — vary which of the two vowel-harmony forms (-(y)la/-(y)le) comes up across repeated exercises", minCefr:6},
   {key:"belirsiz_zamirler", label:"Indefinite pronouns & quantifiers", hint:"e.g. \"biri\" (someone), \"herkes\" (everyone), \"hiç kimse\" (no one), \"bazı\" (some), \"her\" (every)", minCefr:6,
     variants: [
       {id:"biri",     hint:"\"biri\" (someone/one of them) — e.g. \"biri geldi\" (someone came)"},
@@ -1172,12 +1107,7 @@ const GRAMMAR_TOPICS = [
       {id:"bazi",     hint:"\"bazı\" (some) — e.g. \"bazı insanlar\" (some people)"},
       {id:"her",      hint:"\"her\" (every) — e.g. \"her gün\" (every day)"},
     ]},
-  {key:"kendi_zamiri",      label:"The reflexive pronoun kendi", hint:"e.g. \"kendim\" (myself), \"kendine bak\" (look after yourself) — distinct from the reflexive verb suffix -in", minCefr:8,
-    variants: [
-      {id:"nesne", hint:"REFLEXIVE OBJECT use, \"myself/yourself/...\" as the direct/indirect object of the sentence — e.g. \"Kendimi gördüm.\" (I saw myself.), \"Kendine iyi bak.\" (Take good care of yourself.). Do NOT use the emphatic-subject or possessive \"own\" sense here."},
-      {id:"vurgu", hint:"EMPHATIC use, stressing that the subject did something personally/themselves — e.g. \"Kendim yaptım.\" (I did it myself.), \"Kendi gördü.\" (He/she saw it themselves.). Do NOT use the reflexive-object or possessive \"own\" sense here."},
-      {id:"iyelik", hint:"POSSESSIVE \"own\" use, before a possessed noun to intensify ownership — e.g. \"kendi evim\" (my own house), \"kendi arabasıyla geldi\" (he/she came in his/her own car). Do NOT use the reflexive-object or emphatic-subject sense here."},
-    ]},
+  {key:"kendi_zamiri",      label:"The reflexive pronoun kendi", hint:"e.g. \"kendim\" (myself), \"kendine bak\" (look after yourself) — distinct from the reflexive verb suffix -in", minCefr:8},
   {key:"diktan_sonra",      label:"Converb -DIktan sonra (after doing)", hint:"e.g. \"yemek yedikten sonra\" (after eating), \"eve geldikten sonra\" (after coming home) — the counterpart to -madan önce", minCefr:8},
   {key:"ip_baglaci",        label:"Converb -Ip (sequential actions)", hint:"e.g. \"gidip aldım\" (I went and got it), \"alıp geldi\" (he took it and came) — links same-subject actions without repeating tense/person", minCefr:9},
   {key:"yardimci_fiiller",  label:"Light verb constructions (etmek/olmak/yapmak)", hint:"e.g. \"yardım etmek\" (to help), \"teşekkür etmek\" (to thank), \"hasta olmak\" (to become sick)", minCefr:10,
@@ -1569,6 +1499,17 @@ function wordCategoryOf(en){
   return _wordCategoryMap[en] || "";
 }
 let _wordCefrMap = null;
+// Bouwt de metatekst onder een geoefend woord (CEFR-niveau · woordsoort · evt. betekenis-hint).
+// De hint (bv. "(approximately)") wordt ALTIJD getoond zodra een woord er een heeft -- niet pas na
+// een fout antwoord -- want juist bij een woord met meerdere losstaande betekenissen (bv. "about" als
+// voorzetsel vs bijwoord) moet de gebruiker VOORAF weten welke specifieke betekenis hier getest wordt.
+function wordMetaText(cefrIdx, en, note){
+  const parts = [typeof cefrIdx === "number" ? cefrLabel(cefrIdx) : null, wordCategoryOf(en) || null];
+  const txt = parts.filter(Boolean).join(" · ");
+  if(!note) return txt;
+  const noteTxt = /^\(.*\)$/.test(note.trim()) ? note.trim() : `(${note.trim()})`;
+  return txt ? `${txt} ${noteTxt}` : noteTxt;
+}
 function wordCefrOf(en){
   if(!_wordCefrMap){
     _wordCefrMap = {};
@@ -2019,7 +1960,7 @@ async function generateGrammarDrill(topic, avoidEn){
 
 async function gradeGrammarDrillAnswer(drill, answer){
   const isTrEn = drill.direction === "tr-en";
-  const sys = `Je beoordeelt of het ${isTrEn ? "Engelse" : "Turkse"} antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (${isTrEn ? "gebruiker moest de Turkse vorm naar het Engels vertalen" : "gebruiker moest de Engelse frase naar het Turks vertalen"}). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat de zin fout wordt (bv. "et" en "O et" zijn beide correct voor "it is meat"). Reken dit soort verschil dus NOOIT fout. ${isTrEn ? "" : "NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en"} kleine tikfouten, een ongebruikelijke (maar correcte) spelling/vervoeging, of een minder gangbaar synoniem met een ondubbelzinnige bedoeling reken je goed. Vul in dat geval WEL "afwijking" in: één korte zin in het Engels, rechtstreeks tegen de gebruiker gericht ("you"), die concreet benoemt wat er afweek van het verwachte antwoord (noem het expliciet "typo" als het dat is). Was het antwoord exact het verwachte antwoord of een net zo standaard alternatief, laat "afwijking" dan leeg (""). Geef daarnaast ook een korte (max 2 zinnen) uitleg in het Engels, rechtstreeks tegen de gebruiker gericht (spreek de gebruiker aan met "you") — vooral nuttig als het antwoord fout is, om te laten zien waarom. Antwoord in JSON.`;
+  const sys = `Je beoordeelt of het ${isTrEn ? "Engelse" : "Turkse"} antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (${isTrEn ? "gebruiker moest de Turkse vorm naar het Engels vertalen" : "gebruiker moest de Engelse frase naar het Turks vertalen"}). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat de zin fout wordt (bv. "et" en "O et" zijn beide correct voor "it is meat"). Reken dit soort verschil dus NOOIT fout. ${isTrEn ? "" : "NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en"} kleine tikfouten met een ondubbelzinnige bedoeling reken je goed. Geef ook een korte (max 2 zinnen) uitleg in het Engels, rechtstreeks tegen de gebruiker gericht (spreek de gebruiker aan met "you") — vooral nuttig als het antwoord fout is, om te laten zien waarom. Antwoord in JSON.`;
   const schema = {
     name: "beoordeel_antwoord",
     description: "Beoordeling van een grammatica-oefening.",
@@ -2028,9 +1969,8 @@ async function gradeGrammarDrillAnswer(drill, answer){
       properties: {
         correct: {type:"boolean"},
         uitleg: {type:"string", description:"Korte uitleg in het Engels, rechtstreeks tegen de gebruiker gericht."},
-        afwijking: {type:"string", description:"ALLEEN invullen als 'correct' true is MAAR het antwoord niet exact/standaard was (tikfout, ongebruikelijke spelling/vervoeging, minder gangbaar synoniem): één korte zin die dat verschil benoemt, direct getoond aan de gebruiker. Leeg bij een perfect correct of bij een fout antwoord."},
       },
-      required: ["correct","uitleg","afwijking"]
+      required: ["correct","uitleg"]
     }
   };
   const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 300, 0, schema);
@@ -2079,11 +2019,11 @@ async function nextCheckupQuestion(){
     try{
       const direction = hasKeyFor("word") && Math.random() < 0.5 ? "tr-en" : "en-tr";
       const sense = await resolveWordSense(word.en, direction);
-      checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, direction: sense ? direction : "en-tr"};
+      checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, note: sense ? sense.note : null, direction: sense ? direction : "en-tr"};
       el("checkup-word").textContent = checkupState.current.direction === "tr-en" ? checkupState.current.tr : displayEnglishWord(checkupState.current.en);
       el("checkup-word").className = "tr-word";
       checkupState.current.hintRevealed = false;
-      el("checkup-word-meta").textContent = [cefrLabel(word.cefr), wordCategoryOf(word.en) || null].filter(Boolean).join(" · ");
+      el("checkup-word-meta").textContent = wordMetaText(word.cefr, word.en, checkupState.current.note);
       el("checkup-answer-input").placeholder = checkupState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
       checkupState.consecutiveFailures = 0;
     }catch(e){
@@ -2364,11 +2304,11 @@ async function nextSkillPracticeQuestion(){
     }
     const direction = hasKeyFor("word") && Math.random() < 0.5 ? "tr-en" : "en-tr";
     const sense = await resolveWordSense(en, direction);
-    skillPracticeState.current = {type:"word", en, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, direction: sense ? direction : "en-tr"};
+    skillPracticeState.current = {type:"word", en, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, note: sense ? sense.note : null, direction: sense ? direction : "en-tr"};
     el("checkup-word").textContent = skillPracticeState.current.direction === "tr-en" ? skillPracticeState.current.tr : displayEnglishWord(en);
     el("checkup-word").className = "tr-word";
     skillPracticeState.current.hintRevealed = false;
-    el("checkup-word-meta").textContent = [typeof wordCefrOf(en) === "number" ? cefrLabel(wordCefrOf(en)) : null, wordCategoryOf(en) || null].filter(Boolean).join(" · ");
+    el("checkup-word-meta").textContent = wordMetaText(wordCefrOf(en), en, skillPracticeState.current.note);
     el("checkup-answer-input").placeholder = skillPracticeState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
     badgeEl.textContent = "grammar"; badgeEl.className = "badge badge-sentence";
@@ -2399,7 +2339,6 @@ async function submitSkillPracticeAnswer(){
   let correct = false;
   let correctAnswerTxt = "";
   let uitleg = "";
-  let afwijking = "";
 
   if(cur.type === "word"){
     if(cur.sentenceDrill){
@@ -2407,7 +2346,7 @@ async function submitSkillPracticeAnswer(){
       if(answer && normalize(answer) === normalize(correctAnswerTxt)){
         correct = true;
       } else if(answer){
-        try{ const v = await gradeGrammarDrillAnswer(cur.sentenceDrill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; afwijking = v.afwijking || ""; }catch(e){ correct = false; }
+        try{ const v = await gradeGrammarDrillAnswer(cur.sentenceDrill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }catch(e){ correct = false; }
       }
     } else {
       correctAnswerTxt = cur.direction === "tr-en" ? baseEnOf(cur.en) : (cur.tr || (cachedTranslation(cur.en)||[]).join(", "));
@@ -2421,7 +2360,7 @@ async function submitSkillPracticeAnswer(){
       if(answer && normalize(answer) === normalize(correctAnswerTxt)){
         correct = true;
       } else if(answer){
-        try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; afwijking = v.afwijking || ""; }catch(e){ correct = false; }
+        try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; }catch(e){ correct = false; }
       }
     }
     recordResult(cur.en, correct);
@@ -2431,7 +2370,7 @@ async function submitSkillPracticeAnswer(){
     if(answer && normalize(answer) === normalize(correctAnswerTxt)){
       correct = true;
     } else if(answer){
-      try{ const v = await gradeGrammarDrillAnswer(cur.drill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; afwijking = v.afwijking || ""; }catch(e){ correct = false; }
+      try{ const v = await gradeGrammarDrillAnswer(cur.drill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }catch(e){ correct = false; }
     }
     recordGrammarResult(cur.topic.key, correct);
     chatItem = {type:"word", tr:cur.drill.correct, en:cur.drill.prompt, direction:cur.drill.direction};
@@ -2467,15 +2406,8 @@ async function submitSkillPracticeAnswer(){
       : `<br><br>📊 <b>Round complete: ${roundCorrect}/${SKILL_PRACTICE_ROUND_SIZE} correct.</b> Saved as this lesson's score.`;
   }
   skillPracticeState.roundJustCompleted = roundJustCompleted;
-  // Bij een GOEDGEKEURD antwoord dat toch niet perfect was (tikfout, ongebruikelijke vorm/synoniem) --
-  // dit meteen tonen (niet pas na een klik op "Show explanation"): wat de gebruiker zelf typte, wat het
-  // verschil was, en het model-antwoord ter referentie.
-  const nearMissNote = (correct && afwijking && answer)
-    ? `<br>You wrote: <b>${escapeHtml(answer)}</b> — <span class="muted">${escapeHtml(afwijking)}</span>` +
-      (correctAnswerTxt ? `<br>Model answer: <b>${escapeHtml(correctAnswerTxt)}</b>` : "")
-    : "";
   el("checkup-result-text").innerHTML = `<div class="muted" style="margin-bottom:6px;">${escapeHtml(promptShown)}</div>` +
-    (correct ? "✅ Correct!" + nearMissNote : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
+    (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
   el("btn-checkup-close").textContent = roundJustCompleted ? "OK" : "Continue";
   el("checkup-answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken, net als het hoofdscherm
   if(hasLikelyPhysicalKeyboard()) el("checkup-answer-input").focus(); // alleen auto-focus bij laptop/desktop, niet bij touch
@@ -2522,24 +2454,20 @@ async function disputeSkillPracticeAnswer(){
   el("checkup-result-text").className = "feedback pending";
   el("checkup-result-text").innerHTML = "🤖 AI is critically re-checking your answer…";
   try{
-    let correct, uitleg = "", afwijking = "";
+    let correct, uitleg = "";
     if(cur.type === "word"){
       const drill = cur.sentenceDrill;
-      if(drill){ const v = await gradeGrammarDrillAnswer(drill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; afwijking = v.afwijking || ""; }
-      else { const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, true); correct = !!v.correct; uitleg = v.uitleg || ""; afwijking = v.afwijking || ""; }
+      if(drill){ const v = await gradeGrammarDrillAnswer(drill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }
+      else { const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, true); correct = !!v.correct; uitleg = v.uitleg || ""; }
       if(correct) recordResult(cur.en, true);
     } else {
       const v = await gradeGrammarDrillAnswer(cur.drill, answer);
-      correct = !!v.correct; uitleg = v.uitleg || ""; afwijking = v.afwijking || "";
+      correct = !!v.correct; uitleg = v.uitleg || "";
       if(correct) recordGrammarResult(cur.topic.key, true);
     }
     el("checkup-result-text").className = "feedback " + (correct ? "correct" : "wrong");
-    const nearMissNote = (correct && afwijking)
-      ? `<br>You wrote: <b>${escapeHtml(answer)}</b> — <span class="muted">${escapeHtml(afwijking)}</span>` +
-        (correctAnswerTxt ? `<br>Model answer: <b>${escapeHtml(correctAnswerTxt)}</b>` : "")
-      : "";
     el("checkup-result-text").innerHTML = correct
-      ? "🔁 ✅<br>Score restored." + nearMissNote
+      ? "🔁 ✅<br>Score restored."
       : `🔁 ❌<br>Still incorrect. Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`;
     if(uitleg){
       el("checkup-explanation-box").textContent = "💬 " + uitleg;
@@ -3007,7 +2935,7 @@ function pickWordSense(en, direction){
       const wantedPos = wordPosOf(en);
       const posMatch = wantedPos ? trEnOptions.find(o => o.pos === wantedPos) : null;
       const chosen = posMatch || trEnOptions[0];
-      return {tr: [chosen.tr], gloss: trEnOptions.length > 1 ? (chosen.gloss || null) : null, register: chosen.register || "neutral"};
+      return {tr: [chosen.tr], gloss: chosen.gloss || null, note: chosen.note || null, register: chosen.register || "neutral"};
     }
     // Geen echte tr-en-tegenhanger bekend voor dit woord -> BEWUST geen terugval meer op de en-tr-data:
     // de twee richtingen delen geen brondata. null teruggeven zodat de aanroeper (renderPractice) de
@@ -3021,11 +2949,14 @@ function pickWordSense(en, direction){
     // altijd de EERSTE (primaire) betekenis, geen willekeurige keuze -- voorkomt dat een vage, minder
     // gangbare betekenis als opgave voorgelegd wordt in plaats van de meest voor de hand liggende.
     const chosen = senses[0];
-    // gloss alleen tonen als er ook daadwerkelijk iets te disambigueren valt (>1 zin)
-    return {tr: chosen.tr, gloss: senses.length > 1 ? (chosen.gloss || null) : null, register: chosen.register || "neutral"};
+    // gloss/note alleen tonen als er ook daadwerkelijk iets te disambigueren valt (>1 zin). "note" is
+    // een korte, ALTIJD zichtbare Engelse betekenis-hint (bv. "(approximately)" vs "(concerning)") --
+    // in tegenstelling tot "gloss", dat alleen aan de AI-beoordelaar werd doorgegeven en de gebruiker
+    // zelf dus nooit vooraf kon zien welke van de meerdere losstaande betekenissen bedoeld was.
+    return {tr: chosen.tr, gloss: chosen.gloss || null, note: chosen.note || null, register: chosen.register || "neutral"};
   }
   const tr = cachedTranslation(en);
-  return tr ? {tr, gloss: null, register: (curated && curated.register) || "neutral"} : null;
+  return tr ? {tr, gloss: null, note: null, register: (curated && curated.register) || "neutral"} : null;
 }
 // Gedeelde resolutie-stap voor alle drie de plekken die een los woord tonen (hoofdscherm, kennischeck,
 // skill-practice): probeert eerst synchroon een zin te kiezen uit de gecureerde data (per richting, zie
@@ -3805,7 +3736,7 @@ Beoordeel of het antwoord een gepast, correct Turks antwoord op de vraag is:
 - Bij een FEITELIJKE vraag: is het antwoord feitelijk juist en logisch een antwoord op de vraag?
 - Bij een OPEN/PERSOONLIJKE vraag: is het antwoord contextueel passend en grammaticaal begrijpelijk Turks (de inhoud mag vrij zijn, elk zinnig antwoord telt)?
 NEGEER Turkse diakritische tekens volledig bij de beoordeling: behandel ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c als volledig uitwisselbaar — een antwoord getypt zonder Turkse speciale tekens (bv. "tesekkur" i.p.v. "teşekkür") is qua spelling NOOIT fout.
-BELANGRIJK OVER TYPEFOUTEN: duidelijke tikfouten (verwisselde letters e.d.) of een ongebruikelijk (maar correct) woord/vorm, met een ondubbelzinnig duidelijke bedoeling, reken je gewoon goed — dit is een taaltoets, geen typetoets. Vul in dat geval WEL "afwijking" in: één korte zin, rechtstreeks tegen de gebruiker gericht (Engels, "you"), die concreet benoemt wat er afweek (noem een tikfout expliciet "typo"). Was het antwoord al perfect/standaard correct, laat "afwijking" dan leeg ("").
+BELANGRIJK OVER TYPEFOUTEN: duidelijke tikfouten (verwisselde letters e.d.) met een ondubbelzinnig duidelijke bedoeling reken je gewoon goed — dit is een taaltoets, geen typetoets.
 Beoordeel ook voor ELK genummerd woord uit de vraag, ONAFHANKELIJK EN KRITISCH, of de gebruiker begrip daarvan toont in zijn antwoord.
 BELANGRIJK ONDERSCHEID: "correct" gaat over of het antwoord een GEPAST ANTWOORD op de vraag is (vorm/pragmatiek); "words" gaat puur over WOORDBEGRIP. Die twee lopen NIET altijd gelijk op. Als "correct" false is omdat de gebruiker bijvoorbeeld reageert op de inhoud in plaats van de vraag direct te beantwoorden (maar wél overduidelijk laat zien dat hij/zij elk woord begrijpt, via een taalkundig kloppende en inhoudelijk relevante reactie), moeten de afzonderlijke woorden in "words" gewoon op true staan — bestraf woordbegrip niet voor een vorm-/pragmatiekfout.
 CONSISTENTIE-EIS geldt alleen andersom: als "correct" false is SPECIFIEK doordat de gebruiker een woord verkeerd heeft opgevat (bijvoorbeeld verward met een ander Turks woord, of totaal genegeerd), moet dát woord in "words" op false staan.
@@ -3813,7 +3744,7 @@ Als een grammaticaal onderwerp is opgegeven waar de vraag bewust rond gebouwd is
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je"), in het Engels. Structuur: begin met het oordeel, en bij fout kort en concreet wat er niet klopte.
 Geef ook altijd een Engelse vertaling van de Turkse vraag, EN een Engelse vertaling van wat de gebruiker met zijn Turkse antwoord daadwerkelijk heeft gezegd (ook als dat inhoudelijk niet klopt — vertaal gewoon wat er staat, zodat de gebruiker kan zien wat hij eigenlijk zei).
 Als vermeld staat dat de gebruiker het niet eens is met een eerder oordeel: kijk extra kritisch of het antwoord (of delen ervan) toch correct kunnen zijn.
-Geef terug: correct (bool), uitleg (tekst), referentie (tekst), afwijking (tekst), vraag_en (tekst), antwoord_en (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
+Geef terug: correct (bool), uitleg (tekst), referentie (tekst), vraag_en (tekst), antwoord_en (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
   const user = `Turkse vraag: "${item.tr}"
 Genummerde woorden in de vraag (basisvorm, ${item.words.length} in totaal): ${item.words.map((w,i)=>`${i+1}. ${w.tr} (${baseEnOf(w.en)})`).join(", ")}
 Antwoord van gebruiker (in het Turks): "${answer}"
@@ -3828,7 +3759,6 @@ ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om
         correct: {type:"boolean", description:"Is het antwoord een gepast, correct Turks antwoord op de vraag?"},
         uitleg: {type:"string", description:"Korte uitleg in het Engels, rechtstreeks tegen de gebruiker gericht."},
         referentie: {type:"string", description:"Een voorbeeld van een goed Turks antwoord op deze vraag."},
-        afwijking: {type:"string", description:"ALLEEN invullen als 'correct' true is MAAR het Turkse antwoord niet perfect/standaard was (tikfout, ongebruikelijk woord/vorm): één korte, rechtstreeks tegen de gebruiker gerichte zin in het Engels die dat verschil benoemt (noem een tikfout expliciet 'typo'). Wordt DIRECT getoond, niet pas na een klik -- houd hem kort. Leeg laten bij een perfect antwoord of bij een fout antwoord."},
         vraag_en: {type:"string", description:"Engelse vertaling van de Turkse vraag."},
         antwoord_en: {type:"string", description:"Engelse vertaling van wat de gebruiker letterlijk heeft geantwoord."},
         grammar_correct: {type:"boolean", description:"Of het specifiek opgegeven grammaticale aspect correct is toegepast (true als er geen onderwerp is opgegeven)."},
@@ -3838,7 +3768,7 @@ ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om
           description:"Per genummerd woord (zelfde volgorde als de lijst), of de gebruiker begrip daarvan toont.",
         },
       },
-      required: ["correct","uitleg","referentie","afwijking","vraag_en","antwoord_en","grammar_correct","words"]
+      required: ["correct","uitleg","referentie","vraag_en","antwoord_en","grammar_correct","words"]
     }
   };
   const raw = await callAI("sentence", sys, user, 3000, 0, schema);
@@ -3861,10 +3791,10 @@ Beoordeel of de vertaling van de HELE zin correct is, en beoordeel voor ELK genu
 CONSISTENTIE-EIS: als de vertaling als geheel fout is doordat de gebruiker een specifiek woord verkeerd heeft begrepen (bijvoorbeeld verward met een ander, vergelijkbaar klinkend Turks woord), MOET dat woord in "words" op false staan. Het mag nooit zo zijn dat "correct" false is vanwege woord X, terwijl woord X zelf in "words" op true staat — controleer dit zelf voordat je antwoordt.
 Geef ook altijd een correcte Engelse referentievertaling van de hele zin.
 Als een grammaticaal onderwerp is opgegeven waar de zin bewust rond gebouwd is: beoordeel apart, in "grammar_correct", of de gebruiker specifiek DAT grammaticale aspect correct heeft begrepen/verwerkt in zijn vertaling — los van of de rest van de zin verder klopt. Is er geen onderwerp opgegeven, zet "grammar_correct" dan op true.
-BELANGRIJK OVER TYPEFOUTEN: als een woord duidelijk een tikfout is (bv. verwisselde letters zoals "eht" i.p.v. "het", een ontbrekende/dubbele letter) en de bedoelde vertaling ondubbelzinnig duidelijk is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Wees hierin coulanter dan bij een woord dat écht een andere/verkeerde vertaling is. Vul in dat geval WEL "afwijking" in: één korte zin, rechtstreeks tegen de gebruiker gericht (Engels, "you"), die concreet benoemt wat er afweek (noem een tikfout expliciet "typo", of leg anders kort uit welk klein verschil er was, bv. een minder gangbaar woord/vorm). Was de vertaling van de gebruiker al perfect/standaard correct, laat "afwijking" dan leeg ("").
+BELANGRIJK OVER TYPEFOUTEN: als een woord duidelijk een tikfout is (bv. verwisselde letters zoals "eht" i.p.v. "het", een ontbrekende/dubbele letter) en de bedoelde vertaling ondubbelzinnig duidelijk is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", zodat de gebruiker het weet, maar laat dit "correct" niet naar false zetten. Wees hierin coulanter dan bij een woord dat écht een andere/verkeerde vertaling is.
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"). Structuur: begin met het oordeel (goed/fout), en bij fout kort en concreet wat er niet klopte — de correcte vertaling zelf hoeft niet in de uitleg herhaald te worden, die staat al apart in "referentie".
 Als vermeld staat dat de gebruiker het niet eens is met een eerder oordeel: kijk extra kritisch of het antwoord (of delen ervan) toch correct kunnen zijn.
-Geef terug: correct (bool), uitleg (tekst), referentie (tekst), afwijking (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
+Geef terug: correct (bool), uitleg (tekst), referentie (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
   const user = `Turkse zin: "${item.tr}"
 Genummerde woorden in de zin (basisvorm, ${item.words.length} in totaal):
 ${wordContext}
@@ -3885,7 +3815,6 @@ ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om
         correct: {type:"boolean", description:"Is de vertaling van de hele zin correct?"},
         uitleg: {type:"string", description:"Korte uitleg in het Engels, max 2 zinnen, rechtstreeks tegen de gebruiker gericht."},
         referentie: {type:"string", description:"Correcte Engelse referentievertaling van de hele zin."},
-        afwijking: {type:"string", description:"ALLEEN invullen als 'correct' true is MAAR de vertaling niet perfect/standaard was (tikfout, ongebruikelijk woord/vorm): één korte, rechtstreeks tegen de gebruiker gerichte zin in het Engels die dat verschil benoemt (noem een tikfout expliciet 'typo'). Wordt DIRECT getoond, niet pas na een klik -- houd hem kort. Leeg laten bij een perfecte vertaling of bij een fout antwoord."},
         grammar_correct: {type:"boolean", description:"Of het specifiek opgegeven grammaticale aspect correct is toegepast (true als er geen onderwerp is opgegeven)."},
         words: {
           type:"array", items:{type:"boolean"},
@@ -3893,7 +3822,7 @@ ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om
           description:"Per genummerd woord (zelfde volgorde als de lijst), of de gebruiker dat woord correct heeft verwerkt."
         },
       },
-      required: ["correct","uitleg","referentie","afwijking","grammar_correct","words"]
+      required: ["correct","uitleg","referentie","grammar_correct","words"]
     }
   };
   const raw = await callAI("sentence", sys, user, 3000, 0, schema);
@@ -3922,7 +3851,6 @@ function recordResult(tr, correct){
   }
   p.reps += 1;
   p.correct = (p.correct || 0) + (correct ? 1 : 0); // ECHTE nauwkeurigheid, los van het SRS-niveau hierboven
-  if(!correct) p.lastWrongAt = Date.now(); // voor de "meest recent fout"-component van de weakest-words score
   p.due = Date.now() + intervalMinutes(p.level) * 60 * 1000;
   saveJSON(LS_PROGRESS, progress);
 }
@@ -4020,7 +3948,7 @@ function checkStaticMatch(item, answer){
   if(item.direction === "tr-en"){
     // Turks getoond, Engels gevraagd: het bekende Engelse trefwoord is de primaire juiste vorm...
     if(normalize(baseEnOf(item.en)) === norm) return true;
-    if(item.hintRevealed) return false; // hint bekeken -> bedoelde betekenis is expliciet verklapt, alleen het exacte trefwoord telt nog
+    if(item.note) return false; // dit woord heeft een altijd-zichtbare disambiguatie-hint gekregen -> alleen het exacte trefwoord telt nog voor DEZE betekenis
     // ...MAAR zonder bekeken hint zijn sommige Turkse woorden zelf ambigu (bv. "ay" = zowel "month" als "moon" —
     // geen vertaalfout, gewoon hetzelfde woord met 2 losstaande betekenissen, hier zonder context
     // getoond). Check daarom ook: is het antwoord van de gebruiker zelf een bekend Engels woord
@@ -4041,7 +3969,7 @@ function checkStaticMatch(item, answer){
   // welke betekenis getest wordt, dus dan mag er ook streng op die ene betekenis beoordeeld worden).
   // Is de hint niet bekeken, dan is er geen eerlijke manier om te weten welke betekenis bedoeld was --
   // dan telt elke geldige betekenis van het woord als correct (de brede, platgeslagen lijst).
-  const tr = (item.senseTr && item.hintRevealed) ? item.senseTr : (cachedTranslation(item.en) || []);
+  const tr = (item.senseTr && item.note) ? item.senseTr : (cachedTranslation(item.en) || []);
   return matchesTrList(norm, tr);
 }
 
@@ -4052,13 +3980,13 @@ async function askDeepSeekJudge(item, answer, isRecheck){
   // homoniem/polyseem woord (bv. "mine") mag de AI niet zomaar een antwoord goedrekenen dat bij een
   // ANDERE betekenis hoort dan de getoonde gloss, ook al is dat woord op zichzelf ook een geldige
   // vertaling van iets. Zonder senseTr (oude/niet-gecureerde woorden) blijft de brede lijst het redelijke alternatief.
-  const tr = (item.senseTr && item.hintRevealed) ? item.senseTr : (cachedTranslation(item.en) || (item.tr ? [item.tr] : []));
-  const glossLine = (item.gloss && item.hintRevealed) ? `\nBedoelde betekenis in deze oefening: "${item.gloss}" (dit woord heeft meerdere losstaande betekenissen; beoordeel ALLEEN tegen deze specifieke betekenis, niet tegen de andere).` : "";
+  const tr = (item.senseTr && item.note) ? item.senseTr : (cachedTranslation(item.en) || (item.tr ? [item.tr] : []));
+  const glossLine = (item.gloss && item.note) ? `\nBedoelde betekenis in deze oefening: "${item.gloss}" (dit woord heeft meerdere losstaande betekenissen; beoordeel ALLEEN tegen deze specifieke betekenis, niet tegen de andere).` : "";
   const sys = `Je bent een strenge maar faire docent Turks voor Engelstalige gebruikers.
 ${isTrEn
   ? `Je krijgt een Turks woord en het (correcte) Engelse trefwoord, en het Engelse antwoord dat de gebruiker gaf. Beoordeel of het antwoord een acceptabele Engelse vertaling is — accepteer synoniemen en kleine spelfouten. BELANGRIJK: sommige Turkse woorden zijn zelf ambigu/polyseem (bv. "ay" betekent zowel "month" als "moon" — geen vertaalfout, gewoon twee losstaande betekenissen van hetzelfde woord). Als het gegeven Turkse woord ZELF, onafhankelijk van het "verwachte" trefwoord, daadwerkelijk ook de betekenis heeft die de gebruiker gaf, reken dit dan GOED — ook als het een heel ander woord is dan het verwachte trefwoord. Is er hieronder een specifieke "bedoelde betekenis" vermeld, houd je daar dan wél strikt aan (dat is de betekenis die in DEZE oefening getest wordt, niet een andere betekenis van hetzelfde woord).`
   : `Je krijgt een Engels woord, de reeds bekende Turkse vertaling(en), en het Turkse antwoord dat de gebruiker gaf. Beoordeel of het antwoord een acceptabele Turkse vertaling is — accepteer synoniemen, alternatieve (correcte) vervoegingen en kleine spelfouten. Is er hieronder een specifieke "bedoelde betekenis" vermeld (dit Engelse woord heeft meerdere losstaande betekenissen): beoordeel dan ALLEEN tegen die ene betekenis, ook al zou het antwoord bij een ANDERE betekenis van hetzelfde Engelse woord wel correct zijn.`}
-BELANGRIJK OVER TYPEFOUTEN EN BIJNA-GOEDE ANTWOORDEN: als het antwoord duidelijk een tikfout bevat, een ongebruikelijke (maar op zich correcte) spelling/vervoeging is, of een minder gangbaar synoniem, en de bedoelde vertaling ondubbelzinnig duidelijk en correct is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vul in dat geval WEL "afwijking" in: één korte zin, rechtstreeks tegen de gebruiker gericht (Engels, spreek aan met "you"), die concreet benoemt wat er afweek van de standaardvorm — noem het expliciet een "typo" als het dat is, anders kort het verschil (bv. een minder gangbare spelling of vervoeging). Was het antwoord al perfect/standaard correct, laat "afwijking" dan leeg (""). Zet "correct" nooit op false enkel vanwege zo'n klein verschil.
+BELANGRIJK OVER TYPEFOUTEN: als het antwoord duidelijk een tikfout bevat en de bedoelde vertaling ondubbelzinnig duidelijk en correct is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", maar zet "correct" niet op false enkel vanwege een duidelijke tikfout.
 ALS HET ANTWOORD FOUT IS: geef in "betekenis_antwoord" aan wat het door de gebruiker ingevoerde woord ZELF betekent, VERTAALD NAAR ${isTrEn ? "het Turks" : "het Engels"} (dus NIET in dezelfde taal als het antwoord zelf — dat zou zinloos zijn, bv. nooit "great means great"), mits het een bestaand, betekenisvol woord is — dit helpt de gebruiker begrijpen welk ander woord hij in gedachten had. Is het antwoord geen bestaand woord, laat "betekenis_antwoord" dan leeg (""). Bij een GOED antwoord laat je "betekenis_antwoord" ook leeg.
 "uitleg" is de tekst voor een apart, uitklapbaar "Explanation"-paneel dat de gebruiker vrijwillig opent -- hier mag en moet je ruim de tijd/ruimte voor nemen, dit hoeft GEEN korte tekst te zijn. Schrijf hem ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"), in het Engels, en behandel in aparte, korte alinea's (gescheiden door een lege regel):
 1) De betekenis van het geteste woord zelf (${isTrEn ? `het Turkse woord "${item.tr}"` : `het Engelse woord "${baseEnOf(item.en)}"`}) -- een heldere, wat rijkere uitleg dan alleen het kale vertaal-trefwoord, met relevante nuance of gebruikscontext.
@@ -4079,9 +4007,8 @@ Antwoord in JSON.`;
         correct: {type:"boolean"},
         uitleg: {type:"string", description:"Rijkere uitleg in het Engels voor het uitklapbare Explanation-paneel: betekenis van het geteste woord, evt. etymologie/deelbetekenissen, en bij een fout antwoord de betekenis van het gegeven woord plus (indien van toepassing) het verschil met de bedoelde betekenis. Meerdere zinnen/alinea's mogen, mag leeg zijn."},
         betekenis_antwoord: {type:"string", description:"Betekenis van het antwoord van de gebruiker (vertaald naar de andere taal), indien fout en een bestaand woord; anders leeg."},
-        afwijking: {type:"string", description:"ALLEEN invullen als 'correct' true is MAAR het antwoord niet perfect/standaard was (tikfout, ongebruikelijke spelling/vervoeging, minder gangbaar synoniem): één korte, rechtstreeks tegen de gebruiker gerichte zin in het Engels die dat verschil benoemt (noem een tikfout expliciet 'typo'). Deze tekst wordt DIRECT getoond, niet pas na een klik -- houd hem daarom kort. Leeg laten bij een perfect correct antwoord of bij een fout antwoord."},
       },
-      required: ["correct","uitleg","betekenis_antwoord","afwijking"]
+      required: ["correct","uitleg","betekenis_antwoord"]
     }
   };
   const raw = await callAI("word", sys, user, 2500, 0, schema);
@@ -4236,6 +4163,7 @@ async function renderPractice(){
       picked.tr = sense.tr[0];
       picked.senseTr = sense.tr; // de volledige, bij DEZE oefening horende vertaal-lijst -- gebruikt bij het beoordelen
       picked.gloss = sense.gloss; // alleen gezet als dit woord >1 betekenis heeft
+      picked.note = sense.note; // korte, altijd zichtbare betekenis-hint -- zie wordMetaText()
       picked.registerInfo = (sense.register && sense.register !== "neutral") ? {register: sense.register, note: ""} : null;
     } else {
       picked.tr = null; // geen sleutel of fout: en-tr blijft dan werken via tekstinvoer, tr-en niet mogelijk
@@ -4276,8 +4204,7 @@ async function renderPractice(){
 
   if(isWord){
     const cefr18 = wordCefrOf(currentItem.en);
-    const pos = wordCategoryOf(currentItem.en);
-    el("word-meta").textContent = [typeof cefr18 === "number" ? cefrLabel(cefr18) : null, pos || null].filter(Boolean).join(" · ");
+    el("word-meta").textContent = wordMetaText(cefr18, currentItem.en, currentItem.note);
   } else {
     el("word-meta").textContent = "";
   }
@@ -4321,7 +4248,7 @@ function showFeedback(kind, html){
 }
 
 // Short, clearly coloured line: "wrong answer: X" (red) and/or "correct answer: Y" (green)
-function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning, registerInfo, afwijking){
+function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning, registerInfo){
   const wrongPart = (!wasCorrect && userAnswer)
     ? (wrongMeaning
         ? `Wrong: <span style="color:var(--accent);font-weight:600;">${escapeHtml(userAnswer)}</span> means <span style="color:var(--accent);font-weight:600;">${escapeHtml(wrongMeaning)}</span>.`
@@ -4330,16 +4257,10 @@ function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning, 
   const goodPart = correctAnswer
     ? `${wasCorrect ? "correct answer" : "Correct answer is"}: <span style="color:var(--accent2);font-weight:600;">${escapeHtml(correctAnswer)}</span>`
     : "";
-  // Bij een GOEDGEKEURD antwoord dat toch niet perfect was (tikfout, ongebruikelijke vorm/synoniem) --
-  // toon dit meteen in de hoofdfeedback (niet pas na een klik op "Explanation"), incl. wat de gebruiker
-  // zelf typte, zodat het verschil met de referentievorm meteen duidelijk is.
-  const nearMissPart = (wasCorrect && afwijking && userAnswer)
-    ? `<br>You wrote: <span style="color:var(--accent2);font-weight:600;">${escapeHtml(userAnswer)}</span> — <span class="muted">${escapeHtml(afwijking)}</span>`
-    : "";
   const registerPart = (wasCorrect && registerInfo)
     ? `<br><span class="muted">ℹ️ Heads up: this is a bit ${registerInfo.register}${registerInfo.note ? " — " + escapeHtml(registerInfo.note) : ""}.</span>`
     : "";
-  return [wrongPart, goodPart].filter(Boolean).join("<br>") + nearMissPart + registerPart;
+  return [wrongPart, goodPart].filter(Boolean).join("<br>") + registerPart;
 }
 
 async function handleCheck(){
@@ -4393,7 +4314,7 @@ async function handleCheck(){
     const regInfo = (verdict.correct && currentItem.direction === "en-tr") ? currentItem.registerInfo : null;
     finalizeAnswer(!!verdict.correct,
       (verdict.correct ? "✅" : "❌") +
-      (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, !!verdict.correct, verdict.betekenis_antwoord, regInfo, verdict.afwijking) : ""));
+      (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, !!verdict.correct, verdict.betekenis_antwoord, regInfo) : ""));
     if(verdict.correct && currentItem.direction === "en-tr"){
       el("post-actions").querySelector("#btn-add-answer")?.remove();
       const addBtn = document.createElement("button");
@@ -4443,7 +4364,7 @@ async function handleCheckSentence(answer){
 
     showFeedback(verdict.correct ? "correct" : "wrong",
       (verdict.correct ? "✅" : "❌") +
-      (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct, null, null, verdict.afwijking) : "") +
+      (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct) : "") +
       "<br><br><b>Word scores:</b><br>" + wordLines + lessonNote + adaptiveNote);
 
     el("post-actions").classList.remove("hidden");
@@ -4489,7 +4410,7 @@ async function handleCheckQuestion(answer){
     // wat niet klopt. De voortgang per woord (recordResult hierboven) blijft gewoon meelopen.
     showFeedback(verdict.correct ? "correct" : "wrong",
       (verdict.correct ? "✅" : "❌") +
-      (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct, null, null, verdict.afwijking) : "") +
+      (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct) : "") +
       ((verdict.vraag_en || verdict.antwoord_en) ? "<br><span class='muted'>" +
         (verdict.vraag_en ? "Question: " + verdict.vraag_en : "") +
         (verdict.vraag_en && verdict.antwoord_en ? "<br>" : "") +
@@ -4902,39 +4823,21 @@ function renderWordsTab(){
    zijn -- een nog-nooit-getoond woord (level 0, reps 0) is niet "zwak", het is simpelweg nog niet aan
    bod geweest, dus die tellen hier bewust niet mee. Alleen woorden binnen het ingestelde CEFR-bereik
    komen in aanmerking, net als bij de gewone woordoefening.
-   "Zwakte" is een gewogen score uit drie componenten, elk eerst genormaliseerd naar 0-1 t.o.v. de
-   andere kandidaten in dit lijstje (zodat de wegingen 10/5/2 onderling ook echt kloppen, ongeacht
-   de ruwe schaal van elk criterium):
-     - meest fout gemaakt (aantal foute antwoorden, absoluut)          -> gewicht 10
-     - meest recent fout gemaakt (hoe kort geleden de laatste fout is) -> gewicht 5
-     - laagste score (SRS-niveau, 1-10, hoe lager hoe zwakker)         -> gewicht 2
-   Een woord dat nog nooit fout ging heeft geen lastWrongAt en scoort 0 op de recentheids-component. */
+   "Zwakte" wordt bepaald door niveau (level, 0-10) en foutenaantal samen in één score te combineren,
+   i.p.v. de gebruiker apart te laten kiezen tussen "laagste niveau" en "vaakst fout": het niveau weegt
+   het zwaarst (×2), het aantal fouten telt daarbovenop mee als extra straf, zodat een woord met een
+   laag niveau EN veel fouten altijd bovenaan staat, maar een woord met slechts een iets lager niveau
+   en veel fouten ook naar boven komt t.o.v. een woord dat enkel qua niveau iets lager scoort. */
+function weaknessScore(w){
+  return w.level * 2 - w.wrong;
+}
 function getWeakestWords(count){
-  const now = Date.now();
   const practiced = allWords()
     .filter(w => inCefrRangeEn(w.en))
-    .map(w => {
-      const p = getProgress(w.en);
-      return {...w, level: p.level, reps: p.reps, correct: p.correct || 0, wrong: p.reps - (p.correct || 0), lastWrongAt: p.lastWrongAt || null};
-    })
+    .map(w => { const p = getProgress(w.en); return {...w, level: p.level, reps: p.reps, correct: p.correct || 0, wrong: p.reps - (p.correct || 0)}; })
     .filter(w => w.reps > 0);
-  if(!practiced.length) return [];
-
-  const maxWrong = Math.max(1, ...practiced.map(w=>w.wrong));
-  const wrongTimes = practiced.filter(w=>w.lastWrongAt).map(w=>w.lastWrongAt);
-  const oldestWrong = wrongTimes.length ? Math.min(...wrongTimes) : now;
-  const newestWrong = wrongTimes.length ? Math.max(...wrongTimes) : now;
-  const wrongSpan = Math.max(1, newestWrong - oldestWrong); // voorkomt delen door 0 als alle fouten even oud zijn
-
-  const scored = practiced.map(w=>{
-    const wrongScore = w.wrong / maxWrong; // 0..1, meer fouten = hoger
-    const recencyScore = w.lastWrongAt ? (w.lastWrongAt - oldestWrong) / wrongSpan : 0; // 0..1, recenter = hoger
-    const levelScore = (10 - w.level) / 10; // 0..1, lager niveau = hoger
-    const weaknessScore = 10 * wrongScore + 5 * recencyScore + 2 * levelScore;
-    return {...w, weaknessScore};
-  });
-  scored.sort((a,b)=> b.weaknessScore - a.weaknessScore); // hoogste score (zwakst) eerst
-  return scored.slice(0, count);
+  const sorted = practiced.sort((a,b)=> weaknessScore(a) - weaknessScore(b));
+  return sorted.slice(0, count);
 }
 
 function currentWeakWordsCount(){
