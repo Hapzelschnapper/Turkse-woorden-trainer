@@ -3735,7 +3735,7 @@ Beoordeel of het antwoord een gepast, correct Turks antwoord op de vraag is:
 - Bij een FEITELIJKE vraag: is het antwoord feitelijk juist en logisch een antwoord op de vraag?
 - Bij een OPEN/PERSOONLIJKE vraag: is het antwoord contextueel passend en grammaticaal begrijpelijk Turks (de inhoud mag vrij zijn, elk zinnig antwoord telt)?
 NEGEER Turkse diakritische tekens volledig bij de beoordeling: behandel ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c als volledig uitwisselbaar — een antwoord getypt zonder Turkse speciale tekens (bv. "tesekkur" i.p.v. "teşekkür") is qua spelling NOOIT fout.
-BELANGRIJK OVER TYPEFOUTEN: duidelijke tikfouten (verwisselde letters e.d.) met een ondubbelzinnig duidelijke bedoeling reken je gewoon goed — dit is een taaltoets, geen typetoets.
+BELANGRIJK OVER TYPEFOUTEN: duidelijke tikfouten (verwisselde letters e.d.) of een ongebruikelijk (maar correct) woord/vorm, met een ondubbelzinnig duidelijke bedoeling, reken je gewoon goed — dit is een taaltoets, geen typetoets. Vul in dat geval WEL "afwijking" in: één korte zin, rechtstreeks tegen de gebruiker gericht (Engels, "you"), die concreet benoemt wat er afweek (noem een tikfout expliciet "typo"). Was het antwoord al perfect/standaard correct, laat "afwijking" dan leeg ("").
 Beoordeel ook voor ELK genummerd woord uit de vraag, ONAFHANKELIJK EN KRITISCH, of de gebruiker begrip daarvan toont in zijn antwoord.
 BELANGRIJK ONDERSCHEID: "correct" gaat over of het antwoord een GEPAST ANTWOORD op de vraag is (vorm/pragmatiek); "words" gaat puur over WOORDBEGRIP. Die twee lopen NIET altijd gelijk op. Als "correct" false is omdat de gebruiker bijvoorbeeld reageert op de inhoud in plaats van de vraag direct te beantwoorden (maar wél overduidelijk laat zien dat hij/zij elk woord begrijpt, via een taalkundig kloppende en inhoudelijk relevante reactie), moeten de afzonderlijke woorden in "words" gewoon op true staan — bestraf woordbegrip niet voor een vorm-/pragmatiekfout.
 CONSISTENTIE-EIS geldt alleen andersom: als "correct" false is SPECIFIEK doordat de gebruiker een woord verkeerd heeft opgevat (bijvoorbeeld verward met een ander Turks woord, of totaal genegeerd), moet dát woord in "words" op false staan.
@@ -3743,7 +3743,7 @@ Als een grammaticaal onderwerp is opgegeven waar de vraag bewust rond gebouwd is
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je"), in het Engels. Structuur: begin met het oordeel, en bij fout kort en concreet wat er niet klopte.
 Geef ook altijd een Engelse vertaling van de Turkse vraag, EN een Engelse vertaling van wat de gebruiker met zijn Turkse antwoord daadwerkelijk heeft gezegd (ook als dat inhoudelijk niet klopt — vertaal gewoon wat er staat, zodat de gebruiker kan zien wat hij eigenlijk zei).
 Als vermeld staat dat de gebruiker het niet eens is met een eerder oordeel: kijk extra kritisch of het antwoord (of delen ervan) toch correct kunnen zijn.
-Geef terug: correct (bool), uitleg (tekst), referentie (tekst), vraag_en (tekst), antwoord_en (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
+Geef terug: correct (bool), uitleg (tekst), referentie (tekst), afwijking (tekst), vraag_en (tekst), antwoord_en (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
   const user = `Turkse vraag: "${item.tr}"
 Genummerde woorden in de vraag (basisvorm, ${item.words.length} in totaal): ${item.words.map((w,i)=>`${i+1}. ${w.tr} (${baseEnOf(w.en)})`).join(", ")}
 Antwoord van gebruiker (in het Turks): "${answer}"
@@ -3758,6 +3758,7 @@ ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om
         correct: {type:"boolean", description:"Is het antwoord een gepast, correct Turks antwoord op de vraag?"},
         uitleg: {type:"string", description:"Korte uitleg in het Engels, rechtstreeks tegen de gebruiker gericht."},
         referentie: {type:"string", description:"Een voorbeeld van een goed Turks antwoord op deze vraag."},
+        afwijking: {type:"string", description:"ALLEEN invullen als 'correct' true is MAAR het Turkse antwoord niet perfect/standaard was (tikfout, ongebruikelijk woord/vorm): één korte, rechtstreeks tegen de gebruiker gerichte zin in het Engels die dat verschil benoemt (noem een tikfout expliciet 'typo'). Wordt DIRECT getoond, niet pas na een klik -- houd hem kort. Leeg laten bij een perfect antwoord of bij een fout antwoord."},
         vraag_en: {type:"string", description:"Engelse vertaling van de Turkse vraag."},
         antwoord_en: {type:"string", description:"Engelse vertaling van wat de gebruiker letterlijk heeft geantwoord."},
         grammar_correct: {type:"boolean", description:"Of het specifiek opgegeven grammaticale aspect correct is toegepast (true als er geen onderwerp is opgegeven)."},
@@ -3767,7 +3768,7 @@ ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om
           description:"Per genummerd woord (zelfde volgorde als de lijst), of de gebruiker begrip daarvan toont.",
         },
       },
-      required: ["correct","uitleg","referentie","vraag_en","antwoord_en","grammar_correct","words"]
+      required: ["correct","uitleg","referentie","afwijking","vraag_en","antwoord_en","grammar_correct","words"]
     }
   };
   const raw = await callAI("sentence", sys, user, 3000, 0, schema);
@@ -3790,10 +3791,10 @@ Beoordeel of de vertaling van de HELE zin correct is, en beoordeel voor ELK genu
 CONSISTENTIE-EIS: als de vertaling als geheel fout is doordat de gebruiker een specifiek woord verkeerd heeft begrepen (bijvoorbeeld verward met een ander, vergelijkbaar klinkend Turks woord), MOET dat woord in "words" op false staan. Het mag nooit zo zijn dat "correct" false is vanwege woord X, terwijl woord X zelf in "words" op true staat — controleer dit zelf voordat je antwoordt.
 Geef ook altijd een correcte Engelse referentievertaling van de hele zin.
 Als een grammaticaal onderwerp is opgegeven waar de zin bewust rond gebouwd is: beoordeel apart, in "grammar_correct", of de gebruiker specifiek DAT grammaticale aspect correct heeft begrepen/verwerkt in zijn vertaling — los van of de rest van de zin verder klopt. Is er geen onderwerp opgegeven, zet "grammar_correct" dan op true.
-BELANGRIJK OVER TYPEFOUTEN: als een woord duidelijk een tikfout is (bv. verwisselde letters zoals "eht" i.p.v. "het", een ontbrekende/dubbele letter) en de bedoelde vertaling ondubbelzinnig duidelijk is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", zodat de gebruiker het weet, maar laat dit "correct" niet naar false zetten. Wees hierin coulanter dan bij een woord dat écht een andere/verkeerde vertaling is.
+BELANGRIJK OVER TYPEFOUTEN: als een woord duidelijk een tikfout is (bv. verwisselde letters zoals "eht" i.p.v. "het", een ontbrekende/dubbele letter) en de bedoelde vertaling ondubbelzinnig duidelijk is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Wees hierin coulanter dan bij een woord dat écht een andere/verkeerde vertaling is. Vul in dat geval WEL "afwijking" in: één korte zin, rechtstreeks tegen de gebruiker gericht (Engels, "you"), die concreet benoemt wat er afweek (noem een tikfout expliciet "typo", of leg anders kort uit welk klein verschil er was, bv. een minder gangbaar woord/vorm). Was de vertaling van de gebruiker al perfect/standaard correct, laat "afwijking" dan leeg ("").
 Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"). Structuur: begin met het oordeel (goed/fout), en bij fout kort en concreet wat er niet klopte — de correcte vertaling zelf hoeft niet in de uitleg herhaald te worden, die staat al apart in "referentie".
 Als vermeld staat dat de gebruiker het niet eens is met een eerder oordeel: kijk extra kritisch of het antwoord (of delen ervan) toch correct kunnen zijn.
-Geef terug: correct (bool), uitleg (tekst), referentie (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
+Geef terug: correct (bool), uitleg (tekst), referentie (tekst), afwijking (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
   const user = `Turkse zin: "${item.tr}"
 Genummerde woorden in de zin (basisvorm, ${item.words.length} in totaal):
 ${wordContext}
@@ -3814,6 +3815,7 @@ ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om
         correct: {type:"boolean", description:"Is de vertaling van de hele zin correct?"},
         uitleg: {type:"string", description:"Korte uitleg in het Engels, max 2 zinnen, rechtstreeks tegen de gebruiker gericht."},
         referentie: {type:"string", description:"Correcte Engelse referentievertaling van de hele zin."},
+        afwijking: {type:"string", description:"ALLEEN invullen als 'correct' true is MAAR de vertaling niet perfect/standaard was (tikfout, ongebruikelijk woord/vorm): één korte, rechtstreeks tegen de gebruiker gerichte zin in het Engels die dat verschil benoemt (noem een tikfout expliciet 'typo'). Wordt DIRECT getoond, niet pas na een klik -- houd hem kort. Leeg laten bij een perfecte vertaling of bij een fout antwoord."},
         grammar_correct: {type:"boolean", description:"Of het specifiek opgegeven grammaticale aspect correct is toegepast (true als er geen onderwerp is opgegeven)."},
         words: {
           type:"array", items:{type:"boolean"},
@@ -3821,7 +3823,7 @@ ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om
           description:"Per genummerd woord (zelfde volgorde als de lijst), of de gebruiker dat woord correct heeft verwerkt."
         },
       },
-      required: ["correct","uitleg","referentie","grammar_correct","words"]
+      required: ["correct","uitleg","referentie","afwijking","grammar_correct","words"]
     }
   };
   const raw = await callAI("sentence", sys, user, 3000, 0, schema);
@@ -4370,7 +4372,7 @@ async function handleCheckSentence(answer){
 
     showFeedback(verdict.correct ? "correct" : "wrong",
       (verdict.correct ? "✅" : "❌") +
-      (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct) : "") +
+      (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct, null, null, verdict.afwijking) : "") +
       "<br><br><b>Word scores:</b><br>" + wordLines + lessonNote + adaptiveNote);
 
     el("post-actions").classList.remove("hidden");
@@ -4416,7 +4418,7 @@ async function handleCheckQuestion(answer){
     // wat niet klopt. De voortgang per woord (recordResult hierboven) blijft gewoon meelopen.
     showFeedback(verdict.correct ? "correct" : "wrong",
       (verdict.correct ? "✅" : "❌") +
-      (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct) : "") +
+      (verdict.referentie ? "<br>" + answerCompareLine(answer, verdict.referentie, !!verdict.correct, null, null, verdict.afwijking) : "") +
       ((verdict.vraag_en || verdict.antwoord_en) ? "<br><span class='muted'>" +
         (verdict.vraag_en ? "Question: " + verdict.vraag_en : "") +
         (verdict.vraag_en && verdict.antwoord_en ? "<br>" : "") +
