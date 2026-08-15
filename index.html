@@ -1949,7 +1949,7 @@ async function generateGrammarDrill(topic, avoidEn){
 
 async function gradeGrammarDrillAnswer(drill, answer){
   const isTrEn = drill.direction === "tr-en";
-  const sys = `Je beoordeelt of het ${isTrEn ? "Engelse" : "Turkse"} antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (${isTrEn ? "gebruiker moest de Turkse vorm naar het Engels vertalen" : "gebruiker moest de Engelse frase naar het Turks vertalen"}). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat de zin fout wordt (bv. "et" en "O et" zijn beide correct voor "it is meat"). Reken dit soort verschil dus NOOIT fout. ${isTrEn ? "" : "NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en"} kleine tikfouten met een ondubbelzinnige bedoeling reken je goed. Geef ook een korte (max 2 zinnen) uitleg in het Engels, rechtstreeks tegen de gebruiker gericht (spreek de gebruiker aan met "you") — vooral nuttig als het antwoord fout is, om te laten zien waarom. Antwoord in JSON.`;
+  const sys = `Je beoordeelt of het ${isTrEn ? "Engelse" : "Turkse"} antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (${isTrEn ? "gebruiker moest de Turkse vorm naar het Engels vertalen" : "gebruiker moest de Engelse frase naar het Turks vertalen"}). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat de zin fout wordt (bv. "et" en "O et" zijn beide correct voor "it is meat"). Reken dit soort verschil dus NOOIT fout. ${isTrEn ? "" : "NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en"} kleine tikfouten, een ongebruikelijke (maar correcte) spelling/vervoeging, of een minder gangbaar synoniem met een ondubbelzinnige bedoeling reken je goed. Vul in dat geval WEL "afwijking" in: één korte zin in het Engels, rechtstreeks tegen de gebruiker gericht ("you"), die concreet benoemt wat er afweek van het verwachte antwoord (noem het expliciet "typo" als het dat is). Was het antwoord exact het verwachte antwoord of een net zo standaard alternatief, laat "afwijking" dan leeg (""). Geef daarnaast ook een korte (max 2 zinnen) uitleg in het Engels, rechtstreeks tegen de gebruiker gericht (spreek de gebruiker aan met "you") — vooral nuttig als het antwoord fout is, om te laten zien waarom. Antwoord in JSON.`;
   const schema = {
     name: "beoordeel_antwoord",
     description: "Beoordeling van een grammatica-oefening.",
@@ -1958,8 +1958,9 @@ async function gradeGrammarDrillAnswer(drill, answer){
       properties: {
         correct: {type:"boolean"},
         uitleg: {type:"string", description:"Korte uitleg in het Engels, rechtstreeks tegen de gebruiker gericht."},
+        afwijking: {type:"string", description:"ALLEEN invullen als 'correct' true is MAAR het antwoord niet exact/standaard was (tikfout, ongebruikelijke spelling/vervoeging, minder gangbaar synoniem): één korte zin die dat verschil benoemt, direct getoond aan de gebruiker. Leeg bij een perfect correct of bij een fout antwoord."},
       },
-      required: ["correct","uitleg"]
+      required: ["correct","uitleg","afwijking"]
     }
   };
   const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 300, 0, schema);
@@ -2328,6 +2329,7 @@ async function submitSkillPracticeAnswer(){
   let correct = false;
   let correctAnswerTxt = "";
   let uitleg = "";
+  let afwijking = "";
 
   if(cur.type === "word"){
     if(cur.sentenceDrill){
@@ -2335,7 +2337,7 @@ async function submitSkillPracticeAnswer(){
       if(answer && normalize(answer) === normalize(correctAnswerTxt)){
         correct = true;
       } else if(answer){
-        try{ const v = await gradeGrammarDrillAnswer(cur.sentenceDrill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }catch(e){ correct = false; }
+        try{ const v = await gradeGrammarDrillAnswer(cur.sentenceDrill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; afwijking = v.afwijking || ""; }catch(e){ correct = false; }
       }
     } else {
       correctAnswerTxt = cur.direction === "tr-en" ? baseEnOf(cur.en) : (cur.tr || (cachedTranslation(cur.en)||[]).join(", "));
@@ -2349,7 +2351,7 @@ async function submitSkillPracticeAnswer(){
       if(answer && normalize(answer) === normalize(correctAnswerTxt)){
         correct = true;
       } else if(answer){
-        try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; }catch(e){ correct = false; }
+        try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; afwijking = v.afwijking || ""; }catch(e){ correct = false; }
       }
     }
     recordResult(cur.en, correct);
@@ -2359,7 +2361,7 @@ async function submitSkillPracticeAnswer(){
     if(answer && normalize(answer) === normalize(correctAnswerTxt)){
       correct = true;
     } else if(answer){
-      try{ const v = await gradeGrammarDrillAnswer(cur.drill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }catch(e){ correct = false; }
+      try{ const v = await gradeGrammarDrillAnswer(cur.drill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; afwijking = v.afwijking || ""; }catch(e){ correct = false; }
     }
     recordGrammarResult(cur.topic.key, correct);
     chatItem = {type:"word", tr:cur.drill.correct, en:cur.drill.prompt, direction:cur.drill.direction};
@@ -2395,8 +2397,15 @@ async function submitSkillPracticeAnswer(){
       : `<br><br>📊 <b>Round complete: ${roundCorrect}/${SKILL_PRACTICE_ROUND_SIZE} correct.</b> Saved as this lesson's score.`;
   }
   skillPracticeState.roundJustCompleted = roundJustCompleted;
+  // Bij een GOEDGEKEURD antwoord dat toch niet perfect was (tikfout, ongebruikelijke vorm/synoniem) --
+  // dit meteen tonen (niet pas na een klik op "Show explanation"): wat de gebruiker zelf typte, wat het
+  // verschil was, en het model-antwoord ter referentie.
+  const nearMissNote = (correct && afwijking && answer)
+    ? `<br>You wrote: <b>${escapeHtml(answer)}</b> — <span class="muted">${escapeHtml(afwijking)}</span>` +
+      (correctAnswerTxt ? `<br>Model answer: <b>${escapeHtml(correctAnswerTxt)}</b>` : "")
+    : "";
   el("checkup-result-text").innerHTML = `<div class="muted" style="margin-bottom:6px;">${escapeHtml(promptShown)}</div>` +
-    (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
+    (correct ? "✅ Correct!" + nearMissNote : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
   el("btn-checkup-close").textContent = roundJustCompleted ? "OK" : "Continue";
   el("checkup-answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken, net als het hoofdscherm
   if(hasLikelyPhysicalKeyboard()) el("checkup-answer-input").focus(); // alleen auto-focus bij laptop/desktop, niet bij touch
@@ -2443,20 +2452,24 @@ async function disputeSkillPracticeAnswer(){
   el("checkup-result-text").className = "feedback pending";
   el("checkup-result-text").innerHTML = "🤖 AI is critically re-checking your answer…";
   try{
-    let correct, uitleg = "";
+    let correct, uitleg = "", afwijking = "";
     if(cur.type === "word"){
       const drill = cur.sentenceDrill;
-      if(drill){ const v = await gradeGrammarDrillAnswer(drill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }
-      else { const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, true); correct = !!v.correct; uitleg = v.uitleg || ""; }
+      if(drill){ const v = await gradeGrammarDrillAnswer(drill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; afwijking = v.afwijking || ""; }
+      else { const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, true); correct = !!v.correct; uitleg = v.uitleg || ""; afwijking = v.afwijking || ""; }
       if(correct) recordResult(cur.en, true);
     } else {
       const v = await gradeGrammarDrillAnswer(cur.drill, answer);
-      correct = !!v.correct; uitleg = v.uitleg || "";
+      correct = !!v.correct; uitleg = v.uitleg || ""; afwijking = v.afwijking || "";
       if(correct) recordGrammarResult(cur.topic.key, true);
     }
     el("checkup-result-text").className = "feedback " + (correct ? "correct" : "wrong");
+    const nearMissNote = (correct && afwijking)
+      ? `<br>You wrote: <b>${escapeHtml(answer)}</b> — <span class="muted">${escapeHtml(afwijking)}</span>` +
+        (correctAnswerTxt ? `<br>Model answer: <b>${escapeHtml(correctAnswerTxt)}</b>` : "")
+      : "";
     el("checkup-result-text").innerHTML = correct
-      ? "🔁 ✅<br>Score restored."
+      ? "🔁 ✅<br>Score restored." + nearMissNote
       : `🔁 ❌<br>Still incorrect. Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`;
     if(uitleg){
       el("checkup-explanation-box").textContent = "💬 " + uitleg;
@@ -3972,7 +3985,7 @@ async function askDeepSeekJudge(item, answer, isRecheck){
 ${isTrEn
   ? `Je krijgt een Turks woord en het (correcte) Engelse trefwoord, en het Engelse antwoord dat de gebruiker gaf. Beoordeel of het antwoord een acceptabele Engelse vertaling is — accepteer synoniemen en kleine spelfouten. BELANGRIJK: sommige Turkse woorden zijn zelf ambigu/polyseem (bv. "ay" betekent zowel "month" als "moon" — geen vertaalfout, gewoon twee losstaande betekenissen van hetzelfde woord). Als het gegeven Turkse woord ZELF, onafhankelijk van het "verwachte" trefwoord, daadwerkelijk ook de betekenis heeft die de gebruiker gaf, reken dit dan GOED — ook als het een heel ander woord is dan het verwachte trefwoord. Is er hieronder een specifieke "bedoelde betekenis" vermeld, houd je daar dan wél strikt aan (dat is de betekenis die in DEZE oefening getest wordt, niet een andere betekenis van hetzelfde woord).`
   : `Je krijgt een Engels woord, de reeds bekende Turkse vertaling(en), en het Turkse antwoord dat de gebruiker gaf. Beoordeel of het antwoord een acceptabele Turkse vertaling is — accepteer synoniemen, alternatieve (correcte) vervoegingen en kleine spelfouten. Is er hieronder een specifieke "bedoelde betekenis" vermeld (dit Engelse woord heeft meerdere losstaande betekenissen): beoordeel dan ALLEEN tegen die ene betekenis, ook al zou het antwoord bij een ANDERE betekenis van hetzelfde Engelse woord wel correct zijn.`}
-BELANGRIJK OVER TYPEFOUTEN: als het antwoord duidelijk een tikfout bevat en de bedoelde vertaling ondubbelzinnig duidelijk en correct is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", maar zet "correct" niet op false enkel vanwege een duidelijke tikfout.
+BELANGRIJK OVER TYPEFOUTEN EN BIJNA-GOEDE ANTWOORDEN: als het antwoord duidelijk een tikfout bevat, een ongebruikelijke (maar op zich correcte) spelling/vervoeging is, of een minder gangbaar synoniem, en de bedoelde vertaling ondubbelzinnig duidelijk en correct is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vul in dat geval WEL "afwijking" in: één korte zin, rechtstreeks tegen de gebruiker gericht (Engels, spreek aan met "you"), die concreet benoemt wat er afweek van de standaardvorm — noem het expliciet een "typo" als het dat is, anders kort het verschil (bv. een minder gangbare spelling of vervoeging). Was het antwoord al perfect/standaard correct, laat "afwijking" dan leeg (""). Zet "correct" nooit op false enkel vanwege zo'n klein verschil.
 ALS HET ANTWOORD FOUT IS: geef in "betekenis_antwoord" aan wat het door de gebruiker ingevoerde woord ZELF betekent, VERTAALD NAAR ${isTrEn ? "het Turks" : "het Engels"} (dus NIET in dezelfde taal als het antwoord zelf — dat zou zinloos zijn, bv. nooit "great means great"), mits het een bestaand, betekenisvol woord is — dit helpt de gebruiker begrijpen welk ander woord hij in gedachten had. Is het antwoord geen bestaand woord, laat "betekenis_antwoord" dan leeg (""). Bij een GOED antwoord laat je "betekenis_antwoord" ook leeg.
 "uitleg" is de tekst voor een apart, uitklapbaar "Explanation"-paneel dat de gebruiker vrijwillig opent -- hier mag en moet je ruim de tijd/ruimte voor nemen, dit hoeft GEEN korte tekst te zijn. Schrijf hem ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"), in het Engels, en behandel in aparte, korte alinea's (gescheiden door een lege regel):
 1) De betekenis van het geteste woord zelf (${isTrEn ? `het Turkse woord "${item.tr}"` : `het Engelse woord "${baseEnOf(item.en)}"`}) -- een heldere, wat rijkere uitleg dan alleen het kale vertaal-trefwoord, met relevante nuance of gebruikscontext.
@@ -3993,8 +4006,9 @@ Antwoord in JSON.`;
         correct: {type:"boolean"},
         uitleg: {type:"string", description:"Rijkere uitleg in het Engels voor het uitklapbare Explanation-paneel: betekenis van het geteste woord, evt. etymologie/deelbetekenissen, en bij een fout antwoord de betekenis van het gegeven woord plus (indien van toepassing) het verschil met de bedoelde betekenis. Meerdere zinnen/alinea's mogen, mag leeg zijn."},
         betekenis_antwoord: {type:"string", description:"Betekenis van het antwoord van de gebruiker (vertaald naar de andere taal), indien fout en een bestaand woord; anders leeg."},
+        afwijking: {type:"string", description:"ALLEEN invullen als 'correct' true is MAAR het antwoord niet perfect/standaard was (tikfout, ongebruikelijke spelling/vervoeging, minder gangbaar synoniem): één korte, rechtstreeks tegen de gebruiker gerichte zin in het Engels die dat verschil benoemt (noem een tikfout expliciet 'typo'). Deze tekst wordt DIRECT getoond, niet pas na een klik -- houd hem daarom kort. Leeg laten bij een perfect correct antwoord of bij een fout antwoord."},
       },
-      required: ["correct","uitleg","betekenis_antwoord"]
+      required: ["correct","uitleg","betekenis_antwoord","afwijking"]
     }
   };
   const raw = await callAI("word", sys, user, 2500, 0, schema);
@@ -4234,7 +4248,7 @@ function showFeedback(kind, html){
 }
 
 // Short, clearly coloured line: "wrong answer: X" (red) and/or "correct answer: Y" (green)
-function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning, registerInfo){
+function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning, registerInfo, afwijking){
   const wrongPart = (!wasCorrect && userAnswer)
     ? (wrongMeaning
         ? `Wrong: <span style="color:var(--accent);font-weight:600;">${escapeHtml(userAnswer)}</span> means <span style="color:var(--accent);font-weight:600;">${escapeHtml(wrongMeaning)}</span>.`
@@ -4243,10 +4257,16 @@ function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning, 
   const goodPart = correctAnswer
     ? `${wasCorrect ? "correct answer" : "Correct answer is"}: <span style="color:var(--accent2);font-weight:600;">${escapeHtml(correctAnswer)}</span>`
     : "";
+  // Bij een GOEDGEKEURD antwoord dat toch niet perfect was (tikfout, ongebruikelijke vorm/synoniem) --
+  // toon dit meteen in de hoofdfeedback (niet pas na een klik op "Explanation"), incl. wat de gebruiker
+  // zelf typte, zodat het verschil met de referentievorm meteen duidelijk is.
+  const nearMissPart = (wasCorrect && afwijking && userAnswer)
+    ? `<br>You wrote: <span style="color:var(--accent2);font-weight:600;">${escapeHtml(userAnswer)}</span> — <span class="muted">${escapeHtml(afwijking)}</span>`
+    : "";
   const registerPart = (wasCorrect && registerInfo)
     ? `<br><span class="muted">ℹ️ Heads up: this is a bit ${registerInfo.register}${registerInfo.note ? " — " + escapeHtml(registerInfo.note) : ""}.</span>`
     : "";
-  return [wrongPart, goodPart].filter(Boolean).join("<br>") + registerPart;
+  return [wrongPart, goodPart].filter(Boolean).join("<br>") + nearMissPart + registerPart;
 }
 
 async function handleCheck(){
@@ -4300,7 +4320,7 @@ async function handleCheck(){
     const regInfo = (verdict.correct && currentItem.direction === "en-tr") ? currentItem.registerInfo : null;
     finalizeAnswer(!!verdict.correct,
       (verdict.correct ? "✅" : "❌") +
-      (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, !!verdict.correct, verdict.betekenis_antwoord, regInfo) : ""));
+      (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, !!verdict.correct, verdict.betekenis_antwoord, regInfo, verdict.afwijking) : ""));
     if(verdict.correct && currentItem.direction === "en-tr"){
       el("post-actions").querySelector("#btn-add-answer")?.remove();
       const addBtn = document.createElement("button");
