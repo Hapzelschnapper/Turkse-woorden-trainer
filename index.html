@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.66</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.67</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.66</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.67</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -3922,6 +3922,7 @@ function recordResult(tr, correct){
   }
   p.reps += 1;
   p.correct = (p.correct || 0) + (correct ? 1 : 0); // ECHTE nauwkeurigheid, los van het SRS-niveau hierboven
+  if(!correct) p.lastWrongAt = Date.now(); // voor de "meest recent fout"-component van de weakest-words score
   p.due = Date.now() + intervalMinutes(p.level) * 60 * 1000;
   saveJSON(LS_PROGRESS, progress);
 }
@@ -4901,21 +4902,39 @@ function renderWordsTab(){
    zijn -- een nog-nooit-getoond woord (level 0, reps 0) is niet "zwak", het is simpelweg nog niet aan
    bod geweest, dus die tellen hier bewust niet mee. Alleen woorden binnen het ingestelde CEFR-bereik
    komen in aanmerking, net als bij de gewone woordoefening.
-   "Zwakte" wordt bepaald door niveau (level, 0-10) en foutenaantal samen in één score te combineren,
-   i.p.v. de gebruiker apart te laten kiezen tussen "laagste niveau" en "vaakst fout": het niveau weegt
-   het zwaarst (×2), het aantal fouten telt daarbovenop mee als extra straf, zodat een woord met een
-   laag niveau EN veel fouten altijd bovenaan staat, maar een woord met slechts een iets lager niveau
-   en veel fouten ook naar boven komt t.o.v. een woord dat enkel qua niveau iets lager scoort. */
-function weaknessScore(w){
-  return w.level * 2 - w.wrong;
-}
+   "Zwakte" is een gewogen score uit drie componenten, elk eerst genormaliseerd naar 0-1 t.o.v. de
+   andere kandidaten in dit lijstje (zodat de wegingen 10/5/2 onderling ook echt kloppen, ongeacht
+   de ruwe schaal van elk criterium):
+     - meest fout gemaakt (aantal foute antwoorden, absoluut)          -> gewicht 10
+     - meest recent fout gemaakt (hoe kort geleden de laatste fout is) -> gewicht 5
+     - laagste score (SRS-niveau, 1-10, hoe lager hoe zwakker)         -> gewicht 2
+   Een woord dat nog nooit fout ging heeft geen lastWrongAt en scoort 0 op de recentheids-component. */
 function getWeakestWords(count){
+  const now = Date.now();
   const practiced = allWords()
     .filter(w => inCefrRangeEn(w.en))
-    .map(w => { const p = getProgress(w.en); return {...w, level: p.level, reps: p.reps, correct: p.correct || 0, wrong: p.reps - (p.correct || 0)}; })
+    .map(w => {
+      const p = getProgress(w.en);
+      return {...w, level: p.level, reps: p.reps, correct: p.correct || 0, wrong: p.reps - (p.correct || 0), lastWrongAt: p.lastWrongAt || null};
+    })
     .filter(w => w.reps > 0);
-  const sorted = practiced.sort((a,b)=> weaknessScore(a) - weaknessScore(b));
-  return sorted.slice(0, count);
+  if(!practiced.length) return [];
+
+  const maxWrong = Math.max(1, ...practiced.map(w=>w.wrong));
+  const wrongTimes = practiced.filter(w=>w.lastWrongAt).map(w=>w.lastWrongAt);
+  const oldestWrong = wrongTimes.length ? Math.min(...wrongTimes) : now;
+  const newestWrong = wrongTimes.length ? Math.max(...wrongTimes) : now;
+  const wrongSpan = Math.max(1, newestWrong - oldestWrong); // voorkomt delen door 0 als alle fouten even oud zijn
+
+  const scored = practiced.map(w=>{
+    const wrongScore = w.wrong / maxWrong; // 0..1, meer fouten = hoger
+    const recencyScore = w.lastWrongAt ? (w.lastWrongAt - oldestWrong) / wrongSpan : 0; // 0..1, recenter = hoger
+    const levelScore = (10 - w.level) / 10; // 0..1, lager niveau = hoger
+    const weaknessScore = 10 * wrongScore + 5 * recencyScore + 2 * levelScore;
+    return {...w, weaknessScore};
+  });
+  scored.sort((a,b)=> b.weaknessScore - a.weaknessScore); // hoogste score (zwakst) eerst
+  return scored.slice(0, count);
 }
 
 function currentWeakWordsCount(){
