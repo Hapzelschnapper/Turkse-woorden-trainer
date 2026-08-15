@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.63</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.65</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.63</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.65</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -1504,11 +1504,14 @@ let _wordCefrMap = null;
 // een fout antwoord -- want juist bij een woord met meerdere losstaande betekenissen (bv. "about" als
 // voorzetsel vs bijwoord) moet de gebruiker VOORAF weten welke specifieke betekenis hier getest wordt.
 function wordMetaText(cefrIdx, en, note){
-  const parts = [typeof cefrIdx === "number" ? cefrLabel(cefrIdx) : null, wordCategoryOf(en) || null];
-  const txt = parts.filter(Boolean).join(" · ");
-  if(!note) return txt;
+  const cefrTxt = typeof cefrIdx === "number" ? cefrLabel(cefrIdx) : null;
+  if(!note){
+    return [cefrTxt, wordCategoryOf(en) || null].filter(Boolean).join(" · ");
+  }
+  // Zodra er een betekenis-hint is, vervangt die de kale grammaticale afkorting (adv./prep.) --
+  // "concerning" of "approximately" zegt een leerder veel meer dan "prep."/"adv.".
   const noteTxt = /^\(.*\)$/.test(note.trim()) ? note.trim() : `(${note.trim()})`;
-  return txt ? `${txt} ${noteTxt}` : noteTxt;
+  return [cefrTxt, noteTxt].filter(Boolean).join(" · ");
 }
 function wordCefrOf(en){
   if(!_wordCefrMap){

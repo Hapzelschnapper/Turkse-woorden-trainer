@@ -167,7 +167,7 @@
   {
     "en": "about__adv",
     "base": "about",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "adverb"
   },
   {
@@ -346,7 +346,7 @@
   {
     "en": "account__v",
     "base": "account",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -417,7 +417,7 @@
   {
     "en": "acid__adj",
     "base": "acid",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
@@ -461,7 +461,7 @@
   {
     "en": "act__n",
     "base": "act",
-    "cefr": 3,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -574,7 +574,7 @@
   {
     "en": "address__v",
     "base": "address",
-    "cefr": 0,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -660,7 +660,7 @@
   {
     "en": "adult__adj",
     "base": "adult",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
@@ -782,7 +782,7 @@
   {
     "en": "after__adv",
     "base": "after",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "adverb"
   },
   {
@@ -825,7 +825,7 @@
   {
     "en": "age__v",
     "base": "age",
-    "cefr": 0,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -951,7 +951,7 @@
   {
     "en": "alarm__v",
     "base": "alarm",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -990,7 +990,7 @@
   {
     "en": "alien__adj",
     "base": "alien",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
@@ -1119,7 +1119,7 @@
   {
     "en": "alternative__adj",
     "base": "alternative",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
@@ -1219,7 +1219,7 @@
   {
     "en": "amount__v",
     "base": "amount",
-    "cefr": 3,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -1462,13 +1462,13 @@
   {
     "en": "appeal__n",
     "base": "appeal",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "appeal__v",
     "base": "appeal",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -1637,7 +1637,7 @@
   {
     "en": "arm__v",
     "base": "arm",
-    "cefr": 0,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -2109,7 +2109,7 @@
   {
     "en": "average__v",
     "base": "average",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -2131,7 +2131,7 @@
   {
     "en": "award__v",
     "base": "award",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -2172,7 +2172,7 @@
   {
     "en": "back__adj",
     "base": "back",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
@@ -2190,7 +2190,7 @@
   {
     "en": "back__v",
     "base": "back",
-    "cefr": 0,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -2330,13 +2330,13 @@
   {
     "en": "bar__n",
     "base": "bar",
-    "cefr": 0,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "bar__v",
     "base": "bar",
-    "cefr": 0,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -2367,7 +2367,7 @@
   {
     "en": "base__n",
     "base": "base",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -2430,7 +2430,7 @@
   {
     "en": "bat__v",
     "base": "bat",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -2457,7 +2457,7 @@
   {
     "en": "battle__v",
     "base": "battle",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -2499,7 +2499,7 @@
   {
     "en": "bear__v",
     "base": "bear",
-    "cefr": 3,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -2510,7 +2510,7 @@
   {
     "en": "beat__n",
     "base": "beat",
-    "cefr": 3,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -2695,7 +2695,7 @@
   {
     "en": "benefit__v",
     "base": "benefit",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -2803,7 +2803,7 @@
   {
     "en": "bill__v",
     "base": "bill",
-    "cefr": 0,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -2963,7 +2963,7 @@
   {
     "en": "block__v",
     "base": "block",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -2994,13 +2994,13 @@
   {
     "en": "board__n",
     "base": "board",
-    "cefr": 3,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "board__v",
     "base": "board",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -3069,7 +3069,7 @@
   {
     "en": "book__v",
     "base": "book",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -3108,7 +3108,7 @@
   {
     "en": "border__v",
     "base": "border",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -3488,7 +3488,7 @@
   {
     "en": "burn__n",
     "base": "burn",
-    "cefr": 3,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -3662,7 +3662,7 @@
   {
     "en": "can__n",
     "base": "can",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "noun"
   },
   {
@@ -3863,7 +3863,7 @@
   {
     "en": "cast__v",
     "base": "cast",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -3987,7 +3987,7 @@
   {
     "en": "center__v",
     "base": "center",
-    "cefr": 0,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -4034,7 +4034,7 @@
   {
     "en": "chain__v",
     "base": "chain",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -4046,7 +4046,7 @@
   {
     "en": "chair__v",
     "base": "chair",
-    "cefr": 0,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -4063,7 +4063,7 @@
   {
     "en": "challenge__v",
     "base": "challenge",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -4169,7 +4169,7 @@
   {
     "en": "chart__v",
     "base": "chart",
-    "cefr": 0,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -4436,7 +4436,7 @@
   {
     "en": "claim__n",
     "base": "claim",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -4523,7 +4523,7 @@
   {
     "en": "clear__v",
     "base": "clear",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -4571,7 +4571,7 @@
   {
     "en": "climb__n",
     "base": "climb",
-    "cefr": 0,
+    "cefr": 6,
     "pos": "noun"
   },
   {
@@ -4608,7 +4608,7 @@
   {
     "en": "close__adj",
     "base": "close",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
@@ -4681,7 +4681,7 @@
   {
     "en": "coach__v",
     "base": "coach",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -4933,7 +4933,7 @@
   {
     "en": "comment__v",
     "base": "comment",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -5159,7 +5159,7 @@
   {
     "en": "complex__n",
     "base": "complex",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -5696,13 +5696,13 @@
   {
     "en": "counter__n",
     "base": "counter",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "counter__v",
     "base": "counter",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -5756,7 +5756,7 @@
   {
     "en": "craft__v",
     "base": "craft",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -5985,13 +5985,13 @@
   {
     "en": "date__n",
     "base": "date",
-    "cefr": 0,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "date__v",
     "base": "date",
-    "cefr": 0,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -6027,7 +6027,7 @@
   {
     "en": "deal__n",
     "base": "deal",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "noun"
   },
   {
@@ -6441,7 +6441,7 @@
   {
     "en": "deposit__n",
     "base": "deposit",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -6514,7 +6514,7 @@
   {
     "en": "desert__v",
     "base": "desert",
-    "cefr": 3,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -6620,7 +6620,7 @@
   {
     "en": "detail__v",
     "base": "detail",
-    "cefr": 0,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -6862,7 +6862,7 @@
   {
     "en": "direct__v",
     "base": "direct",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -6989,7 +6989,7 @@
   {
     "en": "discount__v",
     "base": "discount",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -7087,7 +7087,7 @@
   {
     "en": "display__n",
     "base": "display",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -7240,7 +7240,7 @@
   {
     "en": "divide__n",
     "base": "divide",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -7300,7 +7300,7 @@
   {
     "en": "document__v",
     "base": "document",
-    "cefr": 3,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -7521,7 +7521,7 @@
   {
     "en": "drive__n",
     "base": "drive",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "noun"
   },
   {
@@ -7538,7 +7538,7 @@
   {
     "en": "driving__adj",
     "base": "driving",
-    "cefr": 3,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
@@ -7550,7 +7550,7 @@
   {
     "en": "drop__n",
     "base": "drop",
-    "cefr": 3,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -7660,7 +7660,7 @@
   {
     "en": "dynamic__n",
     "base": "dynamic",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -8153,7 +8153,7 @@
   {
     "en": "empty__v",
     "base": "empty",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -8776,13 +8776,13 @@
   {
     "en": "excess__adj",
     "base": "excess",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "excess__n",
     "base": "excess",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -8922,7 +8922,7 @@
   {
     "en": "exit__v",
     "base": "exit",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -8984,7 +8984,7 @@
   {
     "en": "experience__v",
     "base": "experience",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -9001,7 +9001,7 @@
   {
     "en": "experiment__v",
     "base": "experiment",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -9077,13 +9077,13 @@
   {
     "en": "explosive__adj",
     "base": "explosive",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "explosive__n",
     "base": "explosive",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -9162,7 +9162,7 @@
   {
     "en": "extract__v",
     "base": "extract",
-    "cefr": 9,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -9209,7 +9209,7 @@
   {
     "en": "face__v",
     "base": "face",
-    "cefr": 0,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -9295,7 +9295,7 @@
   {
     "en": "fall__n",
     "base": "fall",
-    "cefr": 0,
+    "cefr": 6,
     "pos": "noun"
   },
   {
@@ -9368,7 +9368,7 @@
   {
     "en": "farm__v",
     "base": "farm",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -9415,7 +9415,7 @@
   {
     "en": "fat__n",
     "base": "fat",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "noun"
   },
   {
@@ -9447,7 +9447,7 @@
   {
     "en": "favor__v",
     "base": "favor",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -9469,7 +9469,7 @@
   {
     "en": "fear__v",
     "base": "fear",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -9491,7 +9491,7 @@
   {
     "en": "feature__v",
     "base": "feature",
-    "cefr": 3,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -9507,7 +9507,7 @@
   {
     "en": "feed__n",
     "base": "feed",
-    "cefr": 3,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -9524,7 +9524,7 @@
   {
     "en": "feel__n",
     "base": "feel",
-    "cefr": 0,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -9633,13 +9633,13 @@
   {
     "en": "figure__n",
     "base": "figure",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "figure__v",
     "base": "figure",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -9651,7 +9651,7 @@
   {
     "en": "file__v",
     "base": "file",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -9662,13 +9662,13 @@
   {
     "en": "film__n",
     "base": "film",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "film__v",
     "base": "film",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -9679,13 +9679,13 @@
   {
     "en": "filter__n",
     "base": "filter",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "filter__v",
     "base": "filter",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -9697,7 +9697,7 @@
   {
     "en": "final__n",
     "base": "final",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "noun"
   },
   {
@@ -9708,13 +9708,13 @@
   {
     "en": "finance__n",
     "base": "finance",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "finance__v",
     "base": "finance",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -9735,19 +9735,19 @@
   {
     "en": "fine__adj",
     "base": "fine",
-    "cefr": 0,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "fine__n",
     "base": "fine",
-    "cefr": 0,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "fine__v",
     "base": "fine",
-    "cefr": 0,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -9763,13 +9763,13 @@
   {
     "en": "fire__n",
     "base": "fire",
-    "cefr": 0,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "fire__v",
     "base": "fire",
-    "cefr": 0,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -9790,13 +9790,13 @@
   {
     "en": "firm__adj",
     "base": "firm",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "firm__n",
     "base": "firm",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -9823,7 +9823,7 @@
   {
     "en": "fish__v",
     "base": "fish",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -9834,19 +9834,19 @@
   {
     "en": "fit__adj",
     "base": "fit",
-    "cefr": 4,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "fit__n",
     "base": "fit",
-    "cefr": 4,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "fit__v",
     "base": "fit",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -9862,13 +9862,13 @@
   {
     "en": "fix__n",
     "base": "fix",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "fix__v",
     "base": "fix",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -9889,13 +9889,13 @@
   {
     "en": "flash__n",
     "base": "flash",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "flash__v",
     "base": "flash",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -10010,7 +10010,7 @@
   {
     "en": "fly__n",
     "base": "fly",
-    "cefr": 0,
+    "cefr": 3,
     "pos": "noun"
   },
   {
@@ -10027,19 +10027,19 @@
   {
     "en": "focus__n",
     "base": "focus",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "focus__v",
     "base": "focus",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "fold__n",
     "base": "fold",
-    "cefr": 6,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -10123,13 +10123,13 @@
   {
     "en": "forecast__n",
     "base": "forecast",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "forecast__v",
     "base": "forecast",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -10469,13 +10469,13 @@
   {
     "en": "fuel__n",
     "base": "fuel",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "fuel__v",
     "base": "fuel",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -10501,25 +10501,25 @@
   {
     "en": "fun__adj",
     "base": "fun",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "fun__n",
     "base": "fun",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "function__n",
     "base": "function",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "function__v",
     "base": "function",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -10530,13 +10530,13 @@
   {
     "en": "fund__n",
     "base": "fund",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "fund__v",
     "base": "fund",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -10602,13 +10602,13 @@
   {
     "en": "gain__n",
     "base": "gain",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "gain__v",
     "base": "gain",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -10689,13 +10689,13 @@
   {
     "en": "gaze__n",
     "base": "gaze",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "gaze__v",
     "base": "gaze",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -10806,13 +10806,13 @@
   {
     "en": "giant__adj",
     "base": "giant",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "giant__n",
     "base": "giant",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
@@ -10848,13 +10848,13 @@
   {
     "en": "glance__n",
     "base": "glance",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "glance__v",
     "base": "glance",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -10900,13 +10900,13 @@
   {
     "en": "go__n",
     "base": "go",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "go__v",
     "base": "go",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -10937,13 +10937,13 @@
   {
     "en": "good__adj",
     "base": "good",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "adjective"
   },
   {
     "en": "good__n",
     "base": "good",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "noun"
   },
   {
@@ -10999,13 +10999,13 @@
   {
     "en": "grade__n",
     "base": "grade",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "grade__v",
     "base": "grade",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -11016,13 +11016,13 @@
   {
     "en": "graduate__n",
     "base": "graduate",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "graduate__v",
     "base": "graduate",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -11053,13 +11053,13 @@
   {
     "en": "grant__n",
     "base": "grant",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "grant__v",
     "base": "grant",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -11075,13 +11075,13 @@
   {
     "en": "grasp__n",
     "base": "grasp",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "grasp__v",
     "base": "grasp",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -11097,13 +11097,13 @@
   {
     "en": "grave__adj",
     "base": "grave",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "grave__n",
     "base": "grave",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -11154,13 +11154,13 @@
   {
     "en": "grin__n",
     "base": "grin",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "grin__v",
     "base": "grin",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -11171,13 +11171,13 @@
   {
     "en": "grip__n",
     "base": "grip",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "grip__v",
     "base": "grip",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -11213,25 +11213,25 @@
   {
     "en": "guarantee__n",
     "base": "guarantee",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "guarantee__v",
     "base": "guarantee",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "guard__n",
     "base": "guard",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "guard__v",
     "base": "guard",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -11242,13 +11242,13 @@
   {
     "en": "guess__n",
     "base": "guess",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "guess__v",
     "base": "guess",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -11264,13 +11264,13 @@
   {
     "en": "guide__n",
     "base": "guide",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "guide__v",
     "base": "guide",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -11351,25 +11351,25 @@
   {
     "en": "halt__n",
     "base": "halt",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "halt__v",
     "base": "halt",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
     "en": "hand__n",
     "base": "hand",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "hand__v",
     "base": "hand",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -11380,13 +11380,13 @@
   {
     "en": "handle__n",
     "base": "handle",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "handle__v",
     "base": "handle",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -11452,13 +11452,13 @@
   {
     "en": "harm__n",
     "base": "harm",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "harm__v",
     "base": "harm",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -11479,13 +11479,13 @@
   {
     "en": "harvest__n",
     "base": "harvest",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "harvest__v",
     "base": "harvest",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -11496,13 +11496,13 @@
   {
     "en": "hate__n",
     "base": "hate",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "hate__v",
     "base": "hate",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -11538,13 +11538,13 @@
   {
     "en": "head__n",
     "base": "head",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "head__v",
     "base": "head",
-    "cefr": 1,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -11600,13 +11600,13 @@
   {
     "en": "heat__n",
     "base": "heat",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "heat__v",
     "base": "heat",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -11667,13 +11667,13 @@
   {
     "en": "help__n",
     "base": "help",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "help__v",
     "base": "help",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -11754,13 +11754,13 @@
   {
     "en": "high__adj",
     "base": "high",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "adjective"
   },
   {
     "en": "high__adv",
     "base": "high",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "adverb"
   },
   {
@@ -11771,13 +11771,13 @@
   {
     "en": "highlight__n",
     "base": "highlight",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "highlight__v",
     "base": "highlight",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -11813,13 +11813,13 @@
   {
     "en": "hint__n",
     "base": "hint",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "hint__v",
     "base": "hint",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -11830,13 +11830,13 @@
   {
     "en": "hire__n",
     "base": "hire",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "hire__v",
     "base": "hire",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -11867,13 +11867,13 @@
   {
     "en": "hit__n",
     "base": "hit",
-    "cefr": 4,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "hit__v",
     "base": "hit",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -11889,13 +11889,13 @@
   {
     "en": "hold__n",
     "base": "hold",
-    "cefr": 4,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "hold__v",
     "base": "hold",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -11956,37 +11956,37 @@
   {
     "en": "honor__n",
     "base": "honor",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "honor__v",
     "base": "honor",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "hook__n",
     "base": "hook",
-    "cefr": 10,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "hook__v",
     "base": "hook",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "hope__n",
     "base": "hope",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "hope__v",
     "base": "hope",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -12032,13 +12032,13 @@
   {
     "en": "host__n",
     "base": "host",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "host__v",
     "base": "host",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -12074,13 +12074,13 @@
   {
     "en": "house__n",
     "base": "house",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "house__v",
     "base": "house",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -12156,13 +12156,13 @@
   {
     "en": "hunt__n",
     "base": "hunt",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "hunt__v",
     "base": "hunt",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -12178,25 +12178,25 @@
   {
     "en": "hurry__n",
     "base": "hurry",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "hurry__v",
     "base": "hurry",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
     "en": "hurt__adj",
     "base": "hurt",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "hurt__v",
     "base": "hurt",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -12237,13 +12237,13 @@
   {
     "en": "ideal__adj",
     "base": "ideal",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "ideal__n",
     "base": "ideal",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -12384,13 +12384,13 @@
   {
     "en": "impact__n",
     "base": "impact",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "impact__v",
     "base": "impact",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -12421,13 +12421,13 @@
   {
     "en": "import__n",
     "base": "import",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "import__v",
     "base": "import",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -12488,13 +12488,13 @@
   {
     "en": "in__adv",
     "base": "in",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "adverb"
   },
   {
     "en": "in__prep",
     "base": "in",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "preposition"
   },
   {
@@ -12585,13 +12585,13 @@
   {
     "en": "increase__n",
     "base": "increase",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "increase__v",
     "base": "increase",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -12662,13 +12662,13 @@
   {
     "en": "individual__adj",
     "base": "individual",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "individual__n",
     "base": "individual",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
@@ -12754,13 +12754,13 @@
   {
     "en": "influence__n",
     "base": "influence",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "influence__v",
     "base": "influence",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -12931,13 +12931,13 @@
   {
     "en": "inside__adv",
     "base": "inside",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "adverb"
   },
   {
     "en": "inside__prep",
     "base": "inside",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "preposition"
   },
   {
@@ -13063,13 +13063,13 @@
   {
     "en": "insult__n",
     "base": "insult",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "insult__v",
     "base": "insult",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -13115,13 +13115,13 @@
   {
     "en": "intellectual__adj",
     "base": "intellectual",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "intellectual__n",
     "base": "intellectual",
-    "cefr": 10,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -13192,13 +13192,13 @@
   {
     "en": "interest__n",
     "base": "interest",
-    "cefr": 1,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "interest__v",
     "base": "interest",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -13234,13 +13234,13 @@
   {
     "en": "interior__adj",
     "base": "interior",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "interior__n",
     "base": "interior",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -13301,13 +13301,13 @@
   {
     "en": "interview__n",
     "base": "interview",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "interview__v",
     "base": "interview",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -13428,13 +13428,13 @@
   {
     "en": "iron__n",
     "base": "iron",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "iron__v",
     "base": "iron",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -13480,13 +13480,13 @@
   {
     "en": "issue__n",
     "base": "issue",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "issue__v",
     "base": "issue",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -13517,13 +13517,13 @@
   {
     "en": "jail__n",
     "base": "jail",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "jail__v",
     "base": "jail",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -13564,25 +13564,25 @@
   {
     "en": "joint__adj",
     "base": "joint",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "joint__n",
     "base": "joint",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "joke__n",
     "base": "joke",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "joke__v",
     "base": "joke",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -13613,13 +13613,13 @@
   {
     "en": "judge__n",
     "base": "judge",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "judge__v",
     "base": "judge",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -13640,13 +13640,13 @@
   {
     "en": "jump__n",
     "base": "jump",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "jump__v",
     "base": "jump",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -13667,13 +13667,13 @@
   {
     "en": "just__adj",
     "base": "just",
-    "cefr": 1,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "just__adv",
     "base": "just",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "adverb"
   },
   {
@@ -13704,13 +13704,13 @@
   {
     "en": "key__adj",
     "base": "key",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "key__n",
     "base": "key",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
@@ -13721,13 +13721,13 @@
   {
     "en": "kick__n",
     "base": "kick",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "kick__v",
     "base": "kick",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -13763,13 +13763,13 @@
   {
     "en": "kind__adj",
     "base": "kind",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "kind__n",
     "base": "kind",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
@@ -13790,13 +13790,13 @@
   {
     "en": "kiss__n",
     "base": "kiss",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "kiss__v",
     "base": "kiss",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -13822,13 +13822,13 @@
   {
     "en": "knock__n",
     "base": "knock",
-    "cefr": 4,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "knock__v",
     "base": "knock",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -13849,13 +13849,13 @@
   {
     "en": "label__n",
     "base": "label",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "label__v",
     "base": "label",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -13871,13 +13871,13 @@
   {
     "en": "lack__n",
     "base": "lack",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "lack__v",
     "base": "lack",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -13903,13 +13903,13 @@
   {
     "en": "land__n",
     "base": "land",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "land__v",
     "base": "land",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -13975,13 +13975,13 @@
   {
     "en": "last__det",
     "base": "last",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "determiner"
   },
   {
     "en": "last__v",
     "base": "last",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -14007,25 +14007,25 @@
   {
     "en": "latter__adj",
     "base": "latter",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "latter__n",
     "base": "latter",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "laugh__n",
     "base": "laugh",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "laugh__v",
     "base": "laugh",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -14036,13 +14036,13 @@
   {
     "en": "launch__n",
     "base": "launch",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "launch__v",
     "base": "launch",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -14093,13 +14093,13 @@
   {
     "en": "lead__n",
     "base": "lead",
-    "cefr": 4,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "lead__v",
     "base": "lead",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -14130,13 +14130,13 @@
   {
     "en": "leak__n",
     "base": "leak",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "leak__v",
     "base": "leak",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -14147,13 +14147,13 @@
   {
     "en": "leap__n",
     "base": "leap",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "leap__v",
     "base": "leap",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -14179,25 +14179,25 @@
   {
     "en": "leave__n",
     "base": "leave",
-    "cefr": 1,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "leave__v",
     "base": "leave",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
     "en": "lecture__n",
     "base": "lecture",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "lecture__v",
     "base": "lecture",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -14318,19 +14318,19 @@
   {
     "en": "level__adj",
     "base": "level",
-    "cefr": 4,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "level__n",
     "base": "level",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "level__v",
     "base": "level",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -14341,13 +14341,13 @@
   {
     "en": "liberal__adj",
     "base": "liberal",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "liberal__n",
     "base": "liberal",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -14373,13 +14373,13 @@
   {
     "en": "lie__n",
     "base": "lie",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "lie__v",
     "base": "lie",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -14410,19 +14410,19 @@
   {
     "en": "light__adj",
     "base": "light",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "light__n",
     "base": "light",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "light__v",
     "base": "light",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -14433,13 +14433,13 @@
   {
     "en": "like__prep",
     "base": "like",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "preposition"
   },
   {
     "en": "like__v",
     "base": "like",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -14465,13 +14465,13 @@
   {
     "en": "limit__n",
     "base": "limit",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "limit__v",
     "base": "limit",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -14507,13 +14507,13 @@
   {
     "en": "link__n",
     "base": "link",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "link__v",
     "base": "link",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -14534,13 +14534,13 @@
   {
     "en": "list__n",
     "base": "list",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "list__v",
     "base": "list",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -14596,13 +14596,13 @@
   {
     "en": "live__adj",
     "base": "live",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "live__v",
     "base": "live",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -14618,25 +14618,25 @@
   {
     "en": "living__adj",
     "base": "living",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "living__n",
     "base": "living",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "load__n",
     "base": "load",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "load__v",
     "base": "load",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -14647,25 +14647,25 @@
   {
     "en": "lobby__n",
     "base": "lobby",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "lobby__v",
     "base": "lobby",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
     "en": "local__adj",
     "base": "local",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "adjective"
   },
   {
     "en": "local__n",
     "base": "local",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "noun"
   },
   {
@@ -14686,25 +14686,25 @@
   {
     "en": "lock__n",
     "base": "lock",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "lock__v",
     "base": "lock",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "log__n",
     "base": "log",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "log__v",
     "base": "log",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -14750,13 +14750,13 @@
   {
     "en": "look__n",
     "base": "look",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "look__v",
     "base": "look",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -14817,25 +14817,25 @@
   {
     "en": "love__n",
     "base": "love",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "love__v",
     "base": "love",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
     "en": "low__adj",
     "base": "low",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "low__n",
     "base": "low",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -14931,13 +14931,13 @@
   {
     "en": "mail__n",
     "base": "mail",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "mail__v",
     "base": "mail",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -14958,13 +14958,13 @@
   {
     "en": "mainstream__adj",
     "base": "mainstream",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "mainstream__n",
     "base": "mainstream",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -14980,13 +14980,13 @@
   {
     "en": "major__adj",
     "base": "major",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "major__n",
     "base": "major",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -15102,13 +15102,13 @@
   {
     "en": "march__n",
     "base": "march",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "march__v",
     "base": "march",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -15129,13 +15129,13 @@
   {
     "en": "mark__n",
     "base": "mark",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "mark__v",
     "base": "mark",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -15201,25 +15201,25 @@
   {
     "en": "master__n",
     "base": "master",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "master__v",
     "base": "master",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "match__n",
     "base": "match",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "match__v",
     "base": "match",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -15230,13 +15230,13 @@
   {
     "en": "mate__n",
     "base": "mate",
-    "cefr": 10,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "mate__v",
     "base": "mate",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -15262,25 +15262,25 @@
   {
     "en": "matter__n",
     "base": "matter",
-    "cefr": 4,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "matter__v",
     "base": "matter",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "mature__adj",
     "base": "mature",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "mature__v",
     "base": "mature",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -15351,13 +15351,13 @@
   {
     "en": "measure__n",
     "base": "measure",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "measure__v",
     "base": "measure",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -15423,13 +15423,13 @@
   {
     "en": "medium__adj",
     "base": "medium",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "medium__n",
     "base": "medium",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -15495,13 +15495,13 @@
   {
     "en": "mention__n",
     "base": "mention",
-    "cefr": 4,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "mention__v",
     "base": "mention",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -15552,13 +15552,13 @@
   {
     "en": "mess__n",
     "base": "mess",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "mess__v",
     "base": "mess",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -15659,13 +15659,13 @@
   {
     "en": "mind__n",
     "base": "mind",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "mind__v",
     "base": "mind",
-    "cefr": 4,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -15726,13 +15726,13 @@
   {
     "en": "minute__adj",
     "base": "minute",
-    "cefr": 1,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "minute__n",
     "base": "minute",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
@@ -15783,25 +15783,25 @@
   {
     "en": "mistake__n",
     "base": "mistake",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "mistake__v",
     "base": "mistake",
-    "cefr": 1,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "mix__n",
     "base": "mix",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "mix__v",
     "base": "mix",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -15842,13 +15842,13 @@
   {
     "en": "model__n",
     "base": "model",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "model__v",
     "base": "model",
-    "cefr": 1,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -15904,13 +15904,13 @@
   {
     "en": "monitor__n",
     "base": "monitor",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "monitor__v",
     "base": "monitor",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -16066,13 +16066,13 @@
   {
     "en": "move__n",
     "base": "move",
-    "cefr": 1,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "move__v",
     "base": "move",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -16118,13 +16118,13 @@
   {
     "en": "murder__n",
     "base": "murder",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "murder__v",
     "base": "murder",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -16200,13 +16200,13 @@
   {
     "en": "name__n",
     "base": "name",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "name__v",
     "base": "name",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -16317,13 +16317,13 @@
   {
     "en": "need__n",
     "base": "need",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "need__v",
     "base": "need",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -16339,13 +16339,13 @@
   {
     "en": "neglect__n",
     "base": "neglect",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "neglect__v",
     "base": "neglect",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -16396,13 +16396,13 @@
   {
     "en": "net__adj",
     "base": "net",
-    "cefr": 7,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "net__n",
     "base": "net",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
@@ -16628,13 +16628,13 @@
   {
     "en": "note__n",
     "base": "note",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "note__v",
     "base": "note",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -16650,13 +16650,13 @@
   {
     "en": "notice__n",
     "base": "notice",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "notice__v",
     "base": "notice",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -16677,13 +16677,13 @@
   {
     "en": "novel__adj",
     "base": "novel",
-    "cefr": 4,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "novel__n",
     "base": "novel",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
@@ -16714,13 +16714,13 @@
   {
     "en": "number__n",
     "base": "number",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "number__v",
     "base": "number",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -16771,13 +16771,13 @@
   {
     "en": "object__n",
     "base": "object",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "object__v",
     "base": "object",
-    "cefr": 1,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -16788,13 +16788,13 @@
   {
     "en": "objective__adj",
     "base": "objective",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "objective__n",
     "base": "objective",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -16935,13 +16935,13 @@
   {
     "en": "offer__n",
     "base": "offer",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "offer__v",
     "base": "offer",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -16962,13 +16962,13 @@
   {
     "en": "official__adj",
     "base": "official",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "official__n",
     "base": "official",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -17044,13 +17044,13 @@
   {
     "en": "open__adj",
     "base": "open",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "adjective"
   },
   {
     "en": "open__v",
     "base": "open",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -17171,13 +17171,13 @@
   {
     "en": "order__n",
     "base": "order",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "order__v",
     "base": "order",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -17233,13 +17233,13 @@
   {
     "en": "original__adj",
     "base": "original",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "original__n",
     "base": "original",
-    "cefr": 4,
+    "cefr": 6,
     "pos": "noun"
   },
   {
@@ -17330,13 +17330,13 @@
   {
     "en": "outline__n",
     "base": "outline",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "outline__v",
     "base": "outline",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -17352,25 +17352,25 @@
   {
     "en": "outrage__n",
     "base": "outrage",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "outrage__v",
     "base": "outrage",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
     "en": "outside__adv",
     "base": "outside",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "adverb"
   },
   {
     "en": "outside__prep",
     "base": "outside",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "preposition"
   },
   {
@@ -17451,13 +17451,13 @@
   {
     "en": "own__adj",
     "base": "own",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "adjective"
   },
   {
     "en": "own__v",
     "base": "own",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -17478,37 +17478,37 @@
   {
     "en": "pace__n",
     "base": "pace",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "pace__v",
     "base": "pace",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "pack__n",
     "base": "pack",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "pack__v",
     "base": "pack",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "package__n",
     "base": "package",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "package__v",
     "base": "package",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -17539,13 +17539,13 @@
   {
     "en": "paint__n",
     "base": "paint",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "paint__v",
     "base": "paint",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -17616,13 +17616,13 @@
   {
     "en": "parallel__adj",
     "base": "parallel",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "parallel__n",
     "base": "parallel",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -17643,13 +17643,13 @@
   {
     "en": "park__n",
     "base": "park",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "park__v",
     "base": "park",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -17730,13 +17730,13 @@
   {
     "en": "pass__n",
     "base": "pass",
-    "cefr": 4,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "pass__v",
     "base": "pass",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -17817,25 +17817,25 @@
   {
     "en": "patient__adj",
     "base": "patient",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "patient__n",
     "base": "patient",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "patrol__n",
     "base": "patrol",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "patrol__v",
     "base": "patrol",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -17851,25 +17851,25 @@
   {
     "en": "pause__n",
     "base": "pause",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "pause__v",
     "base": "pause",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "pay__n",
     "base": "pay",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "pay__v",
     "base": "pay",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -18015,13 +18015,13 @@
   {
     "en": "permit__n",
     "base": "permit",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "permit__v",
     "base": "permit",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -18112,13 +18112,13 @@
   {
     "en": "phone__n",
     "base": "phone",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "phone__v",
     "base": "phone",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -18129,13 +18129,13 @@
   {
     "en": "photograph__n",
     "base": "photograph",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "photograph__v",
     "base": "photograph",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -18176,25 +18176,25 @@
   {
     "en": "pick__n",
     "base": "pick",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "pick__v",
     "base": "pick",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "picture__n",
     "base": "picture",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "picture__v",
     "base": "picture",
-    "cefr": 1,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -18210,13 +18210,13 @@
   {
     "en": "pile__n",
     "base": "pile",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "pile__v",
     "base": "pile",
-    "cefr": 10,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -18232,13 +18232,13 @@
   {
     "en": "pin__n",
     "base": "pin",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "pin__v",
     "base": "pin",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -18249,13 +18249,13 @@
   {
     "en": "pioneer__n",
     "base": "pioneer",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "pioneer__v",
     "base": "pioneer",
-    "cefr": 13,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -18291,13 +18291,13 @@
   {
     "en": "place__n",
     "base": "place",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "place__v",
     "base": "place",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -18313,13 +18313,13 @@
   {
     "en": "plan__n",
     "base": "plan",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "plan__v",
     "base": "plan",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -18340,13 +18340,13 @@
   {
     "en": "plant__n",
     "base": "plant",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "plant__v",
     "base": "plant",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -18367,13 +18367,13 @@
   {
     "en": "play__n",
     "base": "play",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "play__v",
     "base": "play",
-    "cefr": 1,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -18414,13 +18414,13 @@
   {
     "en": "pledge__n",
     "base": "pledge",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "pledge__v",
     "base": "pledge",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -18431,25 +18431,25 @@
   {
     "en": "plot__n",
     "base": "plot",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "plot__v",
     "base": "plot",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "plug__n",
     "base": "plug",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "plug__v",
     "base": "plug",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -18485,13 +18485,13 @@
   {
     "en": "point__n",
     "base": "point",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "point__v",
     "base": "point",
-    "cefr": 1,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -18502,13 +18502,13 @@
   {
     "en": "poison__n",
     "base": "poison",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "poison__v",
     "base": "poison",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -18584,13 +18584,13 @@
   {
     "en": "pop__n",
     "base": "pop",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "pop__v",
     "base": "pop",
-    "cefr": 4,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -18641,13 +18641,13 @@
   {
     "en": "position__n",
     "base": "position",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "position__v",
     "base": "position",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -18683,13 +18683,13 @@
   {
     "en": "post__n",
     "base": "post",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "post__v",
     "base": "post",
-    "cefr": 1,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -18750,13 +18750,13 @@
   {
     "en": "power__n",
     "base": "power",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "power__v",
     "base": "power",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -18772,13 +18772,13 @@
   {
     "en": "practice__n",
     "base": "practice",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "practice__v",
     "base": "practice",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -18789,13 +18789,13 @@
   {
     "en": "praise__n",
     "base": "praise",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "praise__v",
     "base": "praise",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -18951,19 +18951,19 @@
   {
     "en": "present__adj",
     "base": "present",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "adjective"
   },
   {
     "en": "present__n",
     "base": "present",
-    "cefr": 2,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "present__v",
     "base": "present",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -19009,13 +19009,13 @@
   {
     "en": "press__n",
     "base": "press",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "press__v",
     "base": "press",
-    "cefr": 7,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -19086,13 +19086,13 @@
   {
     "en": "price__n",
     "base": "price",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "price__v",
     "base": "price",
-    "cefr": 2,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -19133,13 +19133,13 @@
   {
     "en": "principal__adj",
     "base": "principal",
-    "cefr": 7,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "principal__n",
     "base": "principal",
-    "cefr": 7,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -19150,13 +19150,13 @@
   {
     "en": "print__n",
     "base": "print",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "print__v",
     "base": "print",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -19232,13 +19232,13 @@
   {
     "en": "probe__n",
     "base": "probe",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "probe__v",
     "base": "probe",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -19274,13 +19274,13 @@
   {
     "en": "process__n",
     "base": "process",
-    "cefr": 4,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "process__v",
     "base": "process",
-    "cefr": 4,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -19336,13 +19336,13 @@
   {
     "en": "professional__adj",
     "base": "professional",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "professional__n",
     "base": "professional",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -19373,13 +19373,13 @@
   {
     "en": "program__n",
     "base": "program",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "program__v",
     "base": "program",
-    "cefr": 2,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -19390,13 +19390,13 @@
   {
     "en": "progress__n",
     "base": "progress",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "progress__v",
     "base": "progress",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -19412,13 +19412,13 @@
   {
     "en": "project__n",
     "base": "project",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "project__v",
     "base": "project",
-    "cefr": 2,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -19434,13 +19434,13 @@
   {
     "en": "promise__n",
     "base": "promise",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "promise__v",
     "base": "promise",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -19571,13 +19571,13 @@
   {
     "en": "protest__n",
     "base": "protest",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "protest__v",
     "base": "protest",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -19648,13 +19648,13 @@
   {
     "en": "public__adj",
     "base": "public",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "public__n",
     "base": "public",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
@@ -19680,13 +19680,13 @@
   {
     "en": "pull__n",
     "base": "pull",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "pull__v",
     "base": "pull",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -19697,25 +19697,25 @@
   {
     "en": "pump__n",
     "base": "pump",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "pump__v",
     "base": "pump",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
     "en": "punch__n",
     "base": "punch",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "punch__v",
     "base": "punch",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -19736,13 +19736,13 @@
   {
     "en": "purchase__n",
     "base": "purchase",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "purchase__v",
     "base": "purchase",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -19778,13 +19778,13 @@
   {
     "en": "push__n",
     "base": "push",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "push__v",
     "base": "push",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -19845,13 +19845,13 @@
   {
     "en": "question__n",
     "base": "question",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "question__v",
     "base": "question",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -19902,25 +19902,25 @@
   {
     "en": "quote__n",
     "base": "quote",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "quote__v",
     "base": "quote",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
     "en": "race__n",
     "base": "race",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "race__v",
     "base": "race",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -19941,13 +19941,13 @@
   {
     "en": "racist__adj",
     "base": "racist",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "racist__n",
     "base": "racist",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -19978,13 +19978,13 @@
   {
     "en": "raid__n",
     "base": "raid",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "raid__v",
     "base": "raid",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -20000,37 +20000,37 @@
   {
     "en": "rain__n",
     "base": "rain",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "rain__v",
     "base": "rain",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
     "en": "raise__n",
     "base": "raise",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "raise__v",
     "base": "raise",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "rally__n",
     "base": "rally",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "rally__v",
     "base": "rally",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -20041,25 +20041,25 @@
   {
     "en": "range__n",
     "base": "range",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "range__v",
     "base": "range",
-    "cefr": 8,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "rank__n",
     "base": "rank",
-    "cefr": 11,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "rank__v",
     "base": "rank",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -20070,13 +20070,13 @@
   {
     "en": "rape__n",
     "base": "rape",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "rape__v",
     "base": "rape",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -20107,13 +20107,13 @@
   {
     "en": "rate__n",
     "base": "rate",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "rate__v",
     "base": "rate",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -20149,13 +20149,13 @@
   {
     "en": "reach__n",
     "base": "reach",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "reach__v",
     "base": "reach",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -20231,13 +20231,13 @@
   {
     "en": "rear__adj",
     "base": "rear",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "rear__n",
     "base": "rear",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -20363,13 +20363,13 @@
   {
     "en": "record__n",
     "base": "record",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "record__v",
     "base": "record",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -20395,13 +20395,13 @@
   {
     "en": "recruit__n",
     "base": "recruit",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "recruit__v",
     "base": "recruit",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -20462,13 +20462,13 @@
   {
     "en": "reform__n",
     "base": "reform",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "reform__v",
     "base": "reform",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -20504,13 +20504,13 @@
   {
     "en": "regard__n",
     "base": "regard",
-    "cefr": 11,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "regard__v",
     "base": "regard",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -20536,13 +20536,13 @@
   {
     "en": "register__n",
     "base": "register",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "register__v",
     "base": "register",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -20553,13 +20553,13 @@
   {
     "en": "regret__n",
     "base": "regret",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "regret__v",
     "base": "regret",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -20600,13 +20600,13 @@
   {
     "en": "reign__n",
     "base": "reign",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "reign__v",
     "base": "reign",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -20647,13 +20647,13 @@
   {
     "en": "relative__adj",
     "base": "relative",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "relative__n",
     "base": "relative",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
@@ -20679,13 +20679,13 @@
   {
     "en": "release__n",
     "base": "release",
-    "cefr": 8,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "release__v",
     "base": "release",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -20761,13 +20761,13 @@
   {
     "en": "remark__n",
     "base": "remark",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "remark__v",
     "base": "remark",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -20833,13 +20833,13 @@
   {
     "en": "rent__n",
     "base": "rent",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "rent__v",
     "base": "rent",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -20850,25 +20850,25 @@
   {
     "en": "repair__n",
     "base": "repair",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "repair__v",
     "base": "repair",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "repeat__n",
     "base": "repeat",
-    "cefr": 2,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "repeat__v",
     "base": "repeat",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -20889,25 +20889,25 @@
   {
     "en": "reply__n",
     "base": "reply",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "reply__v",
     "base": "reply",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "report__n",
     "base": "report",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "report__v",
     "base": "report",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -20938,13 +20938,13 @@
   {
     "en": "representative__adj",
     "base": "representative",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "representative__n",
     "base": "representative",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -20970,13 +20970,13 @@
   {
     "en": "request__n",
     "base": "request",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "request__v",
     "base": "request",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -20992,25 +20992,25 @@
   {
     "en": "rescue__n",
     "base": "rescue",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "rescue__v",
     "base": "rescue",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "research__n",
     "base": "research",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "research__v",
     "base": "research",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -21031,13 +21031,13 @@
   {
     "en": "reserve__n",
     "base": "reserve",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "reserve__v",
     "base": "reserve",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -21053,13 +21053,13 @@
   {
     "en": "resident__adj",
     "base": "resident",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "resident__n",
     "base": "resident",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -21115,13 +21115,13 @@
   {
     "en": "respect__n",
     "base": "respect",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "respect__v",
     "base": "respect",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -21157,13 +21157,13 @@
   {
     "en": "rest__n",
     "base": "rest",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "rest__v",
     "base": "rest",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -21199,13 +21199,13 @@
   {
     "en": "result__n",
     "base": "result",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "result__v",
     "base": "result",
-    "cefr": 2,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -21241,13 +21241,13 @@
   {
     "en": "retreat__n",
     "base": "retreat",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "retreat__v",
     "base": "retreat",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -21258,13 +21258,13 @@
   {
     "en": "return__n",
     "base": "return",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "return__v",
     "base": "return",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -21290,31 +21290,31 @@
   {
     "en": "reverse__adj",
     "base": "reverse",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "reverse__n",
     "base": "reverse",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "reverse__v",
     "base": "reverse",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
     "en": "review__n",
     "base": "review",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "review__v",
     "base": "review",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -21350,13 +21350,13 @@
   {
     "en": "reward__n",
     "base": "reward",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "reward__v",
     "base": "reward",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -21387,13 +21387,13 @@
   {
     "en": "ride__n",
     "base": "ride",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "ride__v",
     "base": "ride",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -21409,31 +21409,31 @@
   {
     "en": "right__adj",
     "base": "right",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "adjective"
   },
   {
     "en": "right__adv",
     "base": "right",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "adverb"
   },
   {
     "en": "right__n",
     "base": "right",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "ring__n",
     "base": "ring",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "ring__v",
     "base": "ring",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -21449,25 +21449,25 @@
   {
     "en": "rise__n",
     "base": "rise",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "rise__v",
     "base": "rise",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "risk__n",
     "base": "risk",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "risk__v",
     "base": "risk",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -21483,13 +21483,13 @@
   {
     "en": "rival__adj",
     "base": "rival",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "rival__n",
     "base": "rival",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -21525,13 +21525,13 @@
   {
     "en": "rock__n",
     "base": "rock",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "rock__v",
     "base": "rock",
-    "cefr": 5,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -21552,13 +21552,13 @@
   {
     "en": "roll__n",
     "base": "roll",
-    "cefr": 8,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "roll__v",
     "base": "roll",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -21629,13 +21629,13 @@
   {
     "en": "round__adj",
     "base": "round",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "round__n",
     "base": "round",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -21646,13 +21646,13 @@
   {
     "en": "routine__adj",
     "base": "routine",
-    "cefr": 2,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "routine__n",
     "base": "routine",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
@@ -21683,25 +21683,25 @@
   {
     "en": "ruin__n",
     "base": "ruin",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "ruin__v",
     "base": "ruin",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "rule__n",
     "base": "rule",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "rule__v",
     "base": "rule",
-    "cefr": 2,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -21717,13 +21717,13 @@
   {
     "en": "run__n",
     "base": "run",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "run__v",
     "base": "run",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -21744,13 +21744,13 @@
   {
     "en": "rush__n",
     "base": "rush",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "rush__v",
     "base": "rush",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -21766,13 +21766,13 @@
   {
     "en": "sacrifice__n",
     "base": "sacrifice",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "sacrifice__v",
     "base": "sacrifice",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -21798,13 +21798,13 @@
   {
     "en": "sail__n",
     "base": "sail",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "sail__v",
     "base": "sail",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -21855,13 +21855,13 @@
   {
     "en": "sample__n",
     "base": "sample",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "sample__v",
     "base": "sample",
-    "cefr": 8,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -21917,13 +21917,13 @@
   {
     "en": "say__n",
     "base": "say",
-    "cefr": 2,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "say__v",
     "base": "say",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -21944,13 +21944,13 @@
   {
     "en": "scare__n",
     "base": "scare",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "scare__v",
     "base": "scare",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -21981,13 +21981,13 @@
   {
     "en": "schedule__n",
     "base": "schedule",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "schedule__v",
     "base": "schedule",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -22028,49 +22028,49 @@
   {
     "en": "score__n",
     "base": "score",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "score__v",
     "base": "score",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "scratch__n",
     "base": "scratch",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "scratch__v",
     "base": "scratch",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "scream__n",
     "base": "scream",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "scream__v",
     "base": "scream",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "screen__n",
     "base": "screen",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "screen__v",
     "base": "screen",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -22081,13 +22081,13 @@
   {
     "en": "screw__n",
     "base": "screw",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "screw__v",
     "base": "screw",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -22113,25 +22113,25 @@
   {
     "en": "seal__n",
     "base": "seal",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "seal__v",
     "base": "seal",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
     "en": "search__n",
     "base": "search",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "search__v",
     "base": "search",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -22142,25 +22142,25 @@
   {
     "en": "seat__n",
     "base": "seat",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "seat__v",
     "base": "seat",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "second__n",
     "base": "second",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "second__num",
     "base": "second",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "number"
   },
   {
@@ -22176,13 +22176,13 @@
   {
     "en": "secret__adj",
     "base": "secret",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "secret__n",
     "base": "secret",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
@@ -22208,13 +22208,13 @@
   {
     "en": "secure__adj",
     "base": "secure",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "secure__v",
     "base": "secure",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -22325,13 +22325,13 @@
   {
     "en": "sense__n",
     "base": "sense",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "sense__v",
     "base": "sense",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -22352,13 +22352,13 @@
   {
     "en": "sentence__n",
     "base": "sentence",
-    "cefr": 2,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "sentence__v",
     "base": "sentence",
-    "cefr": 2,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -22369,13 +22369,13 @@
   {
     "en": "separate__adj",
     "base": "separate",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "separate__v",
     "base": "separate",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -22431,13 +22431,13 @@
   {
     "en": "set__n",
     "base": "set",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "set__v",
     "base": "set",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -22523,13 +22523,13 @@
   {
     "en": "shake__n",
     "base": "shake",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "shake__v",
     "base": "shake",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -22550,25 +22550,25 @@
   {
     "en": "shape__n",
     "base": "shape",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "shape__v",
     "base": "shape",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "share__n",
     "base": "share",
-    "cefr": 2,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "share__v",
     "base": "share",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -22624,25 +22624,25 @@
   {
     "en": "shelter__n",
     "base": "shelter",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "shelter__v",
     "base": "shelter",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "shift__n",
     "base": "shift",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "shift__v",
     "base": "shift",
-    "cefr": 8,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -22658,13 +22658,13 @@
   {
     "en": "ship__n",
     "base": "ship",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "ship__v",
     "base": "ship",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -22680,13 +22680,13 @@
   {
     "en": "shock__n",
     "base": "shock",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "shock__v",
     "base": "shock",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -22707,13 +22707,13 @@
   {
     "en": "shoot__n",
     "base": "shoot",
-    "cefr": 8,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "shoot__v",
     "base": "shoot",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -22724,13 +22724,13 @@
   {
     "en": "shop__n",
     "base": "shop",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "shop__v",
     "base": "shop",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -22781,25 +22781,25 @@
   {
     "en": "shout__n",
     "base": "shout",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "shout__v",
     "base": "shout",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "show__n",
     "base": "show",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "show__v",
     "base": "show",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -22820,13 +22820,13 @@
   {
     "en": "shut__adj",
     "base": "shut",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "shut__v",
     "base": "shut",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -22857,13 +22857,13 @@
   {
     "en": "sigh__n",
     "base": "sigh",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "sigh__v",
     "base": "sigh",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -22874,25 +22874,25 @@
   {
     "en": "sign__n",
     "base": "sign",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "sign__v",
     "base": "sign",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "signal__n",
     "base": "signal",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "signal__v",
     "base": "signal",
-    "cefr": 8,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -23083,13 +23083,13 @@
   {
     "en": "ski__n",
     "base": "ski",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "ski__v",
     "base": "ski",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -23160,13 +23160,13 @@
   {
     "en": "sleep__n",
     "base": "sleep",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "sleep__v",
     "base": "sleep",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -23177,13 +23177,13 @@
   {
     "en": "slide__n",
     "base": "slide",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "slide__v",
     "base": "slide",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -23249,37 +23249,37 @@
   {
     "en": "smell__n",
     "base": "smell",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "smell__v",
     "base": "smell",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "smile__n",
     "base": "smile",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "smile__v",
     "base": "smile",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
     "en": "smoke__n",
     "base": "smoke",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "smoke__v",
     "base": "smoke",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -23310,13 +23310,13 @@
   {
     "en": "snow__n",
     "base": "snow",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "snow__v",
     "base": "snow",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -23417,13 +23417,13 @@
   {
     "en": "solo__adj",
     "base": "solo",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "solo__n",
     "base": "solo",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -23514,13 +23514,13 @@
   {
     "en": "sort__n",
     "base": "sort",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "sort__v",
     "base": "sort",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -23531,19 +23531,19 @@
   {
     "en": "sound__adj",
     "base": "sound",
-    "cefr": 2,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "sound__n",
     "base": "sound",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "sound__v",
     "base": "sound",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -23584,25 +23584,25 @@
   {
     "en": "span__n",
     "base": "span",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "span__v",
     "base": "span",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
     "en": "spare__adj",
     "base": "spare",
-    "cefr": 11,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "spare__v",
     "base": "spare",
-    "cefr": 11,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -23708,25 +23708,25 @@
   {
     "en": "speed__n",
     "base": "speed",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "speed__v",
     "base": "speed",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "spell__n",
     "base": "spell",
-    "cefr": 2,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "spell__v",
     "base": "spell",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -23772,13 +23772,13 @@
   {
     "en": "spin__n",
     "base": "spin",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "spin__v",
     "base": "spin",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -23804,13 +23804,13 @@
   {
     "en": "split__n",
     "base": "split",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "split__v",
     "base": "split",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -23841,13 +23841,13 @@
   {
     "en": "sponsor__n",
     "base": "sponsor",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "sponsor__v",
     "base": "sponsor",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -23868,13 +23868,13 @@
   {
     "en": "spot__n",
     "base": "spot",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "spot__v",
     "base": "spot",
-    "cefr": 8,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -23890,37 +23890,37 @@
   {
     "en": "spread__n",
     "base": "spread",
-    "cefr": 8,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "spread__v",
     "base": "spread",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
     "en": "spring__n",
     "base": "spring",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "spring__v",
     "base": "spring",
-    "cefr": 2,
+    "cefr": 6,
     "pos": "verb"
   },
   {
     "en": "spy__n",
     "base": "spy",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "spy__v",
     "base": "spy",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -23931,13 +23931,13 @@
   {
     "en": "square__adj",
     "base": "square",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "adjective"
   },
   {
     "en": "square__n",
     "base": "square",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
@@ -23978,13 +23978,13 @@
   {
     "en": "stage__n",
     "base": "stage",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "stage__v",
     "base": "stage",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -24015,13 +24015,13 @@
   {
     "en": "stand__n",
     "base": "stand",
-    "cefr": 2,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "stand__v",
     "base": "stand",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -24037,13 +24037,13 @@
   {
     "en": "star__n",
     "base": "star",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "star__v",
     "base": "star",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -24059,13 +24059,13 @@
   {
     "en": "start__n",
     "base": "start",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "start__v",
     "base": "start",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -24076,13 +24076,13 @@
   {
     "en": "state__n",
     "base": "state",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "state__v",
     "base": "state",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -24118,13 +24118,13 @@
   {
     "en": "stay__n",
     "base": "stay",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "stay__v",
     "base": "stay",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -24165,25 +24165,25 @@
   {
     "en": "stem__n",
     "base": "stem",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "stem__v",
     "base": "stem",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
     "en": "step__n",
     "base": "step",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "step__v",
     "base": "step",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -24194,13 +24194,13 @@
   {
     "en": "stick__n",
     "base": "stick",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "stick__v",
     "base": "stick",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -24216,13 +24216,13 @@
   {
     "en": "still__adj",
     "base": "still",
-    "cefr": 2,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "still__adv",
     "base": "still",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "adverb"
   },
   {
@@ -24258,13 +24258,13 @@
   {
     "en": "stop__n",
     "base": "stop",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "stop__v",
     "base": "stop",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -24275,13 +24275,13 @@
   {
     "en": "store__n",
     "base": "store",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "store__v",
     "base": "store",
-    "cefr": 2,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -24362,25 +24362,25 @@
   {
     "en": "stress__n",
     "base": "stress",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "stress__v",
     "base": "stress",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "stretch__n",
     "base": "stretch",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "stretch__v",
     "base": "stretch",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -24396,13 +24396,13 @@
   {
     "en": "strike__n",
     "base": "strike",
-    "cefr": 11,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "strike__v",
     "base": "strike",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -24418,13 +24418,13 @@
   {
     "en": "strip__n",
     "base": "strip",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "strip__v",
     "base": "strip",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -24455,25 +24455,25 @@
   {
     "en": "structure__n",
     "base": "structure",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "structure__v",
     "base": "structure",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "struggle__n",
     "base": "struggle",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "struggle__v",
     "base": "struggle",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -24489,25 +24489,25 @@
   {
     "en": "study__n",
     "base": "study",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "study__v",
     "base": "study",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
     "en": "stuff__n",
     "base": "stuff",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "stuff__v",
     "base": "stuff",
-    "cefr": 8,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -24593,13 +24593,13 @@
   {
     "en": "substitute__n",
     "base": "substitute",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "substitute__v",
     "base": "substitute",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -24730,13 +24730,13 @@
   {
     "en": "suit__n",
     "base": "suit",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "suit__v",
     "base": "suit",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -24822,37 +24822,37 @@
   {
     "en": "supplement__n",
     "base": "supplement",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "supplement__v",
     "base": "supplement",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
     "en": "supply__n",
     "base": "supply",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "supply__v",
     "base": "supply",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
     "en": "support__n",
     "base": "support",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "support__v",
     "base": "support",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -24903,13 +24903,13 @@
   {
     "en": "surge__n",
     "base": "surge",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "surge__v",
     "base": "surge",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -24935,13 +24935,13 @@
   {
     "en": "surprise__n",
     "base": "surprise",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "surprise__v",
     "base": "surprise",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -24977,13 +24977,13 @@
   {
     "en": "survey__n",
     "base": "survey",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "survey__v",
     "base": "survey",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -25004,13 +25004,13 @@
   {
     "en": "suspect__n",
     "base": "suspect",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "suspect__v",
     "base": "suspect",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -25081,25 +25081,25 @@
   {
     "en": "swing__n",
     "base": "swing",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "swing__v",
     "base": "swing",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
     "en": "switch__n",
     "base": "switch",
-    "cefr": 8,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "switch__v",
     "base": "switch",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -25165,13 +25165,13 @@
   {
     "en": "tackle__n",
     "base": "tackle",
-    "cefr": 11,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "tackle__v",
     "base": "tackle",
-    "cefr": 11,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -25187,13 +25187,13 @@
   {
     "en": "tag__n",
     "base": "tag",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "tag__v",
     "base": "tag",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -25224,13 +25224,13 @@
   {
     "en": "talk__n",
     "base": "talk",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "talk__v",
     "base": "talk",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -25246,13 +25246,13 @@
   {
     "en": "tap__n",
     "base": "tap",
-    "cefr": 11,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "tap__v",
     "base": "tap",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -25263,13 +25263,13 @@
   {
     "en": "target__n",
     "base": "target",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "target__v",
     "base": "target",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -25280,13 +25280,13 @@
   {
     "en": "taste__n",
     "base": "taste",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "taste__v",
     "base": "taste",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -25332,13 +25332,13 @@
   {
     "en": "tear__n",
     "base": "tear",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "tear__v",
     "base": "tear",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -25364,13 +25364,13 @@
   {
     "en": "teen__adj",
     "base": "teen",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "adjective"
   },
   {
     "en": "teen__n",
     "base": "teen",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -25471,25 +25471,25 @@
   {
     "en": "term__n",
     "base": "term",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "term__v",
     "base": "term",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "terminal__adj",
     "base": "terminal",
-    "cefr": 11,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "terminal__n",
     "base": "terminal",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
@@ -25550,13 +25550,13 @@
   {
     "en": "test__n",
     "base": "test",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "test__v",
     "base": "test",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -25577,13 +25577,13 @@
   {
     "en": "text__n",
     "base": "text",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "text__v",
     "base": "text",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -25889,13 +25889,13 @@
   {
     "en": "tie__n",
     "base": "tie",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "tie__v",
     "base": "tie",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -25941,13 +25941,13 @@
   {
     "en": "tip__n",
     "base": "tip",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "tip__v",
     "base": "tip",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -26063,13 +26063,13 @@
   {
     "en": "top__n",
     "base": "top",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "top__v",
     "base": "top",
-    "cefr": 5,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -26080,13 +26080,13 @@
   {
     "en": "torture__n",
     "base": "torture",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "torture__v",
     "base": "torture",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -26097,13 +26097,13 @@
   {
     "en": "total__adj",
     "base": "total",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "total__v",
     "base": "total",
-    "cefr": 8,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -26114,13 +26114,13 @@
   {
     "en": "touch__n",
     "base": "touch",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "touch__v",
     "base": "touch",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -26131,13 +26131,13 @@
   {
     "en": "tour__n",
     "base": "tour",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "tour__v",
     "base": "tour",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -26188,37 +26188,37 @@
   {
     "en": "trace__n",
     "base": "trace",
-    "cefr": 11,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "trace__v",
     "base": "trace",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "track__n",
     "base": "track",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "track__v",
     "base": "track",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
     "en": "trade__n",
     "base": "trade",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "trade__v",
     "base": "trade",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -26259,13 +26259,13 @@
   {
     "en": "trail__n",
     "base": "trail",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "trail__v",
     "base": "trail",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -26276,13 +26276,13 @@
   {
     "en": "train__n",
     "base": "train",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "train__v",
     "base": "train",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -26313,13 +26313,13 @@
   {
     "en": "transfer__n",
     "base": "transfer",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "transfer__v",
     "base": "transfer",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -26385,13 +26385,13 @@
   {
     "en": "trap__n",
     "base": "trap",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "trap__v",
     "base": "trap",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -26407,13 +26407,13 @@
   {
     "en": "travel__n",
     "base": "travel",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "travel__v",
     "base": "travel",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -26479,25 +26479,25 @@
   {
     "en": "trick__n",
     "base": "trick",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "trick__v",
     "base": "trick",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
     "en": "trigger__n",
     "base": "trigger",
-    "cefr": 11,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "trigger__v",
     "base": "trigger",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -26538,13 +26538,13 @@
   {
     "en": "trouble__n",
     "base": "trouble",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "trouble__v",
     "base": "trouble",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -26570,13 +26570,13 @@
   {
     "en": "trust__n",
     "base": "trust",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "trust__v",
     "base": "trust",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -26592,13 +26592,13 @@
   {
     "en": "try__n",
     "base": "try",
-    "cefr": 2,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "try__v",
     "base": "try",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -26634,13 +26634,13 @@
   {
     "en": "turn__n",
     "base": "turn",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "turn__v",
     "base": "turn",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -26676,13 +26676,13 @@
   {
     "en": "twist__n",
     "base": "twist",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "twist__v",
     "base": "twist",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -26693,13 +26693,13 @@
   {
     "en": "type__n",
     "base": "type",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "type__v",
     "base": "type",
-    "cefr": 2,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -26980,25 +26980,25 @@
   {
     "en": "update__n",
     "base": "update",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "update__v",
     "base": "update",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
     "en": "upgrade__n",
     "base": "upgrade",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "upgrade__v",
     "base": "upgrade",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -27019,13 +27019,13 @@
   {
     "en": "upset__adj",
     "base": "upset",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "adjective"
   },
   {
     "en": "upset__v",
     "base": "upset",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -27066,13 +27066,13 @@
   {
     "en": "use__n",
     "base": "use",
-    "cefr": 2,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "use__v",
     "base": "use",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -27163,13 +27163,13 @@
   {
     "en": "value__n",
     "base": "value",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "value__v",
     "base": "value",
-    "cefr": 8,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -27185,13 +27185,13 @@
   {
     "en": "variable__adj",
     "base": "variable",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "adjective"
   },
   {
     "en": "variable__n",
     "base": "variable",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -27242,13 +27242,13 @@
   {
     "en": "venture__n",
     "base": "venture",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "venture__v",
     "base": "venture",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -27349,13 +27349,13 @@
   {
     "en": "view__n",
     "base": "view",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "view__v",
     "base": "view",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -27426,13 +27426,13 @@
   {
     "en": "visit__n",
     "base": "visit",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "visit__v",
     "base": "visit",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -27478,25 +27478,25 @@
   {
     "en": "volunteer__n",
     "base": "volunteer",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "volunteer__v",
     "base": "volunteer",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
     "en": "vote__n",
     "base": "vote",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "vote__v",
     "base": "vote",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -27542,13 +27542,13 @@
   {
     "en": "walk__n",
     "base": "walk",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "walk__v",
     "base": "walk",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -27609,13 +27609,13 @@
   {
     "en": "warrant__n",
     "base": "warrant",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "warrant__v",
     "base": "warrant",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -27636,25 +27636,25 @@
   {
     "en": "waste__n",
     "base": "waste",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "waste__v",
     "base": "waste",
-    "cefr": 8,
+    "cefr": 6,
     "pos": "verb"
   },
   {
     "en": "watch__n",
     "base": "watch",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "watch__v",
     "base": "watch",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -27665,13 +27665,13 @@
   {
     "en": "wave__n",
     "base": "wave",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "wave__v",
     "base": "wave",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "verb"
   },
   {
@@ -27792,13 +27792,13 @@
   {
     "en": "well__adv",
     "base": "well",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "adverb"
   },
   {
     "en": "well__n",
     "base": "well",
-    "cefr": 2,
+    "cefr": 12,
     "pos": "noun"
   },
   {
@@ -27899,13 +27899,13 @@
   {
     "en": "whisper__n",
     "base": "whisper",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "whisper__v",
     "base": "whisper",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -28016,13 +28016,13 @@
   {
     "en": "wind__n",
     "base": "wind",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "wind__v",
     "base": "wind",
-    "cefr": 5,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -28073,13 +28073,13 @@
   {
     "en": "wish__n",
     "base": "wish",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "noun"
   },
   {
     "en": "wish__v",
     "base": "wish",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -28115,13 +28115,13 @@
   {
     "en": "witness__n",
     "base": "witness",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "noun"
   },
   {
     "en": "witness__v",
     "base": "witness",
-    "cefr": 11,
+    "cefr": 9,
     "pos": "verb"
   },
   {
@@ -28167,13 +28167,13 @@
   {
     "en": "work__n",
     "base": "work",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "noun"
   },
   {
     "en": "work__v",
     "base": "work",
-    "cefr": 2,
+    "cefr": 0,
     "pos": "verb"
   },
   {
@@ -28229,13 +28229,13 @@
   {
     "en": "worry__n",
     "base": "worry",
-    "cefr": 5,
+    "cefr": 6,
     "pos": "noun"
   },
   {
     "en": "worry__v",
     "base": "worry",
-    "cefr": 5,
+    "cefr": 3,
     "pos": "verb"
   },
   {
@@ -28246,13 +28246,13 @@
   {
     "en": "worship__n",
     "base": "worship",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "worship__v",
     "base": "worship",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
@@ -28368,13 +28368,13 @@
   {
     "en": "yield__n",
     "base": "yield",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "noun"
   },
   {
     "en": "yield__v",
     "base": "yield",
-    "cefr": 14,
+    "cefr": 12,
     "pos": "verb"
   },
   {
