@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.59</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.60</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.59</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.60</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -2893,6 +2893,18 @@ function cachedTranslation(en){
 // homoniem/polyseem woord zoals "mine" of "light" zijn dat er meerdere) -- de gekozen zin (incl. gloss
 // en de bijbehorende Turkse vertaling(en)) wordt op het oefening-item zelf bewaard, zodat weergave EN
 // beoordeling binnen diezelfde oefening consistent naar dezelfde betekenis verwijzen.
+let _wordPosMap = null;
+// Volledige woordsoort ("verb", "noun", ...) zoals in words.json/REVERSE_TR_INDEX, in tegenstelling
+// tot wordCategoryOf() dat de afgekorte weergavevorm ("v.", "n.") teruggeeft. Nodig om bij een
+// gesplitst woord (bv. "fly__v"/"fly__n") de juiste tr-en-tegenhanger te kiezen uit REVERSE_TR_INDEX,
+// dat zelf niet gesplitst is en per basiswoord soms meerdere, verschillende-woordsoort opties bevat.
+function wordPosOf(en){
+  if(!_wordPosMap){
+    _wordPosMap = {};
+    for(const w of EN_WORDS_DATA) if(w.pos) _wordPosMap[w.en] = w.pos;
+  }
+  return _wordPosMap[en] || null;
+}
 function pickWordSense(en, direction){
   if(overrides[en] && overrides[en].tr && overrides[en].tr.length){
     return {tr: overrides[en].tr, gloss: null, register: "neutral"};
@@ -2903,8 +2915,15 @@ function pickWordSense(en, direction){
   if(direction === "tr-en"){
     const trEnOptions = REVERSE_TR_INDEX[baseEnOf(en)];
     if(trEnOptions && trEnOptions.length){
-      // altijd de EERSTE (primaire) optie, geen willekeurige keuze uit eventuele verdere/vagere opties
-      const chosen = trEnOptions[0];
+      // Bij een op woordsoort gesplitst woord (bv. "fly__v" vs "fly__n") kan REVERSE_TR_INDEX onder
+      // hetzelfde basiswoord meerdere, qua woordsoort VERSCHILLENDE opties bevatten (sinek=noun vs
+      // uçmak=verb) -- dan moet de optie horend bij DEZE specifieke woordsoort gekozen worden, niet
+      // zomaar de eerste. Alleen als geen enkele optie matcht (of het woord niet gesplitst is, of de
+      // opties zijn onderling synoniemen van dezelfde woordsoort) valt dit terug op de oude, simpele
+      // "altijd de eerste (primaire) optie"-regel.
+      const wantedPos = wordPosOf(en);
+      const posMatch = wantedPos ? trEnOptions.find(o => o.pos === wantedPos) : null;
+      const chosen = posMatch || trEnOptions[0];
       return {tr: [chosen.tr], gloss: trEnOptions.length > 1 ? (chosen.gloss || null) : null, register: chosen.register || "neutral"};
     }
     // Geen echte tr-en-tegenhanger bekend voor dit woord -> BEWUST geen terugval meer op de en-tr-data:
