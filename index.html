@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.48</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.52</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.48</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.52</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -1278,7 +1278,7 @@ function buildFullLessonList(){
     targetExercises: v.words.length,
     explanation: vocabCategoryExplanation(v.title) +
 `<p>This lesson introduces ${v.words.length} words at level <b>${cefrLabel(v.cefr)}</b>:</p>
-<table class="vocab-word-list"><tbody>${v.words.map(w=>`<tr><td><code>${w}</code></td><td>…</td></tr>`).join("")}</tbody></table>
+<table class="vocab-word-list"><tbody>${v.words.map(w=>`<tr><td><code>${baseEnOf(w)}</code></td><td>…</td></tr>`).join("")}</tbody></table>
 <p>You'll be asked to translate each one — sometimes English→Turkish, sometimes Turkish→English — so start the practice session below whenever you're ready.</p>`
   }));
 
@@ -1466,13 +1466,37 @@ function pickMasteredOrFallbackWords(count, excludeSet){
 function wordCategoryOf(en){
   if(!_wordCategoryMap){
     _wordCategoryMap = {};
+    // Sommige Engelse woorden staan met meerdere pos-rijen in de brondata (bv. "close" als werkwoord
+    // ÉN als bijvoeglijk naamwoord, "watch" als werkwoord ÉN zelfstandig naamwoord). Als we simpelweg
+    // de laatste rij laten winnen, kan een woord dat WEL een werkwoordbetekenis heeft toch als "geen
+    // werkwoord" geclassificeerd worden -- met als zichtbaar gevolg dat displayEnglishWord() de "to"
+    // ervoor weglaat. Daarom: als een woord ÉÉN van zijn rijen als werkwoord heeft, telt het als
+    // werkwoord, ongeacht de volgorde in de brondata. Voor overige (niet-werkwoord) botsingen blijft
+    // de laatste rij bepalend, zoals voorheen.
     for(const w of EN_WORDS_DATA){
-      if(w.pos) _wordCategoryMap[w.en] = WORD_CATEGORY_ABBR[w.pos] || w.pos;
+      if(!w.pos) continue;
+      const abbr = WORD_CATEGORY_ABBR[w.pos] || w.pos;
+      if(abbr === "v." || _wordCategoryMap[w.en] !== "v.") _wordCategoryMap[w.en] = abbr;
     }
   }
   return _wordCategoryMap[en] || "";
 }
 let _wordCefrMap = null;
+// Voor woorden die zijn gesplitst op woordsoort (bv. "close__v"/"close__adj" voor het werkwoord
+// resp. bijvoeglijk naamwoord "close") bevat words.json een apart "base"-veld met de schone,
+// leesbare tekst ("close"). Voor alle niet-gesplitste woorden is er geen "base"-veld en is het
+// woord zelf al schoon. baseEnOf() geeft ALTIJD de tekst die aan een mens getoond of aan de AI
+// als natuurlijke taal doorgegeven mag worden -- gebruik dit overal waar het woord daadwerkelijk
+// zichtbaar wordt, in tegenstelling tot de kale `en`-sleutel die voor opslag/lookup blijft dienen.
+let _baseEnMap = null;
+function baseEnOf(en){
+  if(!en) return en;
+  if(!_baseEnMap){
+    _baseEnMap = {};
+    for(const w of EN_WORDS_DATA) _baseEnMap[w.en] = w.base || w.en;
+  }
+  return _baseEnMap[en] || en;
+}
 function wordCefrOf(en){
   if(!_wordCefrMap){
     _wordCefrMap = {};
@@ -1512,7 +1536,8 @@ function inCefrRangeEn(en){
    Een handmatige correctie (overrides[en].en, bv. "born" -> "to be born") heeft altijd voorrang. */
 function displayEnglishWord(en){
   if(overrides[en] && overrides[en].en) return overrides[en].en;
-  return wordCategoryOf(en) === "v." ? `to ${en}` : en;
+  const base = baseEnOf(en);
+  return wordCategoryOf(en) === "v." ? `to ${base}` : base;
 }
 
 async function pickGrammarDrillBaseWords(){
@@ -1699,7 +1724,7 @@ async function pickMasteredPoolWords(category, count, avoidEn){
   const picks = shuffled.slice(0, count);
   const pairs = [];
   for(const en of picks){
-    try{ const tr = await getOrFetchTranslation(en); pairs.push({en, tr:tr[0]}); }
+    try{ const tr = await getOrFetchTranslation(en); pairs.push({en: baseEnOf(en), tr:tr[0]}); }
     catch(e){ /* deze overslaan als vertalen mislukt */ }
   }
   return pairs;
@@ -1735,7 +1760,7 @@ async function pickMasteredPossessorWords(count, avoidEn){
   const picks = shuffled.slice(0, count);
   const pairs = [];
   for(const en of picks){
-    try{ const tr = await getOrFetchTranslation(en); pairs.push({en, tr:tr[0]}); }
+    try{ const tr = await getOrFetchTranslation(en); pairs.push({en: baseEnOf(en), tr:tr[0]}); }
     catch(e){ /* deze overslaan als vertalen mislukt */ }
   }
   return pairs;
@@ -1803,12 +1828,13 @@ function needsContextualDrill(en){
 
 async function generateContextualVocabDrill(en){
   const tr = await getOrFetchTranslation(en);
+  const baseText = baseEnOf(en);
   const helperPicks = await pickMasteredPoolWords("Nouns", 1);
   const helper = helperPicks[0] || {en:"cat", tr:"kedi"};
   const isPreposition = prepositionWordSet().has(en);
   const roleDescription = isPreposition
-    ? `preposition/postposition "${tr[0]}" (English: "${en}")`
-    : `word "${tr[0]}" (English: "${en}"), which is itself already a case-marked or possessive form (not a bare root) — showing it completely alone would test it out of context`;
+    ? `preposition/postposition "${tr[0]}" (English: "${baseText}")`
+    : `word "${tr[0]}" (English: "${baseText}"), which is itself already a case-marked or possessive form (not a bare root) — showing it completely alone would test it out of context`;
   const sys = `You create a SHORT, natural example sentence that clearly demonstrates the Turkish ${roleDescription}.
 Build one short sentence using this noun somewhere in it: "${helper.tr}" (${helper.en}). Keep it SHORT (3-6 words) and natural.
 Randomly choose the test direction: en-tr (show the English sentence, ask for the Turkish translation) or tr-en (show the Turkish sentence, ask for the English translation).
@@ -1827,7 +1853,7 @@ Respond in JSON.`;
       required: ["direction","prompt","correct"]
     }
   };
-  const raw = await callAI("sentence", sys, `Word: ${tr[0]} (${en})`, 2500, 0.5, schema);
+  const raw = await callAI("sentence", sys, `Word: ${tr[0]} (${baseText})`, 2500, 0.5, schema);
   return parseAIJson(raw);
 }
 
@@ -2058,7 +2084,7 @@ async function submitCheckupAnswer(){
         try{ correct = !!(await gradeGrammarDrillAnswer(cur.sentenceDrill, answer)).correct; }catch(e){ correct = false; }
       }
     } else {
-      correctAnswerTxt = cur.direction === "tr-en" ? cur.en : (cur.tr || (cachedTranslation(cur.en)||[]).join(", "));
+      correctAnswerTxt = cur.direction === "tr-en" ? baseEnOf(cur.en) : (cur.tr || (cachedTranslation(cur.en)||[]).join(", "));
       if(!correctAnswerTxt && cur.direction !== "tr-en"){
         try{ const tr = await getOrFetchTranslation(cur.en); correctAnswerTxt = tr[0]; cur.tr = tr[0]; cur.senseTr = tr; }catch(e){ /* nog steeds niks -- feedback toont dan geen vertaling, het antwoord wordt wel gewoon beoordeeld */ }
       }
@@ -2310,7 +2336,7 @@ async function submitSkillPracticeAnswer(){
         try{ const v = await gradeGrammarDrillAnswer(cur.sentenceDrill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }catch(e){ correct = false; }
       }
     } else {
-      correctAnswerTxt = cur.direction === "tr-en" ? cur.en : (cur.tr || (cachedTranslation(cur.en)||[]).join(", "));
+      correctAnswerTxt = cur.direction === "tr-en" ? baseEnOf(cur.en) : (cur.tr || (cachedTranslation(cur.en)||[]).join(", "));
       if(!correctAnswerTxt && cur.direction !== "tr-en"){
         // De vertaling kon bij het tonen van de vraag niet worden opgehaald (bv. een tijdelijke AI-hik)
         // -- cur.tr bleef toen null en de feedback zou dus een lege "Correct answer:" tonen. Nu de
@@ -2873,7 +2899,7 @@ function pickWordSense(en, direction){
   // gecureerde tr-en-lijst), NIET de en-tr-vertaalkolom "achterstevoren" gelezen -- de twee richtingen
   // zijn onafhankelijk gecureerd (elk met hun eigen disambiguatie/register) en moeten dat ook blijven.
   if(direction === "tr-en"){
-    const trEnOptions = REVERSE_TR_INDEX[en];
+    const trEnOptions = REVERSE_TR_INDEX[baseEnOf(en)];
     if(trEnOptions && trEnOptions.length){
       // altijd de EERSTE (primaire) optie, geen willekeurige keuze uit eventuele verdere/vagere opties
       const chosen = trEnOptions[0];
@@ -3009,7 +3035,7 @@ async function getOrFetchTranslation(en){
   if(!hasKeyFor("word")) throw new Error(`No ${preferredModelFor("word") === "claude" ? "Anthropic" : "DeepSeek"} API key (or shared proxy) set — needed to generate Turkish translations.`);
 
   const sys = `Je bent een Engels-Turks vertaler voor een taalleerapp. Geef de meest gangbare Turkse vertaling(en) van een Engels woord, in de basisvorm (infinitief bij werkwoorden, bv. "gitmek" niet "gider"). Geef 1-3 veelgebruikte vertalingen (synoniemen/varianten). Antwoord in JSON.`;
-  const user = `Engels woord: "${en}"`;
+  const user = `Engels woord: "${baseEnOf(en)}"`;
   const schema = {
     name: "vertaling",
     description: "Turkse vertaling(en) van een Engels woord.",
@@ -3470,7 +3496,7 @@ async function generateSentence(){
   // APARTE woordniveau-plafond (_vocabLevel), niet tegen de zinscomplexiteit (_level) -- die twee lagen
   // voorheen door elkaar, waardoor bv. complexiteit=max de check altijd liet slagen ongeacht woordniveau.
   if(Array.isArray(parsed.words)){
-    const targetEnLower = target ? target.en.toLowerCase() : null;
+    const targetEnLower = target ? baseEnOf(target.en).toLowerCase() : null;
     const violations = parsed.words.filter(w =>
       w.en && w.en.toLowerCase() !== targetEnLower &&
       typeof w.cefr === "number" && w.cefr > parsed._vocabLevel
@@ -3487,7 +3513,7 @@ async function generateSentence(){
   for(const w of wordList){
     if(!w.tr || !w.en) continue;
     const en = w.en.toLowerCase().trim();
-    const isOfficialWord = EN_WORDS_DATA.some(x=>x.en===en);
+    const isOfficialWord = EN_WORDS_DATA.some(x=>baseEnOf(x.en)===en);
     // ensureWordExists() hier NIET meer aanroepen: de gebruiker wil geen groei van de woordenlijst
     // meer buiten de al-gecureerde ~4932 kernwoorden om. Een woord dat de AI binnen een zin gebruikt
     // maar niet in de kernlijst zit, krijgt hieronder nog wel een tijdelijke vertaling gecached zodat
@@ -3500,7 +3526,7 @@ async function generateSentence(){
     items.push({en, tr: w.tr});
   }
   // zorg dat het doelwoord altijd meetelt, ook als de AI het om wat voor reden niet in "words" zette
-  if(target && !items.some(it=>it.en===target.en)) items.push({en: target.en, tr: target.tr});
+  if(target && !items.some(it=>baseEnOf(it.en)===baseEnOf(target.en))) items.push({en: target.en, tr: target.tr});
 
   const seen = new Set();
   const words = items.filter(it=>{ if(seen.has(it.en)) return false; seen.add(it.en); return true; });
@@ -3634,7 +3660,7 @@ async function buildQuestionItem(target, grammarTopic){
   // Vocab-niveau-check: zelfde redenering als bij generateSentence -- toetst tegen het APARTE
   // woordniveau-plafond (_vocabLevel), niet tegen de zinscomplexiteit (_level).
   if(Array.isArray(parsed.words)){
-    const targetEnLower = target ? target.en.toLowerCase() : null;
+    const targetEnLower = target ? baseEnOf(target.en).toLowerCase() : null;
     const violations = parsed.words.filter(w =>
       w.en && w.en.toLowerCase() !== targetEnLower &&
       typeof w.cefr === "number" && w.cefr > parsed._vocabLevel
@@ -3651,7 +3677,7 @@ async function buildQuestionItem(target, grammarTopic){
   for(const w of wordList){
     if(!w.tr || !w.en) continue;
     const en = w.en.toLowerCase().trim();
-    const isOfficialWord = EN_WORDS_DATA.some(x=>x.en===en);
+    const isOfficialWord = EN_WORDS_DATA.some(x=>baseEnOf(x.en)===en);
     // zelfde redenering als in generateSentence(): geen groei van de woordenlijst meer via ensureWordExists().
     if(!isOfficialWord && !cachedTranslation(en)){
       trCache[en] = {tr: [w.tr], fetchedAt: Date.now()};
@@ -3659,7 +3685,7 @@ async function buildQuestionItem(target, grammarTopic){
     }
     items.push({en, tr: w.tr});
   }
-  if(target && !items.some(it=>it.en===target.en)) items.push({en: target.en, tr: target.tr});
+  if(target && !items.some(it=>baseEnOf(it.en)===baseEnOf(target.en))) items.push({en: target.en, tr: target.tr});
 
   const seen = new Set();
   const words = items.filter(it=>{ if(seen.has(it.en)) return false; seen.add(it.en); return true; });
@@ -3685,7 +3711,7 @@ Geef ook altijd een Engelse vertaling van de Turkse vraag, EN een Engelse vertal
 Als vermeld staat dat de gebruiker het niet eens is met een eerder oordeel: kijk extra kritisch of het antwoord (of delen ervan) toch correct kunnen zijn.
 Geef terug: correct (bool), uitleg (tekst), referentie (tekst), vraag_en (tekst), antwoord_en (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
   const user = `Turkse vraag: "${item.tr}"
-Genummerde woorden in de vraag (basisvorm, ${item.words.length} in totaal): ${item.words.map((w,i)=>`${i+1}. ${w.tr} (${w.en})`).join(", ")}
+Genummerde woorden in de vraag (basisvorm, ${item.words.length} in totaal): ${item.words.map((w,i)=>`${i+1}. ${w.tr} (${baseEnOf(w.en)})`).join(", ")}
 Antwoord van gebruiker (in het Turks): "${answer}"
 ${gTopic ? `Deze vraag is bewust gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}).` : ""}
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling." : ""}`;
@@ -3723,7 +3749,7 @@ ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om
 
 /* Laat de AI de vertaling van de hele zin beoordelen, EN per doelwoord aangeven of dat woord goed vertaald is. */
 async function gradeSentenceTranslation(item, answer, isRecheck){
-  const wordContext = item.words.map((w, i)=> `${i+1}. ${w.tr} (${w.en})`).join("\n");
+  const wordContext = item.words.map((w, i)=> `${i+1}. ${w.tr} (${baseEnOf(w.en)})`).join("\n");
   const gTopic = item.grammarTopic ? grammarTopicByKey(item.grammarTopic) : null;
   const sys = `Je bent een taaldocent Turks. Je krijgt een Turkse zin, een GENUMMERDE lijst van alle betekenisvolle woorden uit die zin (in basisvorm, met hun Engelse vertaling), en de Engelse vertaling die de gebruiker van de HELE zin gaf.
 Beoordeel of de vertaling van de HELE zin correct is, en beoordeel voor ELK genummerd woord apart, ONAFHANKELIJK EN KRITISCH, of de gebruiker dat specifieke woord (in welke vorm dan ook) correct heeft verwerkt — ga niet ervan uit dat een woord goed is enkel omdat de zin er ergens op lijkt.
@@ -3886,7 +3912,7 @@ function checkStaticMatch(item, answer){
   if(!norm) return false;
   if(item.direction === "tr-en"){
     // Turks getoond, Engels gevraagd: het bekende Engelse trefwoord is de primaire juiste vorm...
-    if(normalize(item.en) === norm) return true;
+    if(normalize(baseEnOf(item.en)) === norm) return true;
     if(item.hintRevealed) return false; // hint bekeken -> bedoelde betekenis is expliciet verklapt, alleen het exacte trefwoord telt nog
     // ...MAAR zonder bekeken hint zijn sommige Turkse woorden zelf ambigu (bv. "ay" = zowel "month" als "moon" —
     // geen vertaalfout, gewoon hetzelfde woord met 2 losstaande betekenissen, hier zonder context
@@ -3896,9 +3922,9 @@ function checkStaticMatch(item, answer){
     // Fix: dit vergelijkt uitsluitend binnen de tr-en-curatie zelf (REVERSE_TR_INDEX), nooit meer
     // via de (gecachte) en-tr-vertaling -- de twee richtingen mogen elkaars brondata niet raadplegen.
     const shownTr = normalize(item.tr);
-    const answerWordData = EN_WORDS_DATA.find(w => normalize(w.en) === norm);
+    const answerWordData = EN_WORDS_DATA.find(w => normalize(baseEnOf(w.en)) === norm);
     if(answerWordData){
-      const answerTrEnOptions = (REVERSE_TR_INDEX[answerWordData.en] || []).map(o => normalize(o.tr));
+      const answerTrEnOptions = (REVERSE_TR_INDEX[baseEnOf(answerWordData.en)] || []).map(o => normalize(o.tr));
       if(answerTrEnOptions.includes(shownTr)) return true;
     }
     return false;
@@ -3928,15 +3954,15 @@ ${isTrEn
 BELANGRIJK OVER TYPEFOUTEN: als het antwoord duidelijk een tikfout bevat en de bedoelde vertaling ondubbelzinnig duidelijk en correct is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", maar zet "correct" niet op false enkel vanwege een duidelijke tikfout.
 ALS HET ANTWOORD FOUT IS: geef in "betekenis_antwoord" aan wat het door de gebruiker ingevoerde woord ZELF betekent, VERTAALD NAAR ${isTrEn ? "het Turks" : "het Engels"} (dus NIET in dezelfde taal als het antwoord zelf — dat zou zinloos zijn, bv. nooit "great means great"), mits het een bestaand, betekenisvol woord is — dit helpt de gebruiker begrijpen welk ander woord hij in gedachten had. Is het antwoord geen bestaand woord, laat "betekenis_antwoord" dan leeg (""). Bij een GOED antwoord laat je "betekenis_antwoord" ook leeg.
 "uitleg" is de tekst voor een apart, uitklapbaar "Explanation"-paneel dat de gebruiker vrijwillig opent -- hier mag en moet je ruim de tijd/ruimte voor nemen, dit hoeft GEEN korte tekst te zijn. Schrijf hem ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"), in het Engels, en behandel in aparte, korte alinea's (gescheiden door een lege regel):
-1) De betekenis van het geteste woord zelf (${isTrEn ? `het Turkse woord "${item.tr}"` : `het Engelse woord "${item.en}"`}) -- een heldere, wat rijkere uitleg dan alleen het kale vertaal-trefwoord, met relevante nuance of gebruikscontext.
+1) De betekenis van het geteste woord zelf (${isTrEn ? `het Turkse woord "${item.tr}"` : `het Engelse woord "${baseEnOf(item.en)}"`}) -- een heldere, wat rijkere uitleg dan alleen het kale vertaal-trefwoord, met relevante nuance of gebruikscontext.
 2) ALLEEN als het echt iets toevoegt: een korte, interessante etymologie van het woord, EN/OF -- als het woord meerdere losstaande betekenissen heeft -- die andere betekenissen kort genoemd (dit mag je overslaan of leeg laten als er niets noemenswaardigs is, forceer het niet).
 3) Bij een FOUT antwoord: wat het door de gebruiker gegeven woord zelf betekent (mag beknopt hetzelfde zeggen als "betekenis_antwoord", dat is geen probleem). Lag die betekenis dicht bij de bedoelde betekenis (bv. een verwant begrip, een deel-synoniem, een andere vorm/vervoeging, of een betekenis die overlapt maar net niet past)? Benoem dat dan expliciet en maak scherp wat het verschil/de nuance precies is, zodat de gebruiker leert wanneer je het ene woord gebruikt en wanneer het andere. Was het antwoord gewoon een heel ander/onverwant woord, dan hoeft dit punt niet uitgebreid; een enkele zin volstaat.
 Bij een GOED antwoord vervalt punt 3 vanzelf (er is dan geen "fout" antwoord om te bespreken) -- dan bestaat "uitleg" dus uit punt 1 en eventueel punt 2.
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder 'onjuist'-oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord toch (gedeeltelijk) correct kan zijn, bijvoorbeeld als minder gangbaar synoniem of alternatieve vorm." : ""}
 Antwoord in JSON.`;
   const user = (isTrEn
-    ? `Turks woord: "${item.tr}"\nCorrecte Engelse vertaling: "${item.en}"\nAntwoord van gebruiker: "${answer}"`
-    : `Engels woord: "${item.en}"\nBekende Turkse vertaling(en): ${tr.join(", ") || "(geen)"}\nAntwoord van gebruiker: "${answer}"`) + glossLine;
+    ? `Turks woord: "${item.tr}"\nCorrecte Engelse vertaling: "${baseEnOf(item.en)}"\nAntwoord van gebruiker: "${answer}"`
+    : `Engels woord: "${baseEnOf(item.en)}"\nBekende Turkse vertaling(en): ${tr.join(", ") || "(geen)"}\nAntwoord van gebruiker: "${answer}"`) + glossLine;
   const schema = {
     name: "woord_oordeel",
     description: "Beoordeling van een los vertaal-antwoord.",
@@ -3960,8 +3986,8 @@ Antwoord in JSON.`;
 
 async function askDeepSeekFree(item, question, chatHistoryMsgs){
   const context = (item.type === "sentence" || item.type === "question")
-    ? `Turkse oefen${item.type === "question" ? "vraag" : "zin"}: "${item.tr}" (doelwoorden: ${item.words.map(w=>`${w.tr} (${w.en})`).join(", ")}).`
-    : `Woord: Turks "${item.tr || "?"}" = Engels "${item.en}" (richting van deze oefening: ${item.direction === "tr-en" ? "Turks -> Engels" : "Engels -> Turks"}).`;
+    ? `Turkse oefen${item.type === "question" ? "vraag" : "zin"}: "${item.tr}" (doelwoorden: ${item.words.map(w=>`${w.tr} (${baseEnOf(w.en)})`).join(", ")}).`
+    : `Woord: Turks "${item.tr || "?"}" = Engels "${baseEnOf(item.en)}" (richting van deze oefening: ${item.direction === "tr-en" ? "Turks -> Engels" : "Engels -> Turks"}).`;
   const sys = `Je bent een behulpzame docent Turks. Je gebruiker oefent het volgende:
 ${context}
 Beantwoord vragen kort, duidelijk, rechtstreeks tegen de gebruiker gericht (spreek diegene aan met "je") en in het Engels.`;
@@ -4039,7 +4065,7 @@ function renderWordChips(){
     currentItem.words.map(w=>{
       const revealed = revealedWords.has(w.en);
       if(revealed){
-        return `<span class="word-chip revealed">${w.tr} = ${w.en}</span>`;
+        return `<span class="word-chip revealed">${w.tr} = ${baseEnOf(w.en)}</span>`;
       }
       return `<span class="word-chip" data-word="${w.en.replace(/"/g,'&quot;')}">${w.tr} 👁️</span>`;
     }).join(" ");
@@ -4136,7 +4162,7 @@ async function renderPractice(){
   el("badge-type").className = "badge " + (isQuestion ? "badge-question" : (isSentence ? "badge-sentence" : "badge-word"));
   el("btn-edit-flashcard").classList.toggle("hidden", !isWord);
   const wordEl = el("tr-word");
-  wordEl.textContent = (isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || currentItem.en);
+  wordEl.textContent = (isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || baseEnOf(currentItem.en));
   currentItem.hintRevealed = false;
   wordEl.className = "tr-word" + ((isSentence||isQuestion) ? " sentence" : "");
 
@@ -4541,7 +4567,7 @@ function openAiModal(){
   if(!currentItem){ alert("No active exercise to ask about right now — answer or start one first."); return; }
   if(!hasKeyFor("sentence")){ alert("Set a " + keyNameFor("sentence") + " API key in Settings first."); return; }
   chatItem = currentItem;
-  el("modal-ai-word").textContent = chatItem.tr || chatItem.en;
+  el("modal-ai-word").textContent = chatItem.tr || baseEnOf(chatItem.en);
   el("chat-log").innerHTML = "";
   chatMsgs = [];
   el("modal-ai").classList.remove("hidden");
@@ -4717,14 +4743,14 @@ function renderWordsTab(){
 
   if(search){
     words = words.filter(w =>
-      w.en.toLowerCase().includes(search) ||
+      baseEnOf(w.en).toLowerCase().includes(search) ||
       (w.tr && w.tr.join(" ").toLowerCase().includes(search))
     );
   }
 
-  if(sort === "proficiency-asc") words.sort((a,b)=> a.level - b.level || a.en.localeCompare(b.en));
-  else if(sort === "proficiency-desc") words.sort((a,b)=> b.level - a.level || a.en.localeCompare(b.en));
-  else words.sort((a,b)=> a.en.localeCompare(b.en));
+  if(sort === "proficiency-asc") words.sort((a,b)=> a.level - b.level || baseEnOf(a.en).localeCompare(baseEnOf(b.en)));
+  else if(sort === "proficiency-desc") words.sort((a,b)=> b.level - a.level || baseEnOf(a.en).localeCompare(baseEnOf(b.en)));
+  else words.sort((a,b)=> baseEnOf(a.en).localeCompare(baseEnOf(b.en)));
 
   el("words-count").textContent = words.length + " word" + (words.length===1?"":"s");
 
@@ -4735,7 +4761,7 @@ function renderWordsTab(){
     const cefrTxt = typeof w.cefr === "number" ? cefrLabel(w.cefr) : "?";
     const pos = wordCategoryOf(w.en);
     const hasOverride = !!(overrides[w.en] && ((overrides[w.en].tr && overrides[w.en].tr.length) || overrides[w.en].en));
-    const displayEn = overrides[w.en]?.en || w.en;
+    const displayEn = overrides[w.en]?.en || baseEnOf(w.en);
     return `<div class="word-row">
       <div>
         <div class="word-row-tr">${escapeHtml(displayEn)}${pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${pos}</span>` : ""}${hasOverride ? ` <span class="muted" style="font-size:.68rem;" title="Manually corrected">✏️</span>` : ""}</div>
@@ -4794,7 +4820,7 @@ function renderWeakWordsList(){
     const trans = cachedTranslation(w.en);
     const transTxt = trans ? trans.join(", ") : "(not yet translated)";
     const color = w.level<=3 ? "#e0333f" : w.level<=6 ? "#e0a733" : "#2fae6a";
-    const displayEn = overrides[w.en]?.en || w.en;
+    const displayEn = overrides[w.en]?.en || baseEnOf(w.en);
     return `<div class="word-row">
       <div>
         <div class="word-row-tr">${escapeHtml(displayEn)}</div>
@@ -5063,16 +5089,16 @@ async function openLessonModal(idx){
     }
     // vertalingen LIVE en SEQUENTIEEL ophalen (niet allemaal tegelijk) zodat het geen plotselinge
     // burst van AI-calls geeft — gecachede woorden (al eerder ergens getoond) zijn direct gratis.
-    const rows = l.words.map(en => cachedTranslation(en) ? `<tr><td><code>${en}</code></td><td>${cachedTranslation(en)[0]}</td></tr>` : `<tr><td><code>${en}</code></td><td>…</td></tr>`);
+    const rows = l.words.map(en => cachedTranslation(en) ? `<tr><td><code>${baseEnOf(en)}</code></td><td>${cachedTranslation(en)[0]}</td></tr>` : `<tr><td><code>${baseEnOf(en)}</code></td><td>…</td></tr>`);
     if(wordListEl) wordListEl.innerHTML = rows.join("");
     for(let i=0;i<l.words.length;i++){
       if(openLessonIdx !== idx || el("modal-lesson").classList.contains("hidden")) return; // gebruiker is al weg, stop met bijwerken
       if(cachedTranslation(l.words[i])) continue; // al gecached, geen call nodig
       try{
         const tr = await getOrFetchTranslation(l.words[i]);
-        rows[i] = `<tr><td><code>${l.words[i]}</code></td><td>${tr[0]}</td></tr>`;
+        rows[i] = `<tr><td><code>${baseEnOf(l.words[i])}</code></td><td>${tr[0]}</td></tr>`;
       }catch(e){
-        rows[i] = `<tr><td><code>${l.words[i]}</code></td><td>—</td></tr>`; // vertaling ophalen mislukt
+        rows[i] = `<tr><td><code>${baseEnOf(l.words[i])}</code></td><td>—</td></tr>`; // vertaling ophalen mislukt
       }
       if(openLessonIdx === idx && !el("modal-lesson").classList.contains("hidden") && wordListEl){
         wordListEl.innerHTML = rows.join("");
@@ -5682,7 +5708,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-checkup-ask-ai").addEventListener("click", ()=>{
     if(!chatItem){ alert("No active exercise to ask about right now — answer it first."); return; }
     if(!hasKeyFor("sentence")){ alert("Set a " + keyNameFor("sentence") + " API key in Settings first."); return; }
-    el("modal-ai-word").textContent = chatItem.tr || chatItem.en;
+    el("modal-ai-word").textContent = chatItem.tr || baseEnOf(chatItem.en);
     el("chat-log").innerHTML = "";
     chatMsgs = [];
     el("modal-ai").classList.remove("hidden");
