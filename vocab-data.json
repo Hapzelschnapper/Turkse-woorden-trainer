@@ -74512,5 +74512,369 @@
         "note": ""
       }
     ]
+  },
+  "confuse": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "kafasını karıştırmak"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "confused": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "kafası karışık"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "confusing": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "kafa karıştırıcı"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "connect": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "bağlamak"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "connected": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "bağlı"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "connection": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "bağlantı"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "conscious": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "bilinçli"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "consequence": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "sonuç"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "conservative": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "muhafazakâr"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "consider": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "değerlendirmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "consideration": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "dikkate alma"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "consist": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "oluşmak"
+        ],
+        "register": "neutral",
+        "note": "\"consist of\" -- oluşmak wordt hier ook al voor \"comprise\" gebruikt, dat is prima aangezien het bijna-synoniemen zijn"
+      }
+    ]
+  },
+  "consistent": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "tutarlı"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "constant": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "sabit"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "constantly": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adverb",
+        "tr": [
+          "sürekli olarak"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "constituency": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "seçim bölgesi"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "construct": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "inşa etmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "construction": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "inşaat"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "consume": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "tüketmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "consumer": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "tüketici"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "contact": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "temas"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "contain": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "içermek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "container": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kap"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "contemporary": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "adjective",
+        "tr": [
+          "çağdaş"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "contest": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "yarışma"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "context": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "bağlam"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "continent": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "noun",
+        "tr": [
+          "kıta"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
+  },
+  "continue": {
+    "senses": [
+      {
+        "gloss": "",
+        "pos": "verb",
+        "tr": [
+          "devam etmek"
+        ],
+        "register": "neutral",
+        "note": ""
+      }
+    ]
   }
 }

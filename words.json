@@ -28556,5 +28556,145 @@
     "en": "conflict",
     "cefr": 10,
     "pos": "noun"
+  },
+  {
+    "en": "confuse",
+    "cefr": 7,
+    "pos": "verb"
+  },
+  {
+    "en": "confused",
+    "cefr": 7,
+    "pos": "adjective"
+  },
+  {
+    "en": "confusing",
+    "cefr": 11,
+    "pos": "adjective"
+  },
+  {
+    "en": "connect",
+    "cefr": 4,
+    "pos": "verb"
+  },
+  {
+    "en": "connected",
+    "cefr": 5,
+    "pos": "adjective"
+  },
+  {
+    "en": "connection",
+    "cefr": 8,
+    "pos": "noun"
+  },
+  {
+    "en": "conscious",
+    "cefr": 11,
+    "pos": "adjective"
+  },
+  {
+    "en": "consequence",
+    "cefr": 8,
+    "pos": "noun"
+  },
+  {
+    "en": "conservative",
+    "cefr": 11,
+    "pos": "adjective"
+  },
+  {
+    "en": "consider",
+    "cefr": 5,
+    "pos": "verb"
+  },
+  {
+    "en": "consideration",
+    "cefr": 11,
+    "pos": "noun"
+  },
+  {
+    "en": "consist",
+    "cefr": 7,
+    "pos": "verb"
+  },
+  {
+    "en": "consistent",
+    "cefr": 11,
+    "pos": "adjective"
+  },
+  {
+    "en": "constant",
+    "cefr": 10,
+    "pos": "adjective"
+  },
+  {
+    "en": "constantly",
+    "cefr": 11,
+    "pos": "adverb"
+  },
+  {
+    "en": "constituency",
+    "cefr": 14,
+    "pos": "noun"
+  },
+  {
+    "en": "construct",
+    "cefr": 11,
+    "pos": "verb"
+  },
+  {
+    "en": "construction",
+    "cefr": 10,
+    "pos": "noun"
+  },
+  {
+    "en": "consume",
+    "cefr": 7,
+    "pos": "verb"
+  },
+  {
+    "en": "consumer",
+    "cefr": 7,
+    "pos": "noun"
+  },
+  {
+    "en": "contact",
+    "cefr": 7,
+    "pos": "noun"
+  },
+  {
+    "en": "contain",
+    "cefr": 4,
+    "pos": "verb"
+  },
+  {
+    "en": "container",
+    "cefr": 8,
+    "pos": "noun"
+  },
+  {
+    "en": "contemporary",
+    "cefr": 11,
+    "pos": "adjective"
+  },
+  {
+    "en": "contest",
+    "cefr": 10,
+    "pos": "noun"
+  },
+  {
+    "en": "context",
+    "cefr": 4,
+    "pos": "noun"
+  },
+  {
+    "en": "continent",
+    "cefr": 5,
+    "pos": "noun"
+  },
+  {
+    "en": "continue",
+    "cefr": 5,
+    "pos": "verb"
   }
 ]
