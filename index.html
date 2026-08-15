@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.60</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.61</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.60</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.61</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -4675,13 +4675,14 @@ function renderStats(){
   const now = Date.now();
   for(const it of words){
     const p = getProgress(it.en);
+    const level = displayWordLevel(it.en); // inclusief eventuele les-cijfer-override
     total++;
-    if(p.level === 10) mastered++;
-    if(p.level === 0){
+    if(level === 10) mastered++;
+    if(p.level === 0 && level === 0){
       neverShown++;
     } else {
       shownTotal++;
-      shownLevelSum += p.level;
+      shownLevelSum += level;
     }
     if(p.due <= now && p.level > 0) due++; // nog niet getoonde woorden tellen niet mee als "klaar om te oefenen" in deze teller
   }
@@ -4696,9 +4697,10 @@ function renderStats(){
   let gTotal=0, gMastered=0, gDue=0, gShownTotal=0, gShownLevelSum=0;
   for(const t of GRAMMAR_TOPICS){
     const p = getTopicProgress(t);
+    const level = displayTopicLevel(t); // inclusief eventuele les-cijfer-override
     gTotal++;
-    if(p.level === 10) gMastered++;
-    if(p.reps > 0){ gShownTotal++; gShownLevelSum += p.level; }
+    if(level === 10) gMastered++;
+    if(p.reps > 0 || level > 0){ gShownTotal++; gShownLevelSum += level; }
     if(p.due <= now && p.reps > 0) gDue++;
   }
   el("kpi-gram-total").textContent = gTotal;
@@ -4714,12 +4716,14 @@ function renderStats(){
 function renderGrammarList(){
   const list = el("grammar-list");
   if(!list) return;
-  const rows = GRAMMAR_TOPICS.map(t=>({t, p: getTopicProgress(t)}))
-    .sort((a,b)=> a.p.level - b.p.level); // zwakste eerst
-  list.innerHTML = rows.map(({t,p})=>{
-    const pct = p.level*10;
-    const color = p.reps===0 ? "#4a5568" : (p.level<=3 ? "#e0333f" : p.level<=6 ? "#e0a733" : "#2fae6a");
-    const statusTxt = p.reps===0 ? "not practised yet" : `level ${p.level}/10 · practised ${p.reps}x`;
+  const rows = GRAMMAR_TOPICS.map(t=>({t, p: getTopicProgress(t), level: displayTopicLevel(t)}))
+    .sort((a,b)=> a.level - b.level); // zwakste eerst
+  list.innerHTML = rows.map(({t,p,level})=>{
+    const pct = level*10;
+    const color = (p.reps===0 && level===0) ? "#4a5568" : (level<=3 ? "#e0333f" : level<=6 ? "#e0a733" : "#2fae6a");
+    const statusTxt = p.reps===0
+      ? (level>0 ? `level ${level}/10 (set manually)` : "not practised yet")
+      : `level ${level}/10 · practised ${p.reps}x`;
     return `<div style="margin-bottom:10px;">
       <div class="row space-between" style="font-size:.85rem;margin-bottom:3px;">
         <span title="${t.hint}">${t.label}</span>
@@ -4731,6 +4735,7 @@ function renderGrammarList(){
     </div>`;
   }).join("");
 }
+
 
 function exportWordlist(){
   const words = allWords();
@@ -4919,6 +4924,56 @@ function displayLessonGrade(l){
   if(real === null) return null;
   const override = lessonGradeOverrides[l.id];
   return override !== undefined ? Math.max(real, override) : real;
+}
+
+// Zelfde "PERSOONLIJK MINIMUM"-idee als displayLessonGrade, maar dan doorgetrokken naar de
+// onderliggende grammatica-onderwerpen/woorden zelf -- anders zou een les die je op een 10 hebt
+// gezet wél als voltooid tellen in de cursus, maar de "mastered"-tellers en de losse
+// onderwerpenlijst op de Statistieken-tab zouden nog steeds de kale, niet-overruled score tonen
+// (precies het gerapporteerde probleem: die twee schermen "hangen samen" met de les-override, maar
+// keken er voorheen helemaal niet naar). Een onderwerp/woord kan in meerdere lessen voorkomen; het
+// hoogste override-cijfer van al die lessen geldt.
+let _topicToLessonsMap = null;
+function lessonsForTopicKey(key){
+  if(!_topicToLessonsMap){
+    _topicToLessonsMap = {};
+    for(const l of LESSONS){
+      if(l.grammarTopics) for(const k of l.grammarTopics){
+        (_topicToLessonsMap[k] = _topicToLessonsMap[k] || []).push(l);
+      }
+    }
+  }
+  return _topicToLessonsMap[key] || [];
+}
+function displayTopicLevel(t){
+  const real = getTopicProgress(t).level;
+  let best = real;
+  for(const l of lessonsForTopicKey(t.key)){
+    const ov = lessonGradeOverrides[l.id];
+    if(ov !== undefined && ov > best) best = ov;
+  }
+  return best;
+}
+let _wordToLessonsMap = null;
+function lessonsForWordEn(en){
+  if(!_wordToLessonsMap){
+    _wordToLessonsMap = {};
+    for(const l of LESSONS){
+      if(l.words) for(const w of l.words){
+        (_wordToLessonsMap[w] = _wordToLessonsMap[w] || []).push(l);
+      }
+    }
+  }
+  return _wordToLessonsMap[en] || [];
+}
+function displayWordLevel(en){
+  const real = getProgress(en).level;
+  let best = real;
+  for(const l of lessonsForWordEn(en)){
+    const ov = lessonGradeOverrides[l.id];
+    if(ov !== undefined && ov > best) best = ov;
+  }
+  return best;
 }
 
 // Of een les als "voltooid" telt -- gebruikt het GETOONDE cijfer (dus inclusief een eventueel
