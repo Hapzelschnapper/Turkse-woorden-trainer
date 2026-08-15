@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.65</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.66</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -199,13 +199,13 @@
         <span>Minimum</span>
         <span class="muted" id="cefr-min-label">A1 start</span>
       </div>
-      <input type="range" id="cefr-min-slider" min="0" max="13" step="1" value="3" style="width:100%;">
+      <input type="range" id="cefr-min-slider" min="0" max="14" step="1" value="3" style="width:100%;">
       <select id="cefr-min-select" style="width:100%;margin-top:6px;"></select>
       <div class="row space-between" style="margin-top:16px;margin-bottom:4px;">
         <span>Maximum</span>
         <span class="muted" id="cefr-max-label">A2 mid</span>
       </div>
-      <input type="range" id="cefr-max-slider" min="0" max="13" step="1" value="5" style="width:100%;">
+      <input type="range" id="cefr-max-slider" min="0" max="14" step="1" value="5" style="width:100%;">
       <select id="cefr-max-select" style="width:100%;margin-top:6px;"></select>
       <div class="muted" id="cefr-unlocked-info" style="margin-top:12px;"></div>
       <button class="btn-secondary" id="btn-start-test" style="width:100%;margin-top:12px;">📝 Take a placement test to determine your level</button>
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.65</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.66</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -493,10 +493,10 @@ const REVERSE_TR_INDEX = loadJSONSync("reverse-tr-index.json");
 const LS_PROGRESS = "turks_progress_v1";      // { [en]: {level, due, reps} } — nu op ENGELS trefwoord (Oxford lemma)
 const LS_CUSTOM    = "turks_custom_v1";        // { [en]: {tr:[...]} } — extra geaccepteerde Turkse antwoorden (via 'oneens')
 const LS_OVERRIDES = "turks_overrides_v1";     // { [en]: {tr:[...]} } — HANDMATIGE correctie van een woordkaart, vervangt (i.p.v. vult aan) de vertaling en heeft ALTIJD voorrang, ook boven curatedTr
-// Hoogste sub-niveau-index die daadwerkelijk in de woordenlijst voorkomt (C1 mid) -- de "Language
+// Hoogste sub-niveau-index die daadwerkelijk in de woordenlijst voorkomt (C1 end) -- de "Language
 // level"-sliders/dropdowns (woord-oefening) mogen hier niet overheen; de aparte "Sentence complexity"-
 // sliders (zinsbouw, niet vocabulaire) blijven wél het volledige 0-17-bereik gebruiken.
-const MAX_VOCAB_CEFR_IDX = 13;
+const MAX_VOCAB_CEFR_IDX = 14;
 const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cefrLevel, questionPercent, syncBinId, syncApiKey }
 const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", laatste 20
 const LS_NEWWORDS  = "turks_newwords_v1";      // { [en]: {cefr} } — via zinnen ontdekte Engelse woorden, niet in de Oxford-lijst
@@ -5557,6 +5557,8 @@ function initSettingsUI(){
   // zin-woordmoeilijkheid) -- zelfde opbouw (slider + dropdown, min+max), alleen andere id-prefix en
   // andere onderliggende settings-velden.
   function initCefrRangeDisplay(prefix, minKey, maxKey, maxIdx){
+    el(`${prefix}-min-slider`).max = maxIdx;
+    el(`${prefix}-max-slider`).max = maxIdx;
     if(!el(`${prefix}-min-select`).options.length){
       for(let i=0;i<=maxIdx;i++){
         el(`${prefix}-min-select`).add(new Option(cefrLabel(i), i));
