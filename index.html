@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.78</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.81</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -58,24 +58,22 @@
   </section>
 
   <!-- ===================== SUFFIX TRAINER SCREEN =====================
-       Voorheen 15% kans binnen de gewone woord-oefeningen op het Practice-tabblad; op verzoek nu een
-       eigen tab, zodat vervoeging/suffix-oefeningen gericht en los van de gewone woord/zin/vraag-mix
-       geoefend kunnen worden. Zelfde onderliggende genereer-/beoordeellogica als voorheen
-       (generateSuffixDrill/gradeGrammarDrillAnswer), eigen voortgang per werkwoord+patroon-combinatie
-       blijft behouden (synthetic "suffix:<verb>:<topicKey>"-sleutel in LS_PROGRESS). -->
+       Voorheen 15% kans binnen de gewone woord-oefeningen op het Practice-tabblad; nu een eigen tab,
+       zodat vervoeging/suffix-oefeningen gericht en los van de gewone woord/zin/vraag-mix geoefend
+       kunnen worden. Geen scoresysteem/niveaubalk (zie renderSuffixPractice) -- puur goed/fout, met
+       bij elk antwoord de morfeem-opbouw (suf-breakdown) en bij een fout antwoord ook het verschil
+       met het eigen antwoord. -->
   <section id="screen-suffixes" class="hidden">
     <div class="card">
-      <div class="muted" style="margin-bottom:10px;">Conjugate an already-mastered verb using an already-mastered grammar pattern — practised here in isolation, separate from the regular word/sentence/question mix.</div>
+      <div class="muted" style="margin-bottom:10px;">Conjugate an already-mastered verb using an already-mastered grammar pattern — practised here in isolation, separate from the regular word/sentence/question mix. No score here — just right or wrong, with a breakdown of the suffixes used.</div>
     </div>
     <div class="card" id="suffix-card">
       <div class="row space-between">
         <span class="badge badge-word">suffix</span>
       </div>
-      <div class="muted hidden" id="suf-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ Not enough mastered content yet — you need at least one verb AND one grammar topic at a good level before suffix drills can be generated. Keep practicing on the Practice tab first.</div>
+      <div class="muted hidden" id="suf-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ Not enough mastered content yet — you need at least one verb AND one verb-grammar topic at a good level before suffix drills can be generated. Keep practicing on the Practice tab first.</div>
       <div id="suf-word" class="tr-word">…</div>
       <div class="muted" id="suf-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
-      <div class="level-bar"><div class="level-bar-fill" id="suf-level-fill" style="width:0%"></div></div>
-      <div class="muted" id="suf-level-label" style="margin-top:4px;">level 0 / 10</div>
 
       <div style="margin-top:16px;">
         <div class="row space-between" style="margin-bottom:6px;font-weight:700;font-size:.85rem;"><span>✍️ Type the correctly conjugated Turkish word</span></div>
@@ -87,7 +85,8 @@
       </div>
 
       <div id="suf-feedback-box"></div>
-      <div id="suf-explanation-box" class="muted hidden" style="margin-top:8px;font-size:.9rem;white-space:pre-line;"></div>
+      <div id="suf-diff-box" class="muted hidden" style="margin-top:8px;font-size:.9rem;white-space:pre-line;"></div>
+      <div id="suf-breakdown-box" class="hidden" style="margin-top:10px;"></div>
 
       <div id="suf-post-actions" class="row wrap hidden" style="margin-top:12px;">
         <button class="btn-primary btn-small" id="suf-btn-next" style="flex:1;">Next ▶</button>
@@ -355,7 +354,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.78</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.81</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -1111,9 +1110,10 @@ const GRAMMAR_TOPICS = [
   {key:"surerlik_fiili",  label:"Literary durative aspect -(y)Adur/-(y)Idur", hint:"e.g. \"bakadur\" (keep on looking), \"güledur\" (keep on laughing) — an archaic/literary construction for an ongoing action, rare in everyday speech", minCefr:17},
   {key:"atasozu_deyim",   label:"Proverbs & fixed idiomatic expressions", hint:"the grammatical patterns behind common Turkish proverbs/idioms — often elliptical or parallel structures, e.g. \"Ne ekersen onu biçersin.\" (You reap what you sow, lit. whatever you sow, that you harvest)", minCefr:17},
   {key:"var_yok",           label:"Existence & possession (var/yok)", hint:"e.g. \"param var\" (I have money, lit. my money exists), \"zamanım yok\" (I don't have time)", minCefr:0},
-  {key:"soru_kelimeleri",   label:"Question words (ne/kim/nerede/ne zaman/nasıl/kaç/hangi)", hint:"e.g. \"Bu ne?\" (What is this?), \"Nerede oturuyorsun?\" (Where do you live?)", minCefr:0,
+  {key:"soru_kelimeleri",   label:"Question words (ne/kim/nerede/ne zaman/nasıl/kaç/hangi/neden)", hint:"e.g. \"Bu ne?\" (What is this?), \"Nerede oturuyorsun?\" (Where do you live?)", minCefr:0,
     // Zeven losse ondervormen i.p.v. één gedeelde hint -- zie VARIANTS_NOTE hierboven grammarTopicByKey
     // voor waarom: zonder dit werd vrijwel altijd hetzelfde vraagwoord (meestal "ne") geoefend.
+    // "neden" (waarom) nieuw toegevoegd (suffix-dekkingscontrole ronde 2) -- ontbrak eerder volledig.
     variants: [
       {id:"ne",       hint:"\"ne\" (what) — e.g. \"Bu ne?\" (What is this?)"},
       {id:"kim",      hint:"\"kim\" (who) — e.g. \"O kim?\" (Who is that?)"},
@@ -1122,6 +1122,7 @@ const GRAMMAR_TOPICS = [
       {id:"nasil",    hint:"\"nasıl\" (how) — e.g. \"Nasılsın?\" (How are you?)"},
       {id:"kac",      hint:"\"kaç\" (how many/how much) — e.g. \"Kaç yaşındasın?\" (How old are you?)"},
       {id:"hangi",    hint:"\"hangi\" (which) — e.g. \"Hangi kitap?\" (Which book?)"},
+      {id:"neden",    hint:"\"neden\"/\"niçin\"/\"niye\" (why, interchangeable, \"neden\" and \"niçin\" are the more neutral/written forms and \"niye\" the more casual/spoken one — vary between the three across calls) — e.g. \"Neden geç kaldın?\" (Why are you late?), \"Niye gülüyorsun?\" (Why are you laughing?)"},
     ]},
   {key:"isaret_zamirleri",  label:"Demonstrative pronouns (bu/şu/o)", hint:"e.g. \"bu kitap\" (this book, near speaker), \"şu adam\" (that man, near listener), \"o ev\" (that house, far from both)", minCefr:1,
     // Drie losse ondervormen -- zie de toelichting bij grammarTopicByKey/getTopicProgress hieronder.
@@ -1156,6 +1157,32 @@ const GRAMMAR_TOPICS = [
       {id:"yapmak", hint:"light verb \"yapmak\" (to do/make, with a native Turkish noun) — e.g. \"yardım yapmak\" (to do a favor/help), \"spor yapmak\" (to do sports)"},
     ]},
   {key:"aliskanlik_gecmis", label:"Habitual past — \"used to\" (-ArdI)", hint:"e.g. \"eskiden sigara içerdim\" (I used to smoke), \"her gün koşardık\" (we used to run every day)", minCefr:10},
+  // Nieuw (suffix-dekkingscontrole): vier veelvoorkomende achtervoegsels die nog geen eigen les hadden.
+  // -ken (terwijl/toen) bleef expres BUITEN deze lijst -- dat zit al (samen met -erek) in zarf_fiil
+  // hierboven ("Converbs -erek, -ken").
+  {key:"lik_eki",          label:"Abstract noun suffix -lik/-lık", hint:"turns an adjective or noun into an abstract quality/state noun, e.g. \"güzellik\" (beauty, from güzel \"beautiful\"), \"temizlik\" (cleanliness, from temiz \"clean\"), \"çocukluk\" (childhood, from çocuk \"child\") — vary which of the four vowel-harmony forms (-lik/-lık/-luk/-lük) comes up across repeated exercises", minCefr:4},
+  {key:"li_siz_eki",       label:"Having/without suffix -li/-lı vs. -siz/-sız", hint:"attached to a noun to mean \"having X\" (-li/-lı/-lu/-lü) or \"without X\" (-siz/-sız/-suz/-süz), e.g. \"tuzlu\" (salty, having salt) vs. \"tuzsuz\" (unsalted, without salt), \"şekerli\" (sweetened) vs. \"şekersiz\" (unsweetened)", minCefr:4,
+    variants: [
+      {id:"sahip",   hint:"\"-li/-lı\" (having X) — e.g. \"tuzlu\" (salty, having salt), \"şekerli\" (sweetened, having sugar)"},
+      {id:"yoksun",  hint:"\"-siz/-sız\" (without X) — e.g. \"tuzsuz\" (unsalted, without salt), \"şekersiz\" (unsweetened, without sugar)"},
+    ]},
+  // Let op: dit is de COPULA-uitgang -dir/-dır (aanname/generalisatie, bv. "öğrencidir"), NIET dezelfde
+  // klank als de causatief-uitgang -dir bij ettirgen_cati hierboven (bv. "yaptırdım") -- dat is een
+  // compleet ander achtervoegsel dat toevallig hetzelfde klinkt. Hint benadrukt dit verschil expliciet
+  // zodat de AI de twee niet door elkaar haalt.
+  {key:"genelleme_diri",   label:"Generalization/assumption copula suffix -dir/-dır", hint:"attached to a noun/adjective predicate to mark a general truth, formal assumption, or written-register certainty, e.g. \"öğrencidir\" (he is presumably/generally a student), \"İstanbul büyük bir şehirdir.\" (Istanbul is a big city) — common in formal writing, dictionary definitions, and news; NOT the same suffix as the causative -dir/-t (\"yaptırdım\" = I had it made), which is a completely different, coincidentally similar-sounding ending", minCefr:7},
+  {key:"ce_eki",           label:"Manner/opinion suffix -ce/-ca", hint:"attached to an adjective to mean \"in a ... way\" (e.g. \"hızlıca\" = quickly, from hızlı \"fast\"), or to a personal pronoun to mean \"in X's opinion\" (e.g. \"bence\" = in my opinion, from ben \"I\"); also used for language names (e.g. \"Türkçe\" = the Turkish language, from Türk)", minCefr:6,
+    variants: [
+      {id:"zarf",   hint:"adverbial \"in a ... way\" (attached to an adjective) — e.g. \"hızlıca\" (quickly, from hızlı \"fast\"), \"sessizce\" (silently, from sessiz \"quiet\")"},
+      {id:"gorus",  hint:"\"in X's opinion\" (attached to a personal pronoun) — e.g. \"bence\" (in my opinion, ben+ce), \"sence\" (in your opinion, sen+ce), \"ona göre değil, onca\" is NOT used — stick to bence/sence/bizce/sizce, the genuinely common forms"},
+    ]},
+  // Nieuw (suffix-dekkingscontrole ronde 2, n.a.v. vergelijking met een extern referentieboek): twee
+  // ontbrekende achtervoegsels plus een ontbrekende variant in een bestaand onderwerp.
+  {key:"ci_eki",           label:"Agent/profession suffix -ci/-çi", hint:"turns a noun into \"one who does/deals with X\" -- a person's job or specialization, e.g. \"gazete\" (newspaper) → \"gazeteci\" (journalist), \"iş\" (work) → \"işçi\" (worker), \"süt\" (milk) → \"sütçü\" (milkman) -- vary which of the four vowel-harmony forms (-ci/-çi/-cı/-çı/-cu/-çu/-cü/-çü, with devoicing to ç after a voiceless final consonant) comes up across repeated exercises. NOT the same suffix as -lik/-lık (which forms the ABSTRACT profession/quality, e.g. \"öğretmenlik\" = the teaching profession, vs. \"öğretmen\" = teacher, a plain noun with no suffix needed for the person).", minCefr:4},
+  // -miş als COPULA (op een naamwoord/bijvoeglijk naamwoord predicaat, bv. "öğrenciymiş") is een ander
+  // gebruik dan gecmis_mis hierboven (dat behandelt uitsluitend de WERKWOORD-vervoeging, bv. "gelmiş").
+  // Zelfde tweeledige opsplitsing als bij gecmis_di (werkwoord) vs. gecmis_copula (naamwoord) hierboven.
+  {key:"mis_copula",       label:"Hearsay/inferential copula -(y)mış", hint:"attached to a noun/adjective predicate (not a verb) to report something you heard secondhand or inferred, rather than witnessed directly -- e.g. \"öğrenciymiş\" (apparently he/she is a student, based on hearsay), \"hastaymış\" (apparently sick). This is the COPULA use of -mış -- distinct from gecmis_mis, which is the same suffix attached to a VERB instead (e.g. \"gelmiş\" = apparently came); the same is true here as for the -di past: -di attaches to a verb, -ydi is its copula counterpart on a noun/adjective, and -mış/-ymış work the same way.", minCefr:6},
 ];
 // Sommige grammatica-onderwerpen bundelen meerdere, onderling duidelijk te onderscheiden vormen onder
 // één label (bv. isaret_zamirleri = bu/şu/o, soru_kelimeleri = ne/kim/nerede/...). Die krijgen een eigen
@@ -1783,6 +1810,16 @@ const GRAMMAR_TOPIC_FRAMEWORK = {
   // nieuw (volledigheidscontrole ronde 2): baglaclar (ve/ama/çünkü/veya) verbindt twee items --
   // zelfde minimale opzet als de rest van de noun2-groep (2 zelfstandige naamwoorden, geen extra's).
   baglaclar:"noun2",
+  // Nieuw (suffix-dekkingscontrole): vier achtervoegsels die op een NAAMWOORD/BIJVOEGLIJK NAAMWOORD
+  // landen (geen werkwoordvervoeging), dus horen bij de "noun"-groep -- consistent met hoe
+  // kucultme_eki (verkleinwoord) en copula_basic hierboven ook al "noun" gebruiken. ce_eki's
+  // opinion-variant ("bence") gebruikt om diezelfde reden geen willekeurig zelfstandig naamwoord als
+  // anker maar een klein eigen framework (zie opinion_ce hieronder), net zoals address_form dat al
+  // deed voor Ahmet Bey/Ayşe Hanım.
+  lik_eki:"noun", li_siz_eki:"noun", genelleme_diri:"noun", ce_eki:"opinion_ce",
+  // Nieuw (suffix-dekkingscontrole ronde 2): beide landen op een naamwoord (ci_eki) resp. naamwoord/
+  // bijvoeglijk-naamwoord-predicaat (mis_copula), dus horen ook bij de "noun"-groep.
+  ci_eki:"noun", mis_copula:"noun",
   // rest: geen duidelijke woordsoort-voorkeur, gebruikt de brede gemengde pool (bestaand gedrag)
 };
 
@@ -1923,6 +1960,18 @@ const FRAMEWORK_INSTRUCTIONS = {
       // default: "titel" variant (of geen variants-array, backward compatible)
       return `Produce ONLY a title + a real, common Turkish first name — nothing else, no sentence, no verb, no extra words. Pick a real Turkish first name yourself (vary between calls: e.g. Ahmet, Mehmet, Ayşe, Fatma, Ali, Zeynep, Elif, Mustafa, Hasan, Emine, and other genuinely common Turkish names — never a placeholder or invented name), and attach the correct title: "Bey" after a male name, "Hanım" after a female name. Example shape only (pick a DIFFERENT name yourself, don't reuse this exact one): "Ahmet Bey". The English side should be the plain "Mr./Ms. [Name]" equivalent. Nothing beyond title + name — no greeting, no verb, no sentence.`;
     }},
+  // Nieuw (suffix-dekkingscontrole): -ce/-ca heeft 2 heel verschillende ankers per variant -- de
+  // opinion-vorm ("bence") werkt ALLEEN met een klein, vast setje persoonlijke voornaamwoorden (geen
+  // willekeurig zelfstandig naamwoord), dus needCategory blijft leeg, net als bij address_form.
+  opinion_ce: {needCategory:[], needCount:[],
+    instr: (topic) => {
+      const variantId = topic && topic.key && topic.key.includes("::") ? topic.key.split("::")[1] : null;
+      if(variantId === "gorus"){
+        return `Produce a SHORT opinion phrase or short sentence using EXACTLY ONE of these genuinely common Turkish "-ce" opinion forms: "bence" (in my opinion), "sence" (in your opinion), "bizce" (in our opinion), or "sizce" (in your/plural-formal opinion) — pick randomly, vary between calls. Follow it with a short opinion (e.g. "Bence bu doğru." = In my opinion, this is right.). Keep it SHORT (2-5 words). Do NOT use "onca" or "onlarca" — those are not genuinely common opinion forms in everyday Turkish.`;
+      }
+      // default: "zarf" variant (bijwoordelijke "op een ... manier"-vorm)
+      return `Pick a real, common Turkish adjective yourself and attach the "-ce/-ca" adverbial suffix to it to mean "in a ... way" (e.g. "hızlı" -> "hızlıca" = quickly, "sessiz" -> "sessizce" = silently, "yavaş" -> "yavaşça" = slowly). Build one short, natural sentence using that adverb with a simple verb (e.g. "Yavaşça yürüdü." = He walked slowly). Keep it SHORT (2-4 words).`;
+    }},
 };
 
 /* Voor de "Prepositions"-vocabulairelessen: verpakt een specifiek voorzetsel-woord in een kort,
@@ -2031,15 +2080,22 @@ function drillTurkishText(drill){
 // SUFFIX-OEFENING: een woord dat de gebruiker al beheerst (level >= 7) wordt vervoegd met een
 // grammaticaal patroon dat de gebruiker ook al beheerst (level >= 7 op dat GRAMMAR_TOPICS-onderwerp).
 // Puur woordniveau -- geen zin, geen context -- de gebruiker typt precies ÉÉN vervoegde Turkse vorm.
-// Gebruikt dezelfde invoer-/beoordelingslogica als een normale grammatica-oefening (gradeGrammarDrillAnswer),
-// niet de vocabulaire-specifieke askDeepSeekJudge (die veronderstelt dat het woord in de en-tr/tr-en-lijst
-// zelf voorkomt, wat hier niet het geval is -- dit is een vers gegenereerde vervoeging, geen woordenboekwoord).
+// Geen eigen scoresysteem meer (zie screen-suffixes): puur goed/fout, met een morfeem-opbouw als
+// uitleg (zie "breakdown" hieronder) i.p.v. een niveau 0-10.
 const SUFFIX_DRILL_MIN_LEVEL = 7;
 function masteredVerbsForSuffixDrill(){
   return EN_WORDS_DATA.filter(w => w.pos === "verb" && getProgress(w.en).level >= SUFFIX_DRILL_MIN_LEVEL);
 }
+// BUGFIX: hierboven wordt ALTIJD een werkwoord vervoegd, dus alleen grammatica-onderwerpen die
+// daadwerkelijk op een werkwoord toegepast worden (framework "verb"/"verb2" in
+// GRAMMAR_TOPIC_FRAMEWORK) horen hier in aanmerking te komen. Voorheen ontbrak dit filter volledig --
+// een beheerst NAAMWOORD-patroon (bv. meervoud, accusatief, verkleinwoord) kon dan alsnog gekozen
+// worden en werd vervolgens geforceerd op een werkwoord toegepast, wat taalkundig onzin oplevert (een
+// werkwoord heeft geen meervoud/naamval). Onderwerpen zonder framework-vermelding (de "rest"-categorie
+// onderaan GRAMMAR_TOPIC_FRAMEWORK) worden voorzichtigheidshalve ook uitgesloten.
+const SUFFIX_DRILL_VERB_FRAMEWORKS = new Set(["verb", "verb2"]);
 function masteredTopicsForSuffixDrill(){
-  return GRAMMAR_TOPICS.filter(t => getTopicProgress(t).level >= SUFFIX_DRILL_MIN_LEVEL);
+  return GRAMMAR_TOPICS.filter(t => SUFFIX_DRILL_VERB_FRAMEWORKS.has(GRAMMAR_TOPIC_FRAMEWORK[t.key]) && getTopicProgress(t).level >= SUFFIX_DRILL_MIN_LEVEL);
 }
 function canOfferSuffixDrill(){
   return masteredVerbsForSuffixDrill().length > 0 && masteredTopicsForSuffixDrill().length > 0;
@@ -2047,7 +2103,7 @@ function canOfferSuffixDrill(){
 async function generateSuffixDrill(){
   const verbs = masteredVerbsForSuffixDrill();
   const topics = masteredTopicsForSuffixDrill();
-  if(!verbs.length || !topics.length) throw new Error("No mastered verb + mastered grammar topic combination available yet.");
+  if(!verbs.length || !topics.length) throw new Error("No mastered verb + mastered verb-grammar-topic combination available yet.");
   const verb = verbs[Math.floor(Math.random()*verbs.length)];
   const topic = topics[Math.floor(Math.random()*topics.length)];
   const verbTr = (await getOrFetchTranslation(verb.en))[0];
@@ -2057,27 +2113,73 @@ async function generateSuffixDrill(){
 Patroonomschrijving: ${topic.hint}
 Geef een kort, ondubbelzinnig Engels zinnetje dat PRECIES deze ene vervoegde vorm oproept (bv. "he will run", "I couldn't come", "if you read", "while eating") -- geen volledige zin met andere woorden erbij, puur de vervoeging van dit ene werkwoord in dit patroon.
 Geef de correcte Turkse vervoeging (normaal gesproken één woord; alleen als het patroon dat grammaticaal vereist -- bv. bij "değil" of een hulpwerkwoord-constructie -- een vaste, korte woordgroep).
+Geef ook een STAP-VOOR-STAP MORFEEM-OPBOUW ("breakdown"): een array van de KALE werkwoordstam (zonder -mek/-mak, bv. "gel" niet "gelmek") tot en met de volledige vervoegde vorm, waarbij ELKE volgende stap EXACT ÉÉN achtervoegsel/morfeem meer bevat dan de vorige. Elke stap krijgt "form" (de Turkse vorm tot en met dat achtervoegsel) en "meaning" (de Engelse betekenis van de vorm OP DIE STAP, zodat de betekenisverandering door dat ene toegevoegde achtervoegsel duidelijk wordt). De eerste stap is altijd de kale stam met zijn kale betekenis (bv. "gel" -> "come"); de laatste stap is EXACT gelijk aan "correct". Gebruik zoveel stappen als het patroon daadwerkelijk vereist (meestal 2-4) -- verzin geen kunstmatige tussenstap die geen echte taalkundige eenheid is.
 Antwoord in JSON.`;
   const schema = {
     name: "suffix_oefening",
-    description: "Eén woord-vervoegingsoefening op basis van een beheerst werkwoord en een beheerst grammaticapatroon.",
+    description: "Eén woord-vervoegingsoefening op basis van een beheerst werkwoord en een beheerst grammaticapatroon, met stap-voor-stap morfeem-opbouw.",
     input_schema: {
       type: "object",
       properties: {
         prompt: {type:"string", description:"Kort Engels zinnetje dat precies deze ene vervoegde vorm oproept."},
         correct: {type:"string", description:"De correcte Turkse vervoegde vorm."},
+        breakdown: {
+          type: "array",
+          description: "Stap-voor-stap morfeem-opbouw: van de kale werkwoordstam tot de volledige vorm, elke stap precies 1 achtervoegsel meer dan de vorige. Laatste stap = 'correct'.",
+          items: {
+            type: "object",
+            properties: {
+              form: {type:"string", description:"De Turkse vorm tot en met dit achtervoegsel."},
+              meaning: {type:"string", description:"De Engelse betekenis van de vorm op deze stap."},
+            },
+            required: ["form","meaning"],
+          },
+        },
       },
-      required: ["prompt","correct"]
+      required: ["prompt","correct","breakdown"]
     }
   };
-  const raw = await callAI("sentence", sys, `Werkwoord: ${verbBaseEn} (${verbTr}) | Patroon: ${topic.label}`, 400, 0.5, schema);
+  const raw = await callAI("sentence", sys, `Werkwoord: ${verbBaseEn} (${verbTr}) | Patroon: ${topic.label}`, 700, 0.5, schema);
   const parsed = parseAIJson(raw);
   if(!parsed.prompt || !parsed.correct) throw new Error("AI did not return a valid suffix drill.");
-  return {type:"suffix", en: `suffix:${verb.en}:${topic.key}`, direction:"en-tr", prompt: parsed.prompt, correct: parsed.correct, verbEn: verb.en, topicKey: topic.key};
+  const breakdown = (Array.isArray(parsed.breakdown) && parsed.breakdown.length)
+    ? parsed.breakdown.filter(s => s && s.form && s.meaning)
+    : [{form: parsed.correct, meaning: parsed.prompt}]; // veiligheidsnet: geen (bruikbare) breakdown terug -> toon tenminste de eindvorm
+  return {type:"suffix", en: `suffix:${verb.en}:${topic.key}`, direction:"en-tr", prompt: parsed.prompt, correct: parsed.correct, verbEn: verb.en, topicKey: topic.key, breakdown};
+}
+
+// Beoordeelt een suffix-antwoord: alleen goed/fout, GEEN algemene uitleg -- bij een fout antwoord
+// specifiek het VERSCHIL met de eigen (foute) invoer, zodat de gebruiker precies ziet welk achtervoegsel
+// ontbrak/verkeerd was, naast de morfeem-opbouw (breakdown) die hierboven al gegenereerd is.
+async function gradeSuffixDrillAnswer(drill, answer){
+  const sys = `Je beoordeelt of het Turkse antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (gebruiker moest deze Engelse frase naar de correct vervoegde Turkse vorm vertalen). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat het antwoord fout wordt. Reken dit soort verschil dus NOOIT fout. NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en reken kleine tikfouten met een ondubbelzinnige bedoeling goed.
+Als het antwoord FOUT is: leg in het Engels (max 2 zinnen), rechtstreeks tegen de gebruiker gericht ("you"), PRECIES uit wat het verschil is tussen hun antwoord "${answer}" en de correcte vorm "${drill.correct}" -- welk achtervoegsel ontbreekt, verkeerd is, in de verkeerde volgorde staat, of welke klinkerharmonie-/medeklinkerverzachtingsfout er is. Als het antwoord GOED is, laat "diff" leeg.
+Antwoord in JSON.`;
+  const schema = {
+    name: "beoordeel_suffix_antwoord",
+    description: "Beoordeling van een suffix-oefening: correct/fout plus, bij fout, een precieze uitleg van het verschil met het eigen antwoord.",
+    input_schema: {
+      type: "object",
+      properties: {
+        correct: {type:"boolean"},
+        diff: {type:"string", description:"Bij een fout antwoord: korte, precieze uitleg van het verschil met de correcte vorm. Leeg bij een correct antwoord."},
+      },
+      required: ["correct","diff"]
+    }
+  };
+  const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 400, 0, schema);
+  return parseAIJson(raw);
 }
 
 async function generateGrammarDrill(topic, avoidEn){
-  const framework = GRAMMAR_TOPIC_FRAMEWORK[topic.key];
+  // BUGFIX: topic.key kan variant-gescoped zijn (bv. "hitap_bicimleri::titel", "ce_eki::gorus" --
+  // zie effectiveTopicForVariant/variantProgressKey), maar GRAMMAR_TOPIC_FRAMEWORK is alleen op de
+  // KALE topic-sleutel gevuld. Zonder deze strip faalde de lookup voor ELK onderwerp met varianten
+  // zodra er een specifieke variant gekozen was, en viel de code stilzwijgend terug op het generieke
+  // (niet-framework) pad -- dus de zorgvuldig gecureerde frameworks (bv. address_form, postpositions,
+  // opinion_ce) werden voor die onderwerpen in de praktijk nooit gebruikt.
+  const baseTopicKey = topic.key && topic.key.includes("::") ? topic.key.split("::")[0] : topic.key;
+  const framework = GRAMMAR_TOPIC_FRAMEWORK[baseTopicKey];
   if(framework){
     let drill = await generateFrameworkDrillCandidate(topic, framework, undefined, avoidEn);
     let attempts = 1;
@@ -4705,18 +4807,36 @@ function finalizeAnswer(correct, message){
 }
 
 /* ===================== SUFFIX TRAINER TAB =====================
-   Losstaand van de gewone Practice-lus hierboven (eigen DOM-elementen, eigen state) -- hergebruikt wel
-   dezelfde generatie-/beoordeelfuncties (generateSuffixDrill, gradeGrammarDrillAnswer) en dezelfde
-   voortgangsopslag (recordResult/getProgress op de synthetic "suffix:<verb>:<topicKey>"-sleutel), dus
-   eerder opgebouwde suffix-voortgang (van toen dit nog binnen Practice zat) blijft gewoon meetellen. */
+   Losstaand van de gewone Practice-lus hierboven (eigen DOM-elementen, eigen state). GEEN scoresysteem
+   (geen niveau 0-10, geen recordResult) -- puur goed/fout. Bij elk antwoord toont dit de morfeem-
+   opbouw (generateSuffixDrill's "breakdown": kale stam -> ... -> volledige vorm, 1 achtervoegsel per
+   regel met de veranderde betekenis); bij een fout antwoord komt daar via gradeSuffixDrillAnswer ook
+   een korte uitleg van het verschil met het eigen antwoord bij. */
 let currentSuffixItem = null;
 let suffixAnswered = false;
+
+// Rendert de morfeem-opbouw als een verticale lijst: elke regel = de vorm tot en met dat achtervoegsel
+// + de betekenis op die stap, zodat je letterlijk ziet hoe elk toegevoegd achtervoegsel de betekenis
+// verandert (bv. "gel" -> come, "gelebil" -> can come, "gelebilir" -> can come (general tense)).
+function renderSuffixBreakdown(breakdown){
+  if(!Array.isArray(breakdown) || !breakdown.length) return "";
+  const rows = breakdown.map(step =>
+    `<div class="row space-between" style="padding:3px 0;border-bottom:1px solid var(--border, #2a3a4a);">
+       <span class="tr-word" style="font-size:1rem;">${escapeHtml(step.form)}</span>
+       <span class="muted" style="font-size:.8rem;text-align:right;">${escapeHtml(step.meaning)}</span>
+     </div>`
+  ).join("");
+  return `<div class="muted" style="font-weight:700;font-size:.78rem;margin-bottom:4px;">🧩 Suffix breakdown</div>${rows}`;
+}
 
 async function renderSuffixPractice(){
   suffixAnswered = false;
   currentSuffixItem = null;
   el("suf-feedback-box").innerHTML = "";
-  el("suf-explanation-box").classList.add("hidden");
+  el("suf-diff-box").classList.add("hidden");
+  el("suf-diff-box").textContent = "";
+  el("suf-breakdown-box").classList.add("hidden");
+  el("suf-breakdown-box").innerHTML = "";
   el("suf-post-actions").classList.add("hidden");
   el("suf-answer-input").value = "";
   el("suf-answer-input").disabled = true;
@@ -4726,16 +4846,12 @@ async function renderSuffixPractice(){
   if(!canOfferSuffixDrill()){
     el("suf-word").textContent = "—";
     el("suf-word-meta").textContent = "";
-    el("suf-level-fill").style.width = "0%";
-    el("suf-level-label").textContent = "";
     el("suf-empty-notice").classList.remove("hidden");
     return;
   }
   el("suf-empty-notice").classList.add("hidden");
   el("suf-word").textContent = "🤖 …";
   el("suf-word-meta").textContent = "";
-  el("suf-level-fill").style.width = "0%";
-  el("suf-level-label").textContent = "please wait…";
 
   try{
     currentSuffixItem = await generateSuffixDrill();
@@ -4746,23 +4862,27 @@ async function renderSuffixPractice(){
 
   el("suf-word").textContent = currentSuffixItem.prompt;
   el("suf-word-meta").textContent = "conjugate this verb using a grammar pattern you've already mastered";
-  const p = getProgress(currentSuffixItem.en);
-  el("suf-level-fill").style.width = (p.level*10) + "%";
-  el("suf-level-label").textContent = fmtLevel(p);
   el("suf-answer-input").disabled = false;
   el("suf-btn-check").disabled = false;
   el("suf-btn-skip").disabled = false;
   setTimeout(()=> el("suf-answer-input").focus(), 50);
 }
 
-function finalizeSuffixAnswer(correct, message){
+// Geen niveau/score meer bij te werken -- alleen de feedback (✅/❌), evt. het verschil met het eigen
+// antwoord, en de morfeem-opbouw tonen.
+function finalizeSuffixAnswer(correct, diffText){
   suffixAnswered = true;
-  recordResult(currentSuffixItem.en, correct);
-  el("suf-feedback-box").innerHTML = `<div class="feedback ${correct ? "correct" : "wrong"}">${message}</div>`;
+  el("suf-feedback-box").innerHTML = `<div class="feedback ${correct ? "correct" : "wrong"}">${correct ? "✅ Correct!" : "❌ Not quite."}</div>`;
+  if(!correct && diffText){
+    el("suf-diff-box").textContent = "📝 " + diffText;
+    el("suf-diff-box").classList.remove("hidden");
+  }
+  const breakdownHtml = renderSuffixBreakdown(currentSuffixItem.breakdown);
+  if(breakdownHtml){
+    el("suf-breakdown-box").innerHTML = breakdownHtml;
+    el("suf-breakdown-box").classList.remove("hidden");
+  }
   el("suf-post-actions").classList.remove("hidden");
-  const p = getProgress(currentSuffixItem.en);
-  el("suf-level-fill").style.width = (p.level*10) + "%";
-  el("suf-level-label").textContent = fmtLevel(p);
   el("suf-answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken
   if(hasLikelyPhysicalKeyboard()) el("suf-answer-input").focus();
 }
@@ -4774,27 +4894,23 @@ async function handleCheckSuffixTab(){
   el("suf-answer-input").disabled = true;
 
   if(!answer){
-    finalizeSuffixAnswer(false, "❌<br>" + answerCompareLine("", currentSuffixItem.correct, false));
+    finalizeSuffixAnswer(false, `You left this blank — the correct form is "${currentSuffixItem.correct}".`);
     return;
   }
   if(normalize(answer) === normalize(currentSuffixItem.correct)){
-    finalizeSuffixAnswer(true, "✅");
+    finalizeSuffixAnswer(true, "");
     return;
   }
   if(!hasKeyFor("word")){
-    finalizeSuffixAnswer(false, "❌<br>" + answerCompareLine(answer, currentSuffixItem.correct, false) + "<br><span class='muted'>Set a " + keyNameFor("word") + " API key to have other forms judged too.</span>");
+    finalizeSuffixAnswer(false, `Your answer was "${answer}" — the correct form is "${currentSuffixItem.correct}". Set a ${keyNameFor("word")} API key to have other valid forms judged too.`);
     return;
   }
   el("suf-feedback-box").innerHTML = `<div class="feedback pending">🤖 AI is checking your answer…</div>`;
   try{
-    const verdict = await gradeGrammarDrillAnswer({prompt: currentSuffixItem.prompt, correct: currentSuffixItem.correct, direction:"en-tr"}, answer);
-    if(verdict.uitleg){
-      el("suf-explanation-box").classList.remove("hidden");
-      el("suf-explanation-box").textContent = verdict.uitleg;
-    }
-    finalizeSuffixAnswer(!!verdict.correct, (verdict.correct ? "✅" : "❌") + "<br>" + answerCompareLine(answer, currentSuffixItem.correct, !!verdict.correct));
+    const verdict = await gradeSuffixDrillAnswer(currentSuffixItem, answer);
+    finalizeSuffixAnswer(!!verdict.correct, verdict.diff || "");
   }catch(e){
-    finalizeSuffixAnswer(false, "⚠️ Could not reach the AI: " + e.message + ". Answer counted as incorrect for now.");
+    finalizeSuffixAnswer(false, "⚠️ Could not reach the AI: " + e.message + ". Counted as incorrect for now.");
   }
 }
 
@@ -5998,7 +6114,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("suf-btn-next").addEventListener("click", renderSuffixPractice);
   el("suf-btn-skip").addEventListener("click", ()=>{
     if(!currentSuffixItem || suffixAnswered) return;
-    recordResult(currentSuffixItem.en, false);
     renderSuffixPractice();
   });
   el("suf-answer-input").addEventListener("keydown", e=>{
