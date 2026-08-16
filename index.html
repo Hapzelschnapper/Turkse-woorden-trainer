@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.74</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.75</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.74</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.75</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -1835,7 +1835,21 @@ const FRAMEWORK_INSTRUCTIONS = {
   // ("Bey" of "Hanım") toegepast op een ECHTE, gangbare Turkse voornaam. needCategory is expres
   // leeg: dit onderwerp heeft geen woord uit de vocabulairepool nodig, de AI kiest zelf een naam.
   address_form: {needCategory:[], needCount:[],
-    instr: () => `Produce ONLY a title + a real, common Turkish first name — nothing else, no sentence, no verb, no extra words. Pick a real Turkish first name yourself (vary between calls: e.g. Ahmet, Mehmet, Ayşe, Fatma, Ali, Zeynep, Elif, Mustafa, Hasan, Emine, and other genuinely common Turkish names — never a placeholder or invented name), and attach the correct title: "Bey" after a male name, "Hanım" after a female name. Example shape only (pick a DIFFERENT name yourself, don't reuse this exact one): "Ahmet Bey". The English side should be the plain "Mr./Ms. [Name]" equivalent. Nothing beyond title + name — no greeting, no verb, no sentence.`},
+    // Dit onderwerp heeft 3 varianten (titel/diminutief/register, zie GRAMMAR_TOPICS.hitap_bicimleri)
+    // die elk hun EIGEN oefenvorm nodig hebben -- voorheen negeerde deze instr() de variant volledig
+    // en testte hij altijd alleen de titel-vorm (Ahmet Bey), ook wanneer diminutief/register aan de
+    // beurt was. topic.key bevat na effectiveTopicForVariant "hitap_bicimleri::<variantId>".
+    instr: (topic) => {
+      const variantId = topic && topic.key && topic.key.includes("::") ? topic.key.split("::")[1] : null;
+      if(variantId === "diminutief"){
+        return `Produce ONLY a single affectionate/diminutive Turkish address term — nothing else, no sentence, no verb, no extra words. Pick a real, genuinely common Turkish term of endearment yourself (vary between calls: e.g. "anneciğim" (mommy), "canım" (dear/darling), "tatlım" (sweetie), "aşkım" (my love), "babacığım" (daddy), "kızım" (used affectionately for a girl/young woman) — never an invented word). The English side should be the natural affectionate English equivalent (e.g. "mommy", "dear", "sweetie"). Nothing beyond the one address term — no greeting, no verb, no sentence.`;
+      }
+      if(variantId === "register"){
+        return `Produce ONLY one short, complete, natural everyday Turkish phrase or question, in EITHER the informal "sen" register OR the formal/polite "siz" register — pick which register RANDOMLY each call and vary the phrase itself (e.g. "Nasılsın?"/"Nasılsınız?", "Ne yapıyorsun?"/"Ne yapıyorsunuz?", "Adın ne?"/"Adınız ne?", "Nerelisin?"/"Nerelisiniz?" — don't reuse the same phrase every time). The English side is the natural translation. Nothing beyond that one short phrase — no extra sentence, no explanation of which register it is.`;
+      }
+      // default: "titel" variant (of geen variants-array, backward compatible)
+      return `Produce ONLY a title + a real, common Turkish first name — nothing else, no sentence, no verb, no extra words. Pick a real Turkish first name yourself (vary between calls: e.g. Ahmet, Mehmet, Ayşe, Fatma, Ali, Zeynep, Elif, Mustafa, Hasan, Emine, and other genuinely common Turkish names — never a placeholder or invented name), and attach the correct title: "Bey" after a male name, "Hanım" after a female name. Example shape only (pick a DIFFERENT name yourself, don't reuse this exact one): "Ahmet Bey". The English side should be the plain "Mr./Ms. [Name]" equivalent. Nothing beyond title + name — no greeting, no verb, no sentence.`;
+    }},
 };
 
 /* Voor de "Prepositions"-vocabulairelessen: verpakt een specifiek voorzetsel-woord in een kort,
@@ -1917,7 +1931,7 @@ Respond in JSON.`;
   const level = pickSentenceComplexityLevel();
   const userMsg = `Topic: "${topic.label}" (${topic.hint})
 Niveau: ${cefrLabel(level)}. ${cefrGuidance(level)}
-${cfg.instr(...words)}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
+${cfg.instr(...words, topic)}` + (correctionNote ? `\n\nNOTE: your previous attempt was rejected — ${correctionNote} Please get it right this time.` : "");
   const schema = {
     name: "grammar_drill",
     description: "Een geïsoleerde grammatica-oefening: een concrete zin/frase, geen abstracte regelvraag.",
@@ -2383,7 +2397,16 @@ async function nextSkillPracticeQuestion(){
     el("checkup-answer-input").placeholder = skillPracticeState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
     badgeEl.textContent = "grammar"; badgeEl.className = "badge badge-sentence";
-    const topic = grammarTopicByKey(lesson.grammarTopics[0]);
+    // BUGFIX: voorheen werd hier de KALE topic (zonder variant) gebruikt. Voor onderwerpen met een
+    // `variants`-array (bv. hitap_bicimleri: titel/diminutief/register) betekende dat: (1) de oefening
+    // testte altijd hetzelfde ene ding (zie address_form hierboven), en (2) het resultaat werd
+    // opgeslagen onder de kale sleutel ("hitap_bicimleri"), terwijl het cijfer van de les
+    // (lessonProficiency) het MINIMUM leest over de variant-sleutels ("hitap_bicimleri::titel" etc.) --
+    // die bleven dus altijd op 0 staan, wat maakte dat de score van zo'n les nooit vooruitging, hoeveel
+    // je ook oefende. Door hier -- net als elders in de app -- de zwakst-beoefende variant te kiezen,
+    // testen we de juiste vorm EN slaat het resultaat op onder de sleutel die het cijfer ook echt leest.
+    const baseTopic = grammarTopicByKey(lesson.grammarTopics[0]);
+    const topic = effectiveTopicForVariant(baseTopic, pickWeakestVariant(baseTopic));
     try{
       const drill = await generateGrammarDrill(topic, recentGrammarDrillWords);
       skillPracticeState.current = {type:"grammar", topic, drill};
