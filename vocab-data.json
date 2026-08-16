@@ -10352,7 +10352,7 @@
           "değiştirmek"
         ],
         "register": "neutral",
-        "note": "(to make different)"
+        "note": "(transitive: to make something different)"
       }
     ]
   },
@@ -76408,6 +76408,19 @@
         ],
         "register": "neutral",
         "note": ""
+      }
+    ]
+  },
+  "change__vi": {
+    "senses": [
+      {
+        "gloss": "werkwoord (onovergankelijk) — zie ook change (overgankelijk)",
+        "pos": "verb",
+        "tr": [
+          "değişmek"
+        ],
+        "register": "neutral",
+        "note": "(intransitive: to become different)"
       }
     ]
   }

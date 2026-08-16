@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.70</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.72</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -317,7 +317,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.70</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-15 v2.72</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -1923,6 +1923,54 @@ ${cfg.instr(...words)}` + (correctionNote ? `\n\nNOTE: your previous attempt was
 function drillTurkishText(drill){
   return drill.direction === "tr-en" ? drill.prompt : drill.correct;
 }
+// SUFFIX-OEFENING: een woord dat de gebruiker al beheerst (level >= 7) wordt vervoegd met een
+// grammaticaal patroon dat de gebruiker ook al beheerst (level >= 7 op dat GRAMMAR_TOPICS-onderwerp).
+// Puur woordniveau -- geen zin, geen context -- de gebruiker typt precies ÉÉN vervoegde Turkse vorm.
+// Gebruikt dezelfde invoer-/beoordelingslogica als een normale grammatica-oefening (gradeGrammarDrillAnswer),
+// niet de vocabulaire-specifieke askDeepSeekJudge (die veronderstelt dat het woord in de en-tr/tr-en-lijst
+// zelf voorkomt, wat hier niet het geval is -- dit is een vers gegenereerde vervoeging, geen woordenboekwoord).
+const SUFFIX_DRILL_MIN_LEVEL = 7;
+function masteredVerbsForSuffixDrill(){
+  return EN_WORDS_DATA.filter(w => w.pos === "verb" && getProgress(w.en).level >= SUFFIX_DRILL_MIN_LEVEL);
+}
+function masteredTopicsForSuffixDrill(){
+  return GRAMMAR_TOPICS.filter(t => getTopicProgress(t).level >= SUFFIX_DRILL_MIN_LEVEL);
+}
+function canOfferSuffixDrill(){
+  return masteredVerbsForSuffixDrill().length > 0 && masteredTopicsForSuffixDrill().length > 0;
+}
+async function generateSuffixDrill(){
+  const verbs = masteredVerbsForSuffixDrill();
+  const topics = masteredTopicsForSuffixDrill();
+  if(!verbs.length || !topics.length) throw new Error("No mastered verb + mastered grammar topic combination available yet.");
+  const verb = verbs[Math.floor(Math.random()*verbs.length)];
+  const topic = topics[Math.floor(Math.random()*topics.length)];
+  const verbTr = (await getOrFetchTranslation(verb.en))[0];
+  const verbBaseEn = baseEnOf(verb.en);
+
+  const sys = `Je maakt een "suffix"-oefening: de gebruiker moet ÉÉN Turks woord vormen door het werkwoord "${verbTr}" (Engels: "${verbBaseEn}") toe te passen op het grammaticale patroon "${topic.label}".
+Patroonomschrijving: ${topic.hint}
+Geef een kort, ondubbelzinnig Engels zinnetje dat PRECIES deze ene vervoegde vorm oproept (bv. "he will run", "I couldn't come", "if you read", "while eating") -- geen volledige zin met andere woorden erbij, puur de vervoeging van dit ene werkwoord in dit patroon.
+Geef de correcte Turkse vervoeging (normaal gesproken één woord; alleen als het patroon dat grammaticaal vereist -- bv. bij "değil" of een hulpwerkwoord-constructie -- een vaste, korte woordgroep).
+Antwoord in JSON.`;
+  const schema = {
+    name: "suffix_oefening",
+    description: "Eén woord-vervoegingsoefening op basis van een beheerst werkwoord en een beheerst grammaticapatroon.",
+    input_schema: {
+      type: "object",
+      properties: {
+        prompt: {type:"string", description:"Kort Engels zinnetje dat precies deze ene vervoegde vorm oproept."},
+        correct: {type:"string", description:"De correcte Turkse vervoegde vorm."},
+      },
+      required: ["prompt","correct"]
+    }
+  };
+  const raw = await callAI("sentence", sys, `Werkwoord: ${verbBaseEn} (${verbTr}) | Patroon: ${topic.label}`, 400, 0.5, schema);
+  const parsed = parseAIJson(raw);
+  if(!parsed.prompt || !parsed.correct) throw new Error("AI did not return a valid suffix drill.");
+  return {type:"suffix", en: `suffix:${verb.en}:${topic.key}`, direction:"en-tr", prompt: parsed.prompt, correct: parsed.correct, verbEn: verb.en, topicKey: topic.key};
+}
+
 async function generateGrammarDrill(topic, avoidEn){
   const framework = GRAMMAR_TOPIC_FRAMEWORK[topic.key];
   if(framework){
@@ -2922,6 +2970,19 @@ function wordPosOf(en){
   }
   return _wordPosMap[en] || null;
 }
+let _wordTransitivityMap = null;
+// Voor de zeldzame gevallen waarin twee entries van hetzelfde basiswoord dezelfde woordsoort delen
+// maar taalkundig toch echt verschillend zijn (bv. "change__v"=değiştirmek/overgankelijk vs
+// "change__vi"=değişmek/onovergankelijk, allebei "verb") -- wordPosOf alleen kan die twee dan niet
+// uit elkaar houden bij het kiezen van de juiste tr-en-tegenhanger. Voor woorden zonder dit onderscheid
+// (verreweg de meeste) geeft dit null en heeft het geen effect op de bestaande pos-matching.
+function wordTransitivityOf(en){
+  if(!_wordTransitivityMap){
+    _wordTransitivityMap = {};
+    for(const w of EN_WORDS_DATA) if(w.transitivity) _wordTransitivityMap[w.en] = w.transitivity;
+  }
+  return _wordTransitivityMap[en] || null;
+}
 function pickWordSense(en, direction){
   if(overrides[en] && overrides[en].tr && overrides[en].tr.length){
     return {tr: overrides[en].tr, gloss: null, register: "neutral"};
@@ -2935,12 +2996,26 @@ function pickWordSense(en, direction){
       // Bij een op woordsoort gesplitst woord (bv. "fly__v" vs "fly__n") kan REVERSE_TR_INDEX onder
       // hetzelfde basiswoord meerdere, qua woordsoort VERSCHILLENDE opties bevatten (sinek=noun vs
       // uçmak=verb) -- dan moet de optie horend bij DEZE specifieke woordsoort gekozen worden, niet
-      // zomaar de eerste. Alleen als geen enkele optie matcht (of het woord niet gesplitst is, of de
-      // opties zijn onderling synoniemen van dezelfde woordsoort) valt dit terug op de oude, simpele
-      // "altijd de eerste (primaire) optie"-regel.
+      // zomaar de eerste. Als GEEN ENKELE optie de gevraagde woordsoort heeft (bv. "call" had ooit
+      // alleen een noun-optie terwijl de verb-vorm getest werd), mag er NOOIT een optie van een
+      // andere woordsoort als vervanging getoond worden -- dat toont dan een woord dat feitelijk niet
+      // bij de geteste betekenis hoort. In dat geval geldt dit net als "geen tr-en-tegenhanger bekend"
+      // (zie hieronder): null teruggeven, oefening valt terug op en-tr. Alleen als het woord ZELF geen
+      // woordsoort-info heeft (niet gesplitst) is de eerste optie een redelijke standaardkeuze.
       const wantedPos = wordPosOf(en);
-      const posMatch = wantedPos ? trEnOptions.find(o => o.pos === wantedPos) : null;
-      const chosen = posMatch || trEnOptions[0];
+      const wantedTransitivity = wordTransitivityOf(en);
+      if(wantedPos){
+        const candidates = trEnOptions.filter(o => o.pos === wantedPos);
+        // Als er meerdere kandidaten met dezelfde woordsoort zijn ÉN dit woord een transitivity-
+        // onderscheid heeft, moet die ook matchen (bv. değiştirmek vs değişmek, allebei "verb").
+        // Zonder zo'n onderscheid (verreweg de meeste woorden) is de eerste woordsoort-match voldoende.
+        const posMatch = (wantedTransitivity && candidates.length > 1)
+          ? candidates.find(o => o.transitivity === wantedTransitivity)
+          : candidates[0];
+        if(!posMatch) return null;
+        return {tr: [posMatch.tr], gloss: posMatch.gloss || null, note: posMatch.note || null, register: posMatch.register || "neutral"};
+      }
+      const chosen = trEnOptions[0];
       return {tr: [chosen.tr], gloss: chosen.gloss || null, note: chosen.note || null, register: chosen.register || "neutral"};
     }
     // Geen echte tr-en-tegenhanger bekend voor dit woord -> BEWUST geen terugval meer op de en-tr-data:
@@ -3193,6 +3268,12 @@ function pickNextItem(){
     return {...chosen, type:"word", direction};
   }
 
+  // Suffix-oefening: een kleine kans, alleen als er zowel een beheerst werkwoord als een beheerst
+  // grammatica-onderwerp is (zie canOfferSuffixDrill) -- geen eigen aandeel-instelling, dit is een
+  // incidentele variant binnen de gewone woord-beurt, niet een vierde, apart in te stellen oefentype.
+  if(bestType === "word" && canGenerate && canOfferSuffixDrill() && Math.random() < 0.15){
+    return {needsGeneration:true, kind:"suffix"};
+  }
   if(bestType === "sentence" && canGenerate) return {needsGeneration:true, kind:"sentence"};
   if(bestType === "question" && canGenerate) return {needsGeneration:true, kind:"question"};
 
@@ -4160,17 +4241,18 @@ async function renderPractice(){
   if(picked && picked.needsGeneration){
     const kind = picked.kind || "sentence";
     const isQ = kind === "question";
-    el("badge-type").textContent = isQ ? "question" : "sentence";
-    el("badge-type").className = "badge " + (isQ ? "badge-question" : "badge-sentence");
-    el("tr-word").textContent = isQ ? "🤖 AI is coming up with a question…" : "🤖 AI is generating a sentence…";
-    el("tr-word").className = "tr-word sentence";
+    const isSuffix = kind === "suffix";
+    el("badge-type").textContent = isSuffix ? "suffix" : (isQ ? "question" : "sentence");
+    el("badge-type").className = "badge " + (isSuffix ? "badge-word" : (isQ ? "badge-question" : "badge-sentence"));
+    el("tr-word").textContent = isSuffix ? "🤖 …" : (isQ ? "🤖 AI is coming up with a question…" : "🤖 AI is generating a sentence…");
+    el("tr-word").className = "tr-word" + (isSuffix ? "" : " sentence");
     el("level-fill").style.width = "0%";
     el("level-label").textContent = "please wait…";
     el("answer-instruction").querySelector("span").textContent = "";
     try{
-      picked = isQ ? await generateQuestion() : await generateSentence();
+      picked = isSuffix ? await generateSuffixDrill() : (isQ ? await generateQuestion() : await generateSentence());
     }catch(e){
-      showFeedback("wrong", "⚠️ Could not generate a " + (isQ ? "question" : "sentence") + ": " + e.message + ". Try again or continue with a word.");
+      showFeedback("wrong", "⚠️ Could not generate a " + (isSuffix ? "suffix exercise" : (isQ ? "question" : "sentence")) + ": " + e.message + ". Try again or continue with a word.");
       recordHistory("word");
       picked = null;
     }
@@ -4216,18 +4298,21 @@ async function renderPractice(){
   const isQuestion = currentItem.type === "question";
   const isWord = currentItem.type === "word";
   const isTrEn = isWord && currentItem.direction === "tr-en";
+  const isSuffix = currentItem.type === "suffix";
 
-  el("badge-type").textContent = isQuestion ? "question" : (isSentence ? "sentence" : (isTrEn ? "TR → EN" : "EN → TR"));
+  el("badge-type").textContent = isSuffix ? "suffix" : (isQuestion ? "question" : (isSentence ? "sentence" : (isTrEn ? "TR → EN" : "EN → TR")));
   el("badge-type").className = "badge " + (isQuestion ? "badge-question" : (isSentence ? "badge-sentence" : "badge-word"));
   el("btn-edit-flashcard").classList.toggle("hidden", !isWord);
   const wordEl = el("tr-word");
-  wordEl.textContent = (isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || baseEnOf(currentItem.en));
+  wordEl.textContent = isSuffix ? currentItem.prompt : ((isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || baseEnOf(currentItem.en)));
   currentItem.hintRevealed = false;
   wordEl.className = "tr-word" + ((isSentence||isQuestion) ? " sentence" : "");
 
   if(isWord){
     const cefr18 = wordCefrOf(currentItem.en);
     el("word-meta").textContent = wordMetaText(cefr18, currentItem.en, currentItem.note);
+  } else if(isSuffix){
+    el("word-meta").textContent = "conjugate this verb using a grammar pattern you've already mastered";
   } else {
     el("word-meta").textContent = "";
   }
@@ -4243,6 +4328,9 @@ async function renderPractice(){
   } else if(isSentence){
     instrEl.textContent = "✍️ Translate this Turkish sentence into English";
     instrEl.style.color = "var(--warn)";
+  } else if(isSuffix){
+    instrEl.textContent = "✍️ Type the correctly conjugated Turkish word";
+    instrEl.style.color = "var(--muted)";
   } else if(isTrEn){
     instrEl.textContent = "✍️ Translate this Turkish word into English";
     instrEl.style.color = "var(--muted)";
@@ -4312,6 +4400,10 @@ async function handleCheck(){
     await handleCheckQuestion(answer);
     return;
   }
+  if(currentItem.type === "suffix"){
+    await handleCheckSuffix(answer);
+    return;
+  }
 
   if(!answer){
     // leeg antwoord bij een los woord = "ik weet het niet", meteen als fout tellen, geen AI-call nodig
@@ -4353,6 +4445,29 @@ async function handleCheck(){
       addBtn.onclick = ()=> { promptAddTranslation(currentItem, answer); addBtn.textContent = "✅ Added"; addBtn.disabled = true; };
       el("post-actions").insertBefore(addBtn, el("btn-next"));
     }
+  }catch(e){
+    finalizeAnswer(false, "⚠️ Could not reach the AI: " + e.message + ". Answer counted as incorrect for now — you can dispute this.");
+  }
+}
+
+async function handleCheckSuffix(answer){
+  if(!answer){
+    finalizeAnswer(false, "❌<br>" + answerCompareLine("", currentItem.correct, false));
+    return;
+  }
+  if(normalize(answer) === normalize(currentItem.correct)){
+    finalizeAnswer(true, "✅");
+    return;
+  }
+  if(!hasKeyFor("word")){
+    finalizeAnswer(false, "❌<br>" + answerCompareLine(answer, currentItem.correct, false) + "<br><span class='muted'>Set a " + keyNameFor("word") + " API key to have other forms judged too, or dispute this result.</span>");
+    return;
+  }
+  showFeedback("pending", "🤖 AI is checking your answer…");
+  try{
+    const verdict = await gradeGrammarDrillAnswer({prompt: currentItem.prompt, correct: currentItem.correct, direction:"en-tr"}, answer);
+    setExplanation(verdict.uitleg);
+    finalizeAnswer(!!verdict.correct, (verdict.correct ? "✅" : "❌") + "<br>" + answerCompareLine(answer, currentItem.correct, !!verdict.correct));
   }catch(e){
     finalizeAnswer(false, "⚠️ Could not reach the AI: " + e.message + ". Answer counted as incorrect for now — you can dispute this.");
   }

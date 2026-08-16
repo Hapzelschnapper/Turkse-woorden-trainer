@@ -4101,7 +4101,8 @@
     "en": "change__v",
     "base": "change",
     "cefr": 0,
-    "pos": "verb"
+    "pos": "verb",
+    "transitivity": "transitive"
   },
   {
     "en": "channel",
@@ -29286,5 +29287,12 @@
     "en": "youngster",
     "cefr": 14,
     "pos": "noun"
+  },
+  {
+    "en": "change__vi",
+    "base": "change",
+    "cefr": 0,
+    "pos": "verb",
+    "transitivity": "intransitive"
   }
 ]
