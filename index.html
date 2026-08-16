@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.75</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.78</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -54,6 +54,44 @@
 
     <div class="card" id="no-key-warning" style="display:none;">
       <div class="muted">⚠️ No DeepSeek API key is set. Only answers already in the word list will be recognised, and no sentence exercises will be generated (those require AI). Go to <b>Settings</b> to add a key.</div>
+    </div>
+  </section>
+
+  <!-- ===================== SUFFIX TRAINER SCREEN =====================
+       Voorheen 15% kans binnen de gewone woord-oefeningen op het Practice-tabblad; op verzoek nu een
+       eigen tab, zodat vervoeging/suffix-oefeningen gericht en los van de gewone woord/zin/vraag-mix
+       geoefend kunnen worden. Zelfde onderliggende genereer-/beoordeellogica als voorheen
+       (generateSuffixDrill/gradeGrammarDrillAnswer), eigen voortgang per werkwoord+patroon-combinatie
+       blijft behouden (synthetic "suffix:<verb>:<topicKey>"-sleutel in LS_PROGRESS). -->
+  <section id="screen-suffixes" class="hidden">
+    <div class="card">
+      <div class="muted" style="margin-bottom:10px;">Conjugate an already-mastered verb using an already-mastered grammar pattern — practised here in isolation, separate from the regular word/sentence/question mix.</div>
+    </div>
+    <div class="card" id="suffix-card">
+      <div class="row space-between">
+        <span class="badge badge-word">suffix</span>
+      </div>
+      <div class="muted hidden" id="suf-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ Not enough mastered content yet — you need at least one verb AND one grammar topic at a good level before suffix drills can be generated. Keep practicing on the Practice tab first.</div>
+      <div id="suf-word" class="tr-word">…</div>
+      <div class="muted" id="suf-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
+      <div class="level-bar"><div class="level-bar-fill" id="suf-level-fill" style="width:0%"></div></div>
+      <div class="muted" id="suf-level-label" style="margin-top:4px;">level 0 / 10</div>
+
+      <div style="margin-top:16px;">
+        <div class="row space-between" style="margin-bottom:6px;font-weight:700;font-size:.85rem;"><span>✍️ Type the correctly conjugated Turkish word</span></div>
+        <input type="text" id="suf-answer-input" placeholder="Type the conjugated form…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn-primary" id="suf-btn-check" style="flex:1;">Check</button>
+        <button class="btn-secondary btn-small" id="suf-btn-skip">Skip</button>
+      </div>
+
+      <div id="suf-feedback-box"></div>
+      <div id="suf-explanation-box" class="muted hidden" style="margin-top:8px;font-size:.9rem;white-space:pre-line;"></div>
+
+      <div id="suf-post-actions" class="row wrap hidden" style="margin-top:12px;">
+        <button class="btn-primary btn-small" id="suf-btn-next" style="flex:1;">Next ▶</button>
+      </div>
     </div>
   </section>
 
@@ -317,7 +355,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.75</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.78</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -326,6 +364,7 @@
 
   <div class="tabbar">
     <button class="tab-btn active" data-tab="practice"><span class="ic">📝</span>Practice</button>
+    <button class="tab-btn" data-tab="suffixes"><span class="ic">🧩</span>Suffixes</button>
     <button class="tab-btn" data-tab="course"><span class="ic">🎓</span>Course</button>
     <button class="tab-btn" data-tab="words"><span class="ic">📖</span>Words</button>
     <button class="tab-btn" data-tab="stats"><span class="ic">📊</span>Stats</button>
@@ -1550,10 +1589,44 @@ function inCefrRangeEn(en){
    "to" ervoor (bv. "to meet" i.p.v. kaal "meet"), duidelijker herkenbaar als werkwoord — net als in
    een woordenboek. Modale/hulpwerkwoorden (can, must, ...) nemen geen "to" en blijven kaal.
    Een handmatige correctie (overrides[en].en, bv. "born" -> "to be born") heeft altijd voorrang. */
+// Of een gegeven basisvorm (bv. "name", "close") tot een SPLIT-groep behoort: meerdere onafhankelijk
+// bijgehouden termen (aparte "en"-sleutel, aparte score, vaak een compleet andere Turkse vertaling)
+// die toevallig dezelfde geschreven Engelse vorm delen (bv. "name__n"=isim vs "name__v"=adlandırmak).
+// 603 van zulke groepen in de huidige woordenlijst -- zonder duidelijke markering ziet een gebruiker
+// "name" een paar sessies later gewoon nogmaals verschijnen en denkt "dit heb ik al gedaan, mijn score
+// is zeker niet opgeslagen", terwijl het in werkelijkheid een andere, apart bijgehouden betekenis is
+// die nog nooit geoefend is. Werkwoorden zijn al enigszins te onderscheiden via de "to "-prefix
+// hieronder, maar niet-werkwoord-botsingen (bv. twee zelfstandignaamwoord-betekenissen, of een
+// bijvoeglijk naamwoord dat met een werkwoord botst) bleven volledig onzichtbaar identiek.
+let _baseSenseCountMap = null;
+function hasMultipleSenses(base){
+  if(!_baseSenseCountMap){
+    _baseSenseCountMap = {};
+    for(const w of EN_WORDS_DATA){
+      const b = w.base || w.en;
+      _baseSenseCountMap[b] = (_baseSenseCountMap[b] || 0) + 1;
+    }
+  }
+  return (_baseSenseCountMap[base] || 0) > 1;
+}
+let _wordDataByEn = null;
+function wordDataOf(en){
+  if(!_wordDataByEn){
+    _wordDataByEn = {};
+    for(const w of EN_WORDS_DATA) _wordDataByEn[w.en] = w;
+  }
+  return _wordDataByEn[en];
+}
+const POS_ABBR_TO_FULL = Object.fromEntries(Object.entries(WORD_CATEGORY_ABBR).map(([full, abbr]) => [abbr, full]));
 function displayEnglishWord(en){
   if(overrides[en] && overrides[en].en) return overrides[en].en;
   const base = baseEnOf(en);
-  return wordCategoryOf(en) === "v." ? `to ${base}` : base;
+  const pos = wordCategoryOf(en);
+  const w = wordDataOf(en);
+  const transitivity = w && w.transitivity; // enige huidige botsing van 2 werkwoord-sensen op dezelfde base ("change__v"/"change__vi") -- de "to "-prefix alleen onderscheidt die twee niet.
+  if(pos === "v.") return transitivity ? `to ${base} (${transitivity})` : `to ${base}`;
+  if(pos && hasMultipleSenses(base)) return `${base} (${POS_ABBR_TO_FULL[pos] || pos})`;
+  return base;
 }
 
 async function pickGrammarDrillBaseWords(){
@@ -3309,12 +3382,10 @@ function pickNextItem(){
     return {...chosen, type:"word", direction};
   }
 
-  // Suffix-oefening: een kleine kans, alleen als er zowel een beheerst werkwoord als een beheerst
-  // grammatica-onderwerp is (zie canOfferSuffixDrill) -- geen eigen aandeel-instelling, dit is een
-  // incidentele variant binnen de gewone woord-beurt, niet een vierde, apart in te stellen oefentype.
-  if(bestType === "word" && canGenerate && canOfferSuffixDrill() && Math.random() < 0.15){
-    return {needsGeneration:true, kind:"suffix"};
-  }
+  // Suffix-oefening (vervoeging/suffixen): sinds v2.76 een EIGEN tab i.p.v. een 15%-kans binnen de
+  // gewone woord-beurt hier -- zie screen-suffixes/renderSuffixPractice. Deze functie levert dus geen
+  // suffix-items meer op; canOfferSuffixDrill()/generateSuffixDrill() blijven bestaan, alleen voor die
+  // aparte tab.
   if(bestType === "sentence" && canGenerate) return {needsGeneration:true, kind:"sentence"};
   if(bestType === "question" && canGenerate) return {needsGeneration:true, kind:"question"};
 
@@ -4633,6 +4704,100 @@ function finalizeAnswer(correct, message){
   if(hasLikelyPhysicalKeyboard()) el("answer-input").focus(); // alleen auto-focus bij laptop/desktop, niet bij touch
 }
 
+/* ===================== SUFFIX TRAINER TAB =====================
+   Losstaand van de gewone Practice-lus hierboven (eigen DOM-elementen, eigen state) -- hergebruikt wel
+   dezelfde generatie-/beoordeelfuncties (generateSuffixDrill, gradeGrammarDrillAnswer) en dezelfde
+   voortgangsopslag (recordResult/getProgress op de synthetic "suffix:<verb>:<topicKey>"-sleutel), dus
+   eerder opgebouwde suffix-voortgang (van toen dit nog binnen Practice zat) blijft gewoon meetellen. */
+let currentSuffixItem = null;
+let suffixAnswered = false;
+
+async function renderSuffixPractice(){
+  suffixAnswered = false;
+  currentSuffixItem = null;
+  el("suf-feedback-box").innerHTML = "";
+  el("suf-explanation-box").classList.add("hidden");
+  el("suf-post-actions").classList.add("hidden");
+  el("suf-answer-input").value = "";
+  el("suf-answer-input").disabled = true;
+  el("suf-btn-check").disabled = true;
+  el("suf-btn-skip").disabled = true;
+
+  if(!canOfferSuffixDrill()){
+    el("suf-word").textContent = "—";
+    el("suf-word-meta").textContent = "";
+    el("suf-level-fill").style.width = "0%";
+    el("suf-level-label").textContent = "";
+    el("suf-empty-notice").classList.remove("hidden");
+    return;
+  }
+  el("suf-empty-notice").classList.add("hidden");
+  el("suf-word").textContent = "🤖 …";
+  el("suf-word-meta").textContent = "";
+  el("suf-level-fill").style.width = "0%";
+  el("suf-level-label").textContent = "please wait…";
+
+  try{
+    currentSuffixItem = await generateSuffixDrill();
+  }catch(e){
+    el("suf-word").textContent = "⚠️ Could not generate an exercise: " + e.message;
+    return;
+  }
+
+  el("suf-word").textContent = currentSuffixItem.prompt;
+  el("suf-word-meta").textContent = "conjugate this verb using a grammar pattern you've already mastered";
+  const p = getProgress(currentSuffixItem.en);
+  el("suf-level-fill").style.width = (p.level*10) + "%";
+  el("suf-level-label").textContent = fmtLevel(p);
+  el("suf-answer-input").disabled = false;
+  el("suf-btn-check").disabled = false;
+  el("suf-btn-skip").disabled = false;
+  setTimeout(()=> el("suf-answer-input").focus(), 50);
+}
+
+function finalizeSuffixAnswer(correct, message){
+  suffixAnswered = true;
+  recordResult(currentSuffixItem.en, correct);
+  el("suf-feedback-box").innerHTML = `<div class="feedback ${correct ? "correct" : "wrong"}">${message}</div>`;
+  el("suf-post-actions").classList.remove("hidden");
+  const p = getProgress(currentSuffixItem.en);
+  el("suf-level-fill").style.width = (p.level*10) + "%";
+  el("suf-level-label").textContent = fmtLevel(p);
+  el("suf-answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken
+  if(hasLikelyPhysicalKeyboard()) el("suf-answer-input").focus();
+}
+
+async function handleCheckSuffixTab(){
+  if(!currentSuffixItem || suffixAnswered) return;
+  const answer = el("suf-answer-input").value.trim();
+  el("suf-btn-check").disabled = true;
+  el("suf-answer-input").disabled = true;
+
+  if(!answer){
+    finalizeSuffixAnswer(false, "❌<br>" + answerCompareLine("", currentSuffixItem.correct, false));
+    return;
+  }
+  if(normalize(answer) === normalize(currentSuffixItem.correct)){
+    finalizeSuffixAnswer(true, "✅");
+    return;
+  }
+  if(!hasKeyFor("word")){
+    finalizeSuffixAnswer(false, "❌<br>" + answerCompareLine(answer, currentSuffixItem.correct, false) + "<br><span class='muted'>Set a " + keyNameFor("word") + " API key to have other forms judged too.</span>");
+    return;
+  }
+  el("suf-feedback-box").innerHTML = `<div class="feedback pending">🤖 AI is checking your answer…</div>`;
+  try{
+    const verdict = await gradeGrammarDrillAnswer({prompt: currentSuffixItem.prompt, correct: currentSuffixItem.correct, direction:"en-tr"}, answer);
+    if(verdict.uitleg){
+      el("suf-explanation-box").classList.remove("hidden");
+      el("suf-explanation-box").textContent = verdict.uitleg;
+    }
+    finalizeSuffixAnswer(!!verdict.correct, (verdict.correct ? "✅" : "❌") + "<br>" + answerCompareLine(answer, currentSuffixItem.correct, !!verdict.correct));
+  }catch(e){
+    finalizeSuffixAnswer(false, "⚠️ Could not reach the AI: " + e.message + ". Answer counted as incorrect for now.");
+  }
+}
+
 /* Voegt een Turks antwoord (bij een en-tr-oefening) permanent toe als extra geaccepteerde vertaling. */
 function promptAddTranslation(item, answer){
   if(!custom[item.en]) custom[item.en] = {tr:[]};
@@ -5412,6 +5577,7 @@ function startLessonAction(){
 function switchTab(tab){
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
   el("screen-practice").classList.toggle("hidden", tab!=="practice");
+  el("screen-suffixes").classList.toggle("hidden", tab!=="suffixes");
   el("screen-course").classList.toggle("hidden", tab!=="course");
   el("screen-words").classList.toggle("hidden", tab!=="words");
   el("screen-stats").classList.toggle("hidden", tab!=="stats");
@@ -5419,6 +5585,9 @@ function switchTab(tab){
   if(tab==="stats") renderStats();
   if(tab==="course") renderCourseTab();
   if(tab==="words") renderWordsTab();
+  if(tab==="suffixes"){
+    if(!currentSuffixItem) renderSuffixPractice(); // niet opnieuw genereren als er al een opgave actief is
+  }
   if(tab==="practice"){
     if(!currentItem) renderPractice(); // niet opnieuw genereren als er al een opgave actief is
     else renderDueCount(); // due-telling kan intussen zijn veranderd (tijdsverloop, of via een andere tab geoefend)
@@ -5590,25 +5759,21 @@ const MIX_TRIANGLE = {
   sentences: {x: 280, y: 240},
   questions: {x: 150, y: 20},
 };
-// Dezelfde drie hulplijntjes als in de SVG-markup hierboven (zijde-midden -> middelpunt) -- gebruikt
-// voor een lichte magneetwerking tijdens het slepen: alleen als de dot al dicht bij zo'n lijn zit,
-// wordt 'ie er precies op vastgezet, zodat de 50%-/middelpuntstand makkelijker exact te raken is.
-const MIX_GUIDE_LINES = [
-  {x1: 85,  y1: 130, x2: 150, y2: 166.7, kind: "guide"}, // Woorden-Vragen-zijde -> middelpunt
-  {x1: 215, y1: 130, x2: 150, y2: 166.7, kind: "guide"}, // Vragen-Zinnen-zijde -> middelpunt
-  {x1: 150, y1: 240, x2: 150, y2: 166.7, kind: "guide"}, // Woorden-Zinnen-zijde -> middelpunt
+// Magneetdoelen: UITSLUITEND 4 losse punten, geen lijnen/zijden meer. (1) het absolute middelpunt
+// (33%/33%/33%), en (2) de drie punten waar de hulplijnen (zijde-midden -> middelpunt, zie de
+// gestippelde lijnen in de SVG-markup hierboven) de buitenzijden van de driehoek snijden -- dat zijn
+// exact de zijde-middens zelf (bv. 50% Woorden/50% Vragen/0% Zinnen). Eerder was ook het hele
+// lijnstuk (elke hulplijn EN elke buitenzijde in de volle lengte) magnetisch; dat is losgelaten --
+// nu trekt alleen deze 4 exacte punten nog aan.
+const MIX_SNAP_POINTS = [
+  {x: 150,  y: 166.7, kind: "center"},   // absoluut middelpunt (33/33/33)
+  {x: 85,   y: 130,   kind: "edge-mid"}, // midden Woorden-Vragen-zijde (50/0/50)
+  {x: 215,  y: 130,   kind: "edge-mid"}, // midden Vragen-Zinnen-zijde (0/50/50)
+  {x: 150,  y: 240,   kind: "edge-mid"}, // midden Woorden-Zinnen-zijde (50/50/0)
 ];
-// De drie buitenzijden van de driehoek zelf -- ook een magneetpunt/trilmoment waard (0% van de
-// tegenoverliggende categorie exact raken is net zo'n nuttig ankerpunt als het middelpunt).
-const MIX_EDGES = [
-  {x1: MIX_TRIANGLE.words.x,     y1: MIX_TRIANGLE.words.y,     x2: MIX_TRIANGLE.sentences.x, y2: MIX_TRIANGLE.sentences.y, kind: "edge"}, // onderzijde: Woorden-Zinnen (0% Vragen)
-  {x1: MIX_TRIANGLE.words.x,     y1: MIX_TRIANGLE.words.y,     x2: MIX_TRIANGLE.questions.x, y2: MIX_TRIANGLE.questions.y, kind: "edge"}, // linkerzijde: Woorden-Vragen (0% Zinnen)
-  {x1: MIX_TRIANGLE.sentences.x, y1: MIX_TRIANGLE.sentences.y, x2: MIX_TRIANGLE.questions.x, y2: MIX_TRIANGLE.questions.y, kind: "edge"}, // rechterzijde: Zinnen-Vragen (0% Woorden)
-];
-const MIX_SNAP_TARGETS = [...MIX_GUIDE_LINES, ...MIX_EDGES];
 // Magneetafstand in SVG-eenheden (viewBox 0 0 300 260). Twee drempels i.p.v. één: AANTREKKEN gebeurt
 // pas heel dichtbij (MIX_SNAP_ACQUIRE), maar zodra je eenmaal vastzit, laat het pas los bij een grotere
-// afstand (MIX_SNAP_RELEASE) -- die hysterese zorgt dat de dot op de lijn "blijft plakken" zolang je in
+// afstand (MIX_SNAP_RELEASE) -- die hysterese zorgt dat de dot op het punt "blijft plakken" zolang je in
 // de buurt sleept, in plaats van bij elke kleine trilling van je vinger/cursor meteen weer los te laten
 // en terug te vallen op de rauwe aanwijzerpositie (dat voelde uit als "geen magneet, gewoon volgen").
 const MIX_SNAP_ACQUIRE = 8;
@@ -5619,29 +5784,21 @@ const MIX_SNAP_RELEASE = 16;
 // zichtbaar boven je vingertop i.p.v. eronder verdwenen. Met muis/pen (cursor blokkeert niets) blijft
 // dit uit. 40 bleek in de praktijk nog te weinig (dot dook nog deels onder de vingertop weg) -> groter.
 // Belangrijk: deze lift wordt VOOR de magneetdetectie toegepast (zie wireMixTriangle), zodat het
-// magneeteffect het getilde/zichtbare bolletje aan een lijn plakt, niet de rauwe vingerpositie eronder.
+// magneeteffect het getilde/zichtbare bolletje aan een punt plakt, niet de rauwe vingerpositie eronder.
 const MIX_TOUCH_LIFT = 64;
-function closestPointOnSegment(px, py, x1, y1, x2, y2){
-  const dx = x2-x1, dy = y2-y1;
-  const lenSq = dx*dx + dy*dy;
-  let t = lenSq ? ((px-x1)*dx + (py-y1)*dy) / lenSq : 0;
-  t = Math.max(0, Math.min(1, t));
-  const x = x1 + t*dx, y = y1 + t*dy;
-  return {x, y, dist: Math.hypot(px-x, py-y)};
-}
-// Vindt het dichtstbijzijnde magneetdoel (hulplijn of buitenzijde), met HYSTERESE: het doel waar je nu
-// al aan vastzit (currentIdx) krijgt de ruimere MIX_SNAP_RELEASE-drempel, alle andere doelen (incl. een
-// nieuw doel aantrekken) krijgen de krappere MIX_SNAP_ACQUIRE-drempel. Zonder dit verschil voelde het
-// magneeteffect niet als "vasthouden" aan, maar als gewoon de rauwe aanwijzerpositie blijven volgen,
-// omdat elke kleine trilling net buiten de (te krappe, symmetrische) drempel viel en de snap losliet.
+// Vindt het dichtstbijzijnde magneetpunt, met HYSTERESE: het doel waar je nu al aan vastzit (currentIdx)
+// krijgt de ruimere MIX_SNAP_RELEASE-drempel, alle andere doelen (incl. een nieuw doel aantrekken)
+// krijgen de krappere MIX_SNAP_ACQUIRE-drempel. Zonder dit verschil voelde het magneeteffect niet als
+// "vasthouden" aan, maar als gewoon de rauwe aanwijzerpositie blijven volgen, omdat elke kleine
+// trilling net buiten de (te krappe, symmetrische) drempel viel en de snap losliet.
 function findMixSnapTarget(px, py, currentIdx){
   let best = null, bestIdx = -1;
-  MIX_SNAP_TARGETS.forEach((seg, i)=>{
-    const c = closestPointOnSegment(px, py, seg.x1, seg.y1, seg.x2, seg.y2);
+  MIX_SNAP_POINTS.forEach((pt, i)=>{
+    const dist = Math.hypot(px - pt.x, py - pt.y);
     const threshold = (i === currentIdx) ? MIX_SNAP_RELEASE : MIX_SNAP_ACQUIRE;
-    if(c.dist <= threshold && (!best || c.dist < best.dist)){ best = c; bestIdx = i; }
+    if(dist <= threshold && (!best || dist < best.dist)){ best = {x: pt.x, y: pt.y, dist}; bestIdx = i; }
   });
-  return best ? {x: best.x, y: best.y, idx: bestIdx, kind: MIX_SNAP_TARGETS[bestIdx].kind} : null;
+  return best ? {x: best.x, y: best.y, idx: bestIdx, kind: MIX_SNAP_POINTS[bestIdx].kind} : null;
 }
 function vibrateLight(){
   // Stille no-op op apparaten/browsers zonder Vibration API (bv. iOS Safari) -- geen feature-detect-gedoe nodig
@@ -5836,6 +5993,21 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-next").addEventListener("click", renderPractice);
   el("btn-dispute").addEventListener("click", disputeAnswer);
   el("btn-show-explanation").addEventListener("click", toggleExplanation);
+
+  el("suf-btn-check").addEventListener("click", handleCheckSuffixTab);
+  el("suf-btn-next").addEventListener("click", renderSuffixPractice);
+  el("suf-btn-skip").addEventListener("click", ()=>{
+    if(!currentSuffixItem || suffixAnswered) return;
+    recordResult(currentSuffixItem.en, false);
+    renderSuffixPractice();
+  });
+  el("suf-answer-input").addEventListener("keydown", e=>{
+    if(e.key === "Enter"){
+      e.preventDefault();
+      if(!suffixAnswered) handleCheckSuffixTab(); else renderSuffixPractice();
+    }
+  });
+
   el("words-sort").addEventListener("change", renderWordsTab);
   el("words-filter").addEventListener("change", renderWordsTab);
   el("words-cefr-filter").addEventListener("change", renderWordsTab);
