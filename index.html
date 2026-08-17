@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.87</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.88</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -351,7 +351,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.87</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.88</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -2191,6 +2191,7 @@ async function generateSuffixDrill(){
   const sys = `Je maakt een "suffix"-oefening: de gebruiker moet ÉÉN Turks woord vormen door het werkwoord "${verbTr}" (Engels: "${verbBaseEn}") toe te passen op het grammaticale patroon "${topic.label}".
 Patroonomschrijving: ${topic.hint}
 Geef een kort, ondubbelzinnig Engels zinnetje dat PRECIES deze ene vervoegde vorm oproept (bv. "he will run", "I couldn't come", "if you read", "while eating") -- geen volledige zin met andere woorden erbij, puur de vervoeging van dit ene werkwoord in dit patroon.
+KRITIEK: sommige Turkse tijden/patronen klinken in kaal Engels bijna identiek aan een ANDER Turks patroon, met name de present continuous (-iyor) versus de aorist/brede tegenwoordige tijd (-ir/-er, gewoonte/algemeen). "Do you drink?" is bijvoorbeeld ECHT dubbelzinnig: het is de natuurlijke Engelse vertaling van zowel "İçer misin?" (aorist, aanbod/gewoonte) als "İçiyor musun?" (present continuous, dit moment) -- zoiets NOOIT als prompt gebruiken. Als het patroon dat je moet oproepen present continuous is, voeg dan ALTIJD een expliciete tijdsaanduiding toe die dat ondubbelzinnig maakt ("right now", "at this moment", "currently", bv. "Are you drinking right now?"). Als het patroon aorist/gewoonte is, voeg dan juist een gewoonte-aanduiding toe ("usually", "in general", "as a rule", bv. "Do you usually drink coffee?"). Pas dezelfde voorzichtigheid toe op elk ander tijden-paar dat in kaal Engels door elkaar zou kunnen lopen (bv. -di vs -miş verleden tijd: voeg toe of het zelf gezien is dan wel gehoord/afgeleid).
 Geef de correcte Turkse vervoeging (normaal gesproken één woord; alleen als het patroon dat grammaticaal vereist -- bv. bij "değil" of een hulpwerkwoord-constructie -- een vaste, korte woordgroep).
 Geef ook een STAP-VOOR-STAP MORFEEM-OPBOUW ("breakdown"): een array van de KALE werkwoordstam (zonder -mek/-mak, bv. "gel" niet "gelmek") tot en met de volledige vervoegde vorm, waarbij ELKE volgende stap EXACT ÉÉN achtervoegsel/morfeem meer bevat dan de vorige. Elke stap krijgt "form" (de Turkse vorm tot en met dat achtervoegsel) en "meaning" (de Engelse betekenis van de vorm OP DIE STAP, zodat de betekenisverandering door dat ene toegevoegde achtervoegsel duidelijk wordt). De eerste stap is altijd de kale stam met zijn kale betekenis (bv. "gel" -> "come"); de laatste stap is EXACT gelijk aan "correct". Gebruik zoveel stappen als het patroon daadwerkelijk vereist (meestal 2-4) -- verzin geen kunstmatige tussenstap die geen echte taalkundige eenheid is.
 Antwoord in JSON.`;
@@ -2200,7 +2201,7 @@ Antwoord in JSON.`;
     input_schema: {
       type: "object",
       properties: {
-        prompt: {type:"string", description:"Kort Engels zinnetje dat precies deze ene vervoegde vorm oproept."},
+        prompt: {type:"string", description:"Kort, ONDUBBELZINNIG Engels zinnetje dat precies deze ene vervoegde vorm oproept -- bij tijden die in kaal Engels door elkaar kunnen lopen (m.n. present continuous vs. aorist/gewoonte) MOET een expliciete tijdsaanduiding ('right now'/'usually'/etc.) worden toegevoegd."},
         correct: {type:"string", description:"De correcte Turkse vervoegde vorm."},
         breakdown: {
           type: "array",
@@ -2232,7 +2233,8 @@ Antwoord in JSON.`;
 // ontbrak/verkeerd was, naast de morfeem-opbouw (breakdown) die hierboven al gegenereerd is.
 async function gradeSuffixDrillAnswer(drill, answer){
   const sys = `Je beoordeelt of het Turkse antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (gebruiker moest deze Engelse frase naar de correct vervoegde Turkse vorm vertalen). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat het antwoord fout wordt. Reken dit soort verschil dus NOOIT fout. NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en reken kleine tikfouten met een ondubbelzinnige bedoeling goed.
-Als het antwoord FOUT is: leg in het Engels (max 2 zinnen), rechtstreeks tegen de gebruiker gericht ("you"), PRECIES uit wat het verschil is tussen hun antwoord "${answer}" en de correcte vorm "${drill.correct}" -- welk achtervoegsel ontbreekt, verkeerd is, in de verkeerde volgorde staat, of welke klinkerharmonie-/medeklinkerverzachtingsfout er is. Als het antwoord GOED is, laat "diff" leeg.
+LET OP OP EEN MOGELIJK DUBBELZINNIGE PROMPT: als het Engelse zinnetje "${drill.prompt}" zelf, in kaal Engels, EIGENLIJK op meer dan één Turkse tijd/patroon zou kunnen slaan (het klassieke geval: een Engelse zin zonder expliciete tijdsaanduiding kan zowel de present continuous ALS de aorist/gewoonte-lezing dekken, bv. "Do you drink?" kan zowel "İçer misin?" als "İçiyor musun?" betekenen) -- en het antwoord van de gebruiker is een grammaticaal correcte vervoeging van HETZELFDE werkwoord die bij die ANDERE, even legitieme lezing hoort, reken dat dan GOED, ook al wijkt het af van "${drill.correct}". Dit is de dubbelzinnigheid van de prompt, niet een fout van de gebruiker.
+Als het antwoord daadwerkelijk FOUT is: leg in het Engels (max 2 zinnen), rechtstreeks tegen de gebruiker gericht ("you"), PRECIES uit wat het verschil is tussen hun antwoord "${answer}" en de correcte vorm "${drill.correct}" -- welk achtervoegsel ontbreekt, verkeerd is, in de verkeerde volgorde staat, of welke klinkerharmonie-/medeklinkerverzachtingsfout er is. Als het antwoord GOED is, laat "diff" leeg.
 Antwoord in JSON.`;
   const schema = {
     name: "beoordeel_suffix_antwoord",
