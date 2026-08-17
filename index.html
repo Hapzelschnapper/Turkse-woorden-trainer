@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.85</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.87</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -88,10 +88,6 @@
       <div id="suf-feedback-box"></div>
       <div id="suf-diff-box" class="muted hidden" style="margin-top:8px;font-size:.9rem;white-space:pre-line;"></div>
       <div id="suf-breakdown-box" class="hidden" style="margin-top:10px;"></div>
-
-      <div id="suf-post-actions" class="row wrap hidden" style="margin-top:12px;">
-        <button class="btn-primary btn-small" id="suf-btn-next" style="flex:1;">Next ▶</button>
-      </div>
     </div>
   </section>
 
@@ -355,7 +351,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.85</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.87</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -4920,10 +4916,10 @@ async function renderSuffixPractice(){
   el("suf-diff-box").textContent = "";
   el("suf-breakdown-box").classList.add("hidden");
   el("suf-breakdown-box").innerHTML = "";
-  el("suf-post-actions").classList.add("hidden");
   el("suf-answer-input").value = "";
   el("suf-answer-input").disabled = true;
   el("suf-btn-check").disabled = true;
+  el("suf-btn-check").textContent = "Check"; // terug naar "Check" -- zie finalizeSuffixAnswer voor de omzetting naar "Continue ▶"
   el("suf-btn-skip").disabled = true;
 
   if(!canOfferSuffixDrill()){
@@ -4974,7 +4970,12 @@ function finalizeSuffixAnswer(correct, diffText){
     el("suf-breakdown-box").innerHTML = breakdownHtml;
     el("suf-breakdown-box").classList.remove("hidden");
   }
-  el("suf-post-actions").classList.remove("hidden");
+  // Eén knop voor zowel indienen als doorgaan: na het antwoord wordt "Check" een "Continue ▶"-knop
+  // (zie de click-handler bij suf-btn-check, die op suffixAnswered checkt) i.p.v. een aparte Next-knop.
+  // Skip is dan niet meer van toepassing (er is al geantwoord), dus die blijft uitgeschakeld.
+  el("suf-btn-check").textContent = "Continue ▶";
+  el("suf-btn-check").disabled = false;
+  el("suf-btn-skip").disabled = true;
   el("suf-answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken
   if(hasLikelyPhysicalKeyboard()) el("suf-answer-input").focus();
 }
@@ -4987,6 +4988,45 @@ function foldTurkishDiacritics(s){
   return String(s || "")
     .replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g")
     .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c");
+}
+// Standaard Levenshtein-afstand (aantal invoegingen/verwijderingen/vervangingen om van a naar b te
+// komen) -- iteratieve DP met één rij i.p.v. een volledige matrix, ruim voldoende voor de korte
+// woordvergelijkingen hier.
+function levenshteinDistance(a, b){
+  if(a === b) return 0;
+  if(!a.length) return b.length;
+  if(!b.length) return a.length;
+  let prev = Array.from({length: b.length + 1}, (_, i) => i);
+  for(let i = 1; i <= a.length; i++){
+    const cur = [i];
+    for(let j = 1; j <= b.length; j++){
+      const cost = a[i-1] === b[j-1] ? 0 : 1;
+      cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + cost);
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+// Hoeveel edits we als "typo" tolereren, geschaald op de lengte van het doelwoord. Een VASTE drempel
+// (bv. altijd 1) zou bij lange, sterk-vervoegde Turkse vormen (agglutinatie -> vaak 10+ tekens) al snel
+// te streng zijn; een vast PERCENTAGE zou bij een kort woord juist te soepel zijn (2 letters verschil op
+// een woord van 3 is zomaar een ander, écht fout antwoord, geen tikfout). Vandaar een staffel:
+// <4 tekens: geen tolerantie, 4-6: 1 edit, 7-11: 2 edits, 12+: 3 edits.
+function typoTolerance(len){
+  if(len < 4) return 0;
+  if(len <= 6) return 1;
+  if(len <= 11) return 2;
+  return 3;
+}
+// Woordafstand wordt bepaald NA het accenten-plat-vouwen hierboven, zodat een tikfout en een fout accent
+// niet dubbel tellen (en de aparte, specifieke accent-melding hierboven blijft de eerst-geprobeerde,
+// preciezere verklaring als het antwoord ECHT alleen in accenten afwijkt).
+function isTypoOf(answer, correct){
+  const a = foldTurkishDiacritics(normalize(answer));
+  const b = foldTurkishDiacritics(normalize(correct));
+  if(a === b) return false;
+  const dist = levenshteinDistance(a, b);
+  return dist > 0 && dist <= typoTolerance(b.length);
 }
 async function handleCheckSuffixTab(){
   if(!currentSuffixItem || suffixAnswered) return;
@@ -5006,6 +5046,12 @@ async function handleCheckSuffixTab(){
   // maar wel met een melding van de correcte (geaccentueerde) spelling, zodat je die alsnog leert.
   if(foldTurkishDiacritics(normalize(answer)) === foldTurkishDiacritics(normalize(currentSuffixItem.correct))){
     finalizeSuffixAnswer(true, `Correct — just watch the accents: the correct spelling is "${currentSuffixItem.correct}".`);
+    return;
+  }
+  // Kleine tikfouten (1 letter verschil op een kort woord, tot 3 op een lang vervoegd woord) worden ook
+  // lokaal (zonder AI-aanroep) goedgekeurd, weer met de correcte spelling erbij zodat je 'm alsnog leert.
+  if(isTypoOf(answer, currentSuffixItem.correct)){
+    finalizeSuffixAnswer(true, `Correct (small typo tolerated) — the correct spelling is "${currentSuffixItem.correct}".`);
     return;
   }
   // BUGFIX: dit gebruikte hasKeyFor("word"), maar gradeSuffixDrillAnswer/generateSuffixDrill hierboven
@@ -6222,8 +6268,11 @@ document.addEventListener("DOMContentLoaded", ()=>{
   el("btn-dispute").addEventListener("click", disputeAnswer);
   el("btn-show-explanation").addEventListener("click", toggleExplanation);
 
-  el("suf-btn-check").addEventListener("click", handleCheckSuffixTab);
-  el("suf-btn-next").addEventListener("click", renderSuffixPractice);
+  // Eén knop voor Check ÉN Continue: kijkt bij elke klik naar suffixAnswered om te bepalen welke van
+  // de twee acties nu bedoeld is -- zelfde patroon als de Enter-key-handler hieronder al gebruikte.
+  el("suf-btn-check").addEventListener("click", ()=>{
+    if(!suffixAnswered) handleCheckSuffixTab(); else renderSuffixPractice();
+  });
   el("suf-btn-skip").addEventListener("click", ()=>{
     if(!currentSuffixItem || suffixAnswered) return;
     renderSuffixPractice();
