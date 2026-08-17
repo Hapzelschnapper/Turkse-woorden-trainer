@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.84</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.85</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -355,7 +355,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.84</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.85</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -4963,7 +4963,9 @@ async function renderSuffixPractice(){
 function finalizeSuffixAnswer(correct, diffText){
   suffixAnswered = true;
   el("suf-feedback-box").innerHTML = `<div class="feedback ${correct ? "correct" : "wrong"}">${correct ? "✅ Correct!" : "❌ Not quite."}</div>`;
-  if(!correct && diffText){
+  // diffText wordt nu ook bij een GOED antwoord getoond (bv. de accentfoutjes-melding hierboven) --
+  // niet meer alleen bij fout.
+  if(diffText){
     el("suf-diff-box").textContent = "📝 " + diffText;
     el("suf-diff-box").classList.remove("hidden");
   }
@@ -4977,6 +4979,15 @@ function finalizeSuffixAnswer(correct, diffText){
   if(hasLikelyPhysicalKeyboard()) el("suf-answer-input").focus();
 }
 
+// Vouwt Turkse diakritische tekens plat naar hun ASCII-basisletter (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c), zodat
+// bv. "yapabiliyorum" en "yapabiliyorüm" als hetzelfde gelden. Alleen gebruikt voor de suffixtrainer se
+// lokale (niet-AI) vergelijking hieronder -- de globale normalize() blijft ongewijzigd, want elders in de
+// app (losse woordoefeningen) is een fout accent wel degelijk relevant (bv. voor het vroege alfabet-doel).
+function foldTurkishDiacritics(s){
+  return String(s || "")
+    .replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g")
+    .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c");
+}
 async function handleCheckSuffixTab(){
   if(!currentSuffixItem || suffixAnswered) return;
   const answer = el("suf-answer-input").value.trim();
@@ -4989,6 +5000,12 @@ async function handleCheckSuffixTab(){
   }
   if(normalize(answer) === normalize(currentSuffixItem.correct)){
     finalizeSuffixAnswer(true, "");
+    return;
+  }
+  // Accentfoutjes (bv. u i.p.v. ü) worden hier goedgekeurd zonder een AI-aanroep nodig te hebben --
+  // maar wel met een melding van de correcte (geaccentueerde) spelling, zodat je die alsnog leert.
+  if(foldTurkishDiacritics(normalize(answer)) === foldTurkishDiacritics(normalize(currentSuffixItem.correct))){
+    finalizeSuffixAnswer(true, `Correct — just watch the accents: the correct spelling is "${currentSuffixItem.correct}".`);
     return;
   }
   // BUGFIX: dit gebruikte hasKeyFor("word"), maar gradeSuffixDrillAnswer/generateSuffixDrill hierboven
