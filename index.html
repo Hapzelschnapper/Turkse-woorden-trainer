@@ -11,6 +11,17 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<!-- Laadscherm: zichtbaar totdat alle externe databestanden (words.json, vocab-lessons.json,
+     vocab-data.json, reverse-tr-index.json, lessons.json) via async fetch binnen zijn (zie
+     loadAllData() in het hoofdscript). Vervangt de vroegere synchrone XHR-laadmethode, die de
+     hele pagina blokkeerde zonder enige visuele feedback. -->
+<div id="loading-overlay" style="position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0d1720;color:#9fb2c0;text-align:center;padding:24px;">
+  <div style="font-size:2.2rem;">🇹🇷</div>
+  <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
+  <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
+  <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
+</div>
+<style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
@@ -77,7 +88,7 @@
       <div class="muted" id="suf-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
 
       <div style="margin-top:16px;">
-        <div class="row space-between" style="margin-bottom:6px;font-weight:700;font-size:.85rem;"><span>✍️ Type the correctly conjugated Turkish word</span></div>
+        <div class="row space-between" style="margin-bottom:6px;font-weight:700;font-size:.85rem;"><span id="suf-answer-instruction">✍️ Type the correctly conjugated Turkish word</span></div>
         <input type="text" id="suf-answer-input" placeholder="Type the conjugated form…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
       </div>
       <div class="row" style="margin-top:10px;">
@@ -485,26 +496,26 @@
 </div>
 
 <script>
-// Synchrone laad-helper voor de externe databestanden (vocab-data.json, words.json, lessons.json,
-// vocab-lessons.json) -- bewust SYNCHROON (XMLHttpRequest i.p.v. fetch) zodat de rest van dit hele
-// script, dat overal van deze data uitgaat vanaf regel 1, ongewijzigd kan blijven werken. Vereist een
-// echte server (GitHub Pages, niet file://) zodat deze bestanden opgehaald kunnen worden.
-function loadJSONSync(url){
-  const xhr = new XMLHttpRequest();
-  xhr.open("GET", url, false); // false = synchroon
-  xhr.send(null);
-  if(xhr.status !== 200 && xhr.status !== 0) throw new Error("Kon " + url + " niet laden (status " + xhr.status + ")");
-  return JSON.parse(xhr.responseText);
+// Asynchrone laad-helper voor de externe databestanden (words.json, vocab-lessons.json,
+// vocab-data.json, reverse-tr-index.json, lessons.json) -- gebruikt fetch() i.p.v. de vroegere
+// SYNCHRONE XMLHttpRequest, die de hele pagina blokkeerde (geen rendering, geen interactie)
+// totdat alle bestanden binnen waren, zonder enige visuele feedback voor de gebruiker. De
+// bestanden worden nu parallel opgehaald door loadAllData() (verderop, na alle relevante
+// functiedefinities) en pas daarna wordt de rest van de app geïnitialiseerd -- zie het
+// laadscherm (#loading-overlay) en de DOMContentLoaded-handler onderaan dit bestand.
+function loadJSONAsync(url){
+  return fetch(url).then(res=>{
+    if(!res.ok) throw new Error("Kon " + url + " niet laden (status " + res.status + ")");
+    return res.json();
+  });
 }
-const EN_WORDS_DATA = loadJSONSync("words.json"); // Oxford 3000/5000, {en, cefr} per item — no pre-translated Turkish
+let EN_WORDS_DATA; // Oxford 3000/5000, {en, cefr} per item — no pre-translated Turkish; wordt gevuld door loadAllData()
 // Voor woorden die zijn gesplitst op woordsoort (bv. "close__v"/"close__adj" voor het werkwoord
 // resp. bijvoeglijk naamwoord "close") bevat words.json een apart "base"-veld met de schone,
 // leesbare tekst ("close"). Voor alle niet-gesplitste woorden is er geen "base"-veld en is het
 // woord zelf al schoon. baseEnOf() geeft ALTIJD de tekst die aan een mens getoond of aan de AI
 // als natuurlijke taal doorgegeven mag worden -- gebruik dit overal waar het woord daadwerkelijk
 // zichtbaar wordt, in tegenstelling tot de kale `en`-sleutel die voor opslag/lookup blijft dienen.
-// Vroeg in het bestand gedefinieerd (direct na EN_WORDS_DATA) omdat LESSONS verderop al meteen bij
-// het laden van de pagina wordt opgebouwd en deze functie gebruikt.
 let _baseEnMap = null;
 function baseEnOf(en){
   if(!en) return en;
@@ -516,12 +527,7 @@ function baseEnOf(en){
 }
 </script>
 <script>
-const VOCAB_LESSON_DATA = loadJSONSync("vocab-lessons.json"); // {title, cefr, words:[...]} per vocabulary lesson, 28-word batches grouped by level+POS
-const EMBEDDED_CURATED_TR = loadJSONSync("vocab-data.json"); // { [en]: {senses:[{gloss,pos,tr,register,note}]} } — gecureerd op basis van de Oxford 5000 en-tr-lijst
-// { [en]: [{tr, gloss, pos, register, note}] } — reverse-lookup vanaf de APART gecureerde tr-en-lijst
-// (oxford5000_tr-en.csv): voor de tr-en-oefenrichting, zodat de Turkse vorm/gloss/register uit de
-// eigen tr-en-curatie komt i.p.v. "achterstevoren" uit de en-tr-vertaalkolom afgeleid te worden.
-const REVERSE_TR_INDEX = loadJSONSync("reverse-tr-index.json");
+let VOCAB_LESSON_DATA, EMBEDDED_CURATED_TR, REVERSE_TR_INDEX; // gevuld door loadAllData(); zie commentaar daar voor wat elk bevat
 </script>
 <!-- Losse, statische data (geen fetch nodig): definieert de global GRAMMAR_TOPICS vóór het
      hoofdscript hieronder, dat deze taxonomie gebruikt. -->
@@ -550,6 +556,7 @@ const LS_ADAPTIVE_WINDOW = "turks_adaptive_v1";        // array van laatste N co
 const LS_COST      = "turks_cost_v1";          // { byModel: {...} } — bevestigd/gesynct totaal
 const LS_COST_PENDING = "turks_cost_pending_v1"; // { byModel: {...} } — lokaal verbruik nog niet samengevoegd met cloud
 const LS_LESSON_GRADE_OVERRIDES = "turks_lesson_grade_overrides_v1"; // { [lessonId]: grade 0-10 } — handmatig ingesteld persoonlijk minimumcijfer per les ("ik beheers dit al")
+const LS_ACTIVE_TAB = "turks_active_tab_v1"; // laatst geopende tabblad (practice/suffixes/course/words/stats/settings) — puur lokale UI-voorkeur, bewust NIET via saveJSON() (dus niet gesynct naar andere apparaten) en niet meegeteld in de cost-triggerende opslagsleutels
 
 function loadJSON(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
@@ -643,7 +650,7 @@ let newWords = loadJSON(LS_NEWWORDS, {});
 }
 let grammar = loadJSON(LS_GRAMMAR, {});
 let trCache = loadJSON(LS_TRCACHE, {});
-let curatedTr = {...loadJSON(LS_CURATED_TR, {}), ...(typeof EMBEDDED_CURATED_TR !== "undefined" ? EMBEDDED_CURATED_TR : {})}; // ingebedde data is nu de volledige, verse curatie (alle 4932 woorden) en wint bij overlap; de lokale/gesyncte laag was bedoeld voor de oude (inmiddels verwijderde) bulk-translate-knop en dient alleen nog als vangnet voor woorden die de ingebedde data zelf niet kent
+let curatedTr = loadJSON(LS_CURATED_TR, {}); // basislaag; wordt in loadAllData() aangevuld met EMBEDDED_CURATED_TR (heeft voorrang bij overlap) zodra die geladen is — ingebedde data is de volledige, verse curatie (alle 4932 woorden), de lokale/gesyncte laag was bedoeld voor de oude (inmiddels verwijderde) bulk-translate-knop en dient alleen nog als vangnet voor woorden die de ingebedde data zelf niet kent
 let lessonProgress = loadJSON(LS_LESSONS, {});
 /* Eenmalige reparatie van "gaten" in lesson-voortgang: door eerdere iteraties van de ontgrendellogica
    (deze cursus is meermaals herbouwd) kan het voorkomen dat een latere les als voltooid staat terwijl
@@ -1061,7 +1068,7 @@ function cefrGuidance(idx){
   return `Niveau ${major} (${sub}) van het Europese CEFR-referentiekader: ${CEFR_LEVEL_GUIDANCE[idx]} ${CEFR_SUB_NOTE[sub]}`;
 }
 
-const GRAMMAR_LESSONS = loadJSONSync("lessons.json");
+let GRAMMAR_LESSONS; // gevuld door loadAllData()
 
 /* Bouwt de volledige cursus: de 238 auto-gegenereerde vocabulaire-lessen (28-woordbatches per
    niveau+woordsoort) geïnterleaved met de 11 grammaticale oefenlessen (de eerste 2, pure leesstof,
@@ -1153,10 +1160,34 @@ function buildFullLessonList(){
   for(let i=0;i<vocabLessons.length;i++) result.push(vocabLessons[i]);
   return result;
 }
-const LESSONS = buildFullLessonList();
-const GRAMMAR_TRACK = LESSONS.filter(l => l.track === "grammar");
-const VOCAB_TRACK = LESSONS.filter(l => l.track === "vocab");
-repairLessonProgressGaps();
+let LESSONS = [], GRAMMAR_TRACK = [], VOCAB_TRACK = [];
+
+/* Haalt alle 5 externe databestanden parallel op (i.p.v. de vroegere synchrone XHR-laadmethode die
+   de pagina blokkeerde) en initialiseert vervolgens alles wat van die data afhangt: de curatedTr-merge,
+   de opgebouwde lessenlijst (LESSONS/GRAMMAR_TRACK/VOCAB_TRACK) en de reparatie van eventuele gaten
+   daarin. Wordt vóór de rest van de app-initialisatie aangeroepen door de DOMContentLoaded-handler
+   onderaan dit bestand, terwijl #loading-overlay zichtbaar is. */
+async function loadAllData(){
+  const [enWords, vocabLessons, embeddedCuratedTr, reverseTrIndex, grammarLessons] = await Promise.all([
+    loadJSONAsync("words.json"),           // Oxford 3000/5000, {en, cefr} per item
+    loadJSONAsync("vocab-lessons.json"),   // {title, cefr, words:[...]} per vocabulary lesson, 28-word batches grouped by level+POS
+    loadJSONAsync("vocab-data.json"),      // { [en]: {senses:[{gloss,pos,tr,register,note}]} } — gecureerd op basis van de Oxford 5000 en-tr-lijst
+    loadJSONAsync("reverse-tr-index.json"),// { [en]: [{tr, gloss, pos, register, note}] } — reverse-lookup vanaf de APART gecureerde tr-en-lijst
+    loadJSONAsync("lessons.json"),
+  ]);
+  EN_WORDS_DATA = enWords;
+  VOCAB_LESSON_DATA = vocabLessons;
+  EMBEDDED_CURATED_TR = embeddedCuratedTr;
+  REVERSE_TR_INDEX = reverseTrIndex;
+  GRAMMAR_LESSONS = grammarLessons;
+
+  curatedTr = {...curatedTr, ...EMBEDDED_CURATED_TR};
+
+  LESSONS = buildFullLessonList();
+  GRAMMAR_TRACK = LESSONS.filter(l => l.track === "grammar");
+  VOCAB_TRACK = LESSONS.filter(l => l.track === "vocab");
+  repairLessonProgressGaps();
+}
 
 function trackListOf(track){ return track === "grammar" ? GRAMMAR_TRACK : VOCAB_TRACK; }
 // Vindt de eerste nog-niet-voltooide les BINNEN een spoor (-1 als het hele spoor klaar is)
@@ -1921,14 +1952,33 @@ Antwoord in JSON.`;
   const breakdown = (Array.isArray(parsed.breakdown) && parsed.breakdown.length)
     ? parsed.breakdown.filter(s => s && s.form && s.meaning)
     : [{form: parsed.correct, meaning: parsed.prompt}]; // veiligheidsnet: geen (bruikbare) breakdown terug -> toon tenminste de eindvorm
-  return {type:"suffix", en: `suffix:${verb.en}:${topic.key}`, direction:"en-tr", prompt: parsed.prompt, correct: parsed.correct, verbEn: verb.en, verbTr, topicKey: topic.key, breakdown};
+
+  // Richting willekeurig kiezen -- de AI levert altijd zowel de Engelse aanwijzing (parsed.prompt) als
+  // de vervoegde Turkse vorm (parsed.correct), dus welke van de twee getoond wordt en welke als
+  // antwoord verwacht wordt, is puur een kwestie van welke kant we omdraaien. Bij "tr-en" moet de
+  // gebruiker de BETEKENIS van de al-getoonde Turkse vorm herkennen en in het Engels vertalen i.p.v.
+  // 'm zelf te produceren -- dus een ander soort vaardigheid (begrip) dan bij "en-tr" (productie).
+  const englishCue = parsed.prompt;
+  const turkishForm = parsed.correct;
+  const direction = Math.random() < 0.5 ? "tr-en" : "en-tr";
+  const prompt = direction === "tr-en" ? turkishForm : englishCue;
+  const correct = direction === "tr-en" ? englishCue : turkishForm;
+  return {type:"suffix", en: `suffix:${verb.en}:${topic.key}`, direction, prompt, correct, englishCue, turkishForm, verbEn: verb.en, verbTr, topicKey: topic.key, breakdown};
 }
 
 // Beoordeelt een suffix-antwoord: alleen goed/fout, GEEN algemene uitleg -- bij een fout antwoord
 // specifiek het VERSCHIL met de eigen (foute) invoer, zodat de gebruiker precies ziet welk achtervoegsel
 // ontbrak/verkeerd was, naast de morfeem-opbouw (breakdown) die hierboven al gegenereerd is.
+// Werkt voor beide richtingen: bij "en-tr" (standaard) typt de gebruiker de Turkse vervoeging; bij
+// "tr-en" wordt de Turkse vorm al getoond en typt de gebruiker de Engelse betekenis ervan -- dan wordt
+// beoordeeld of de vertaling het juiste tijd/aspect/persoon van díe specifieke vorm correct weergeeft,
+// niet of het exact dezelfde bewoording is als de oorspronkelijke Engelse aanwijzing.
 async function gradeSuffixDrillAnswer(drill, answer){
-  const sys = `Je beoordeelt of het Turkse antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (gebruiker moest deze Engelse frase naar de correct vervoegde Turkse vorm vertalen). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat het antwoord fout wordt. Reken dit soort verschil dus NOOIT fout. NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en reken kleine tikfouten met een ondubbelzinnige bedoeling goed.
+  const sys = drill.direction === "tr-en"
+    ? `Je beoordeelt of de Engelse vertaling van een gebruiker de betekenis correct weergeeft van de Turkse vorm "${drill.prompt}" (het werkwoord "${drill.verbTr}" vervoegd met het patroon "${drill.topicKey}"). Een voorbeeldvertaling is "${drill.correct}", maar andere bewoordingen die hetzelfde tijd/aspect/persoon/betekenis correct weergeven zijn ook goed (bv. "he will come" en "he's going to come" zijn beide correct voor een toekomstige tijd). Reken het antwoord FOUT als het een ander tijd/aspect/persoon weergeeft dan de Turkse vorm daadwerkelijk uitdrukt (bv. tegenwoordige tijd i.p.v. toekomstige tijd, of de verkeerde persoon).
+Als het antwoord daadwerkelijk FOUT is: leg in het Engels (max 2 zinnen), rechtstreeks tegen de gebruiker gericht ("you"), uit wat er mis is met hun vertaling "${answer}" t.o.v. wat "${drill.prompt}" daadwerkelijk betekent. Als het antwoord GOED is, laat "diff" leeg.
+Antwoord in JSON.`
+    : `Je beoordeelt of het Turkse antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (gebruiker moest deze Engelse frase naar de correct vervoegde Turkse vorm vertalen). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat het antwoord fout wordt. Reken dit soort verschil dus NOOIT fout. NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en reken kleine tikfouten met een ondubbelzinnige bedoeling goed.
 LET OP OP EEN MOGELIJK DUBBELZINNIGE PROMPT: als het Engelse zinnetje "${drill.prompt}" zelf, in kaal Engels, EIGENLIJK op meer dan één Turkse tijd/patroon zou kunnen slaan (het klassieke geval: een Engelse zin zonder expliciete tijdsaanduiding kan zowel de present continuous ALS de aorist/gewoonte-lezing dekken, bv. "Do you drink?" kan zowel "İçer misin?" als "İçiyor musun?" betekenen) -- en het antwoord van de gebruiker is een grammaticaal correcte vervoeging van HETZELFDE werkwoord die bij die ANDERE, even legitieme lezing hoort, reken dat dan GOED, ook al wijkt het af van "${drill.correct}". Dit is de dubbelzinnigheid van de prompt, niet een fout van de gebruiker.
 Als het antwoord daadwerkelijk FOUT is: leg in het Engels (max 2 zinnen), rechtstreeks tegen de gebruiker gericht ("you"), PRECIES uit wat het verschil is tussen hun antwoord "${answer}" en de correcte vorm "${drill.correct}" -- welk achtervoegsel ontbreekt, verkeerd is, in de verkeerde volgorde staat, of welke klinkerharmonie-/medeklinkerverzachtingsfout er is. Als het antwoord GOED is, laat "diff" leeg.
 Antwoord in JSON.`;
@@ -4664,9 +4714,16 @@ async function renderSuffixPractice(){
   // "etmek", "yapmak", "hareket etmek") boven de Engelse aanwijzing, i.p.v. de gebruiker te laten
   // gokken/onthouden welk Turks werkwoord er precies bij het Engelse prompt-zinnetje hoort. Het
   // werkwoord komt nog steeds uit de beheerst-pool (masteredVerbsForSuffixDrill, ongewijzigd).
-  el("suf-verb-label").innerHTML = `Verb: <b>${escapeHtml(currentSuffixItem.verbTr)}</b> (${escapeHtml(displayEnglishWord(currentSuffixItem.verbEn))})`;
+  // Onderstreept (naast vetgedrukt) zodat het te vervoegen werkwoord in één oogopslag duidelijk is,
+  // ongeacht de richting van de oefening.
+  const isTrEn = currentSuffixItem.direction === "tr-en";
+  el("suf-verb-label").innerHTML = `Verb: <u><b>${escapeHtml(currentSuffixItem.verbTr)}</b></u> (<u>${escapeHtml(displayEnglishWord(currentSuffixItem.verbEn))}</u>)`;
   el("suf-word").textContent = currentSuffixItem.prompt;
-  el("suf-word-meta").textContent = "conjugate the verb above using a grammar pattern you've already mastered";
+  el("suf-word-meta").textContent = isTrEn
+    ? "translate the meaning of the Turkish form above into English"
+    : "conjugate the verb above using a grammar pattern you've already mastered";
+  el("suf-answer-instruction").textContent = isTrEn ? "✍️ Type the English translation" : "✍️ Type the correctly conjugated Turkish word";
+  el("suf-answer-input").placeholder = isTrEn ? "Type the English translation…" : "Type the conjugated form…";
   el("suf-answer-input").disabled = false;
   el("suf-btn-check").disabled = false;
   el("suf-btn-skip").disabled = false;
@@ -4752,26 +4809,33 @@ async function handleCheckSuffixTab(){
   const answer = el("suf-answer-input").value.trim();
   el("suf-btn-check").disabled = true;
   el("suf-answer-input").disabled = true;
+  const isTrEn = currentSuffixItem.direction === "tr-en";
 
   if(!answer){
-    finalizeSuffixAnswer(false, `You left this blank — the correct form is "${currentSuffixItem.correct}".`);
+    finalizeSuffixAnswer(false, `You left this blank — ${isTrEn ? `the correct translation is "${currentSuffixItem.correct}"` : `the correct form is "${currentSuffixItem.correct}"`}.`);
     return;
   }
   if(normalize(answer) === normalize(currentSuffixItem.correct)){
     finalizeSuffixAnswer(true, "");
     return;
   }
-  // Accentfoutjes (bv. u i.p.v. ü) worden hier goedgekeurd zonder een AI-aanroep nodig te hebben --
-  // maar wel met een melding van de correcte (geaccentueerde) spelling, zodat je die alsnog leert.
-  if(foldTurkishDiacritics(normalize(answer)) === foldTurkishDiacritics(normalize(currentSuffixItem.correct))){
-    finalizeSuffixAnswer(true, `Correct — just watch the accents: the correct spelling is "${currentSuffixItem.correct}".`);
-    return;
-  }
-  // Kleine tikfouten (1 letter verschil op een kort woord, tot 3 op een lang vervoegd woord) worden ook
-  // lokaal (zonder AI-aanroep) goedgekeurd, weer met de correcte spelling erbij zodat je 'm alsnog leert.
-  if(isTypoOf(answer, currentSuffixItem.correct)){
-    finalizeSuffixAnswer(true, `Correct (small typo tolerated) — the correct spelling is "${currentSuffixItem.correct}".`);
-    return;
+  // De onderstaande twee snelle, AI-loze controles (accentfoutjes en kleine tikfouten) zijn specifiek
+  // gericht op Turkse tekst -- bij "tr-en" typt de gebruiker juist Engels, dus die slaan we over en
+  // gaan we direct door naar de AI-beoordeling, die bij een vertaling toch al parafrasering moet
+  // tolereren (zie gradeSuffixDrillAnswer) en dus de enige zinvolle manier is om dit te beoordelen.
+  if(!isTrEn){
+    // Accentfoutjes (bv. u i.p.v. ü) worden hier goedgekeurd zonder een AI-aanroep nodig te hebben --
+    // maar wel met een melding van de correcte (geaccentueerde) spelling, zodat je die alsnog leert.
+    if(foldTurkishDiacritics(normalize(answer)) === foldTurkishDiacritics(normalize(currentSuffixItem.correct))){
+      finalizeSuffixAnswer(true, `Correct — just watch the accents: the correct spelling is "${currentSuffixItem.correct}".`);
+      return;
+    }
+    // Kleine tikfouten (1 letter verschil op een kort woord, tot 3 op een lang vervoegd woord) worden ook
+    // lokaal (zonder AI-aanroep) goedgekeurd, weer met de correcte spelling erbij zodat je 'm alsnog leert.
+    if(isTypoOf(answer, currentSuffixItem.correct)){
+      finalizeSuffixAnswer(true, `Correct (small typo tolerated) — the correct spelling is "${currentSuffixItem.correct}".`);
+      return;
+    }
   }
   // BUGFIX: dit gebruikte hasKeyFor("word"), maar gradeSuffixDrillAnswer/generateSuffixDrill hierboven
   // roepen intern altijd callAI("sentence", ...) aan -- dus deze sleutel-check keek naar de VERKEERDE
@@ -4779,7 +4843,7 @@ async function handleCheckSuffixTab(){
   // hebt), werd de suffixtrainer hier ten onrechte geblokkeerd, terwijl de generatie zelf allang via
   // Anthropic liep. Nu consistent op dezelfde categorie ("sentence") als de rest van de suffixtrainer.
   if(!hasKeyFor("sentence")){
-    finalizeSuffixAnswer(false, `Your answer was "${answer}" — the correct form is "${currentSuffixItem.correct}". Set a ${keyNameFor("sentence")} API key to have other valid forms judged too.`);
+    finalizeSuffixAnswer(false, `Your answer was "${answer}" — ${isTrEn ? `the correct translation is "${currentSuffixItem.correct}"` : `the correct form is "${currentSuffixItem.correct}"`}. Set a ${keyNameFor("sentence")} API key to have other valid forms judged too.`);
     return;
   }
   el("suf-feedback-box").innerHTML = `<div class="feedback pending">🤖 AI is checking your answer…</div>`;
@@ -5568,6 +5632,7 @@ function startLessonAction(){
 }
 
 function switchTab(tab){
+  localStorage.setItem(LS_ACTIVE_TAB, tab); // onthouden zodat een refresh niet terugspringt naar "practice"
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
   el("screen-practice").classList.toggle("hidden", tab!=="practice");
   el("screen-suffixes").classList.toggle("hidden", tab!=="suffixes");
@@ -5947,7 +6012,23 @@ function updatePeakIndicator(){
     : "Off-peak hours per DeepSeek (outside 1:00-4:00 and 6:00-10:00 UTC) — normal pricing.";
 }
 
-document.addEventListener("DOMContentLoaded", ()=>{
+document.addEventListener("DOMContentLoaded", async ()=>{
+  // Databestanden (words.json, vocab-lessons.json, vocab-data.json, reverse-tr-index.json,
+  // lessons.json) worden nu async opgehaald i.p.v. via een pagina-blokkerende synchrone XHR.
+  // Het laadscherm (#loading-overlay, zie vlak na <body>) blijft zichtbaar totdat dit klaar is;
+  // bij een netwerkfout krijgt de gebruiker een duidelijke melding + "Try again"-knop i.p.v. een
+  // pagina die stil blijft hangen of halverwege een crash geeft door ontbrekende data.
+  try{
+    await loadAllData();
+  }catch(e){
+    el("loading-overlay-text").textContent = "⚠️ Couldn't load the app data: " + e.message;
+    el("loading-spinner").classList.add("hidden");
+    const retryBtn = el("loading-retry-btn");
+    retryBtn.classList.remove("hidden");
+    retryBtn.addEventListener("click", ()=> location.reload());
+    return; // rest van de initialisatie hangt allemaal af van de zojuist mislukte data-load
+  }
+
   document.querySelectorAll(".tab-btn").forEach(b=>{
     b.addEventListener("click", ()=> switchTab(b.dataset.tab));
   });
@@ -6191,11 +6272,15 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
   initSettingsUI();
   restoreActiveSessions();
+  // Herstel het laatst geopende tabblad i.p.v. altijd op "practice" te starten (bv. na een refresh).
+  const savedTab = localStorage.getItem(LS_ACTIVE_TAB);
+  const initialTab = ["practice","suffixes","course","words","stats","settings"].includes(savedTab) ? savedTab : "practice";
   if(syncConfigured()){
-    syncPullNow(false).then(renderPractice);
+    syncPullNow(false).then(()=> switchTab(initialTab));
   } else {
-    renderPractice();
+    switchTab(initialTab);
   }
+  el("loading-overlay").classList.add("hidden");
   updatePeakIndicator();
   setInterval(updatePeakIndicator, 60000);
   setInterval(()=>{ if(settings.apiKey) fetchDeepSeekBalance(true); }, 60000);

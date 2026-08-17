@@ -1,6 +1,6 @@
 // Turkse grammatica-taxonomie voor Türkçe Öğren.
 // Uitgesplitst uit index.html zodat dit los gecached kan worden en index.html overzichtelijk
-// blijft. Wordt vóór het hoofdscript ingeladen via <script src="grammar-topics.js"></script>,
+// blijft. Wordt vóór het hoofdscript ingeladen via een script-tag met src="grammar-topics.js",
 // dus GRAMMAR_TOPICS staat al klaar als global tegen de tijd dat het hoofdscript het gebruikt.
 /* ===================== GRAMMATICA-TAXONOMIE ===================== */
 // Vaste lijst Turkse grammaticale onderwerpen (A1 t/m C1/C2), die de app zelf kan volgen
