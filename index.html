@@ -25,14 +25,14 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.89</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.90</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
     <div class="card" id="practice-card">
       <div class="row space-between">
         <span id="badge-type" class="badge badge-word">word</span>
-        <span class="muted" id="due-count" style="font-size:.78rem;"></span>
+        <div class="muted" id="due-count" style="font-size:.78rem;text-align:right;line-height:1.35;"></div>
       </div>
       <div class="muted hidden" id="range-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ No words are due for review in your selected CEFR range right now — showing the least practiced word in range instead.</div>
       <div id="tr-word" class="tr-word">…</div>
@@ -362,7 +362,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.89</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-17 v2.90</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -3216,7 +3216,7 @@ async function getOrFetchTranslation(en){
 
 // Aantal woorden dat binnen het ingestelde CEFR-bereik daadwerkelijk "due" is (al eerder getoond ÉN
 // het herhalingsmoment is verstreken) -- puur informatief label op het hoofdscherm, telt bewust GEEN
-// nog-nooit-getoonde woorden mee (die zijn "nieuw", niet "te herhalen").
+// nog-nooit-getoonde woorden mee (die zijn "nieuw", niet "te herhalen" -- zie countNewWords hieronder).
 function countDueWords(){
   const now = Date.now();
   const unlockedEns = unlockedWordSet();
@@ -3226,9 +3226,24 @@ function countDueWords(){
     return p.reps > 0 && p.due <= now;
   }).length;
 }
+// Aantal woorden binnen het ingestelde CEFR-bereik dat nog NOOIT getoond is -- de tegenhanger van
+// countDueWords hierboven. Hergebruikt getIntroducibleWords() (dezelfde pool die ook daadwerkelijk als
+// "nieuw woord" gekozen wordt) zodat dit getal en de praktijk nooit uit elkaar kunnen lopen.
+function countNewWords(){
+  return getIntroducibleWords().length;
+}
+// Toont twee losse regels i.p.v. één enkel getal: hoeveel woorden nog nieuw zijn (nog nooit getoond,
+// binnen bereik) en hoeveel al eerder getoonde woorden nu due zijn voor herhaling. Voorheen liet dit
+// alleen het due-getal zien, wat de indruk kon wekken dat de telling niet klopte -- in de praktijk
+// worden namelijk óók (juist als eerste, want niveau 0 = "zwakst") nieuwe woorden geoefend, die in die
+// ene due-teller nergens in terugkwamen.
 function renderDueCount(){
-  const n = countDueWords();
-  el("due-count").textContent = n > 0 ? `${n} word${n===1?"":"s"} to review` : "";
+  const newCount = countNewWords();
+  const dueCount = countDueWords();
+  const lines = [];
+  if(newCount > 0) lines.push(`${newCount} new word${newCount===1?"":"s"}`);
+  if(dueCount > 0) lines.push(`${dueCount} word${dueCount===1?"":"s"} to review`);
+  el("due-count").innerHTML = lines.map(l => `<div>${l}</div>`).join("");
 }
 
 function pickNextItem(){
@@ -5783,10 +5798,7 @@ function updateBulkTranslateStatus(){
 function updateCefrUnlockedInfo(){
   const elI = el("cefr-unlocked-info");
   if(!elI) return;
-  const words = baseWordList();
-  const neverShown = words.filter(w => getProgress(w.en).reps === 0);
-  const reachable = getIntroducibleWords().length;
-  elI.textContent = `${reachable} new word(s) available to introduce from your current lesson.`;
+  elI.textContent = `${countNewWords()} new word(s) available in your current CEFR range.`;
 }
 
 function updateAdaptiveLabels(){
@@ -6161,7 +6173,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     el(`${prefix}-min-select`).addEventListener("change", ()=> applyCefrRange(prefix, minKey, maxKey, parseInt(el(`${prefix}-min-select`).value,10), settings[maxKey], "min", onChange));
     el(`${prefix}-max-select`).addEventListener("change", ()=> applyCefrRange(prefix, minKey, maxKey, settings[minKey], parseInt(el(`${prefix}-max-select`).value,10), "max", onChange));
   }
-  wireCefrRangeControl("cefr", "cefrMin", "cefrMax", updateCefrUnlockedInfo);
+  wireCefrRangeControl("cefr", "cefrMin", "cefrMax", ()=>{ updateCefrUnlockedInfo(); renderDueCount(); });
   wireCefrRangeControl("sent-complexity", "sentenceComplexityMin", "sentenceComplexityMax");
   el("adaptive-enabled").addEventListener("change", ()=>{
     settings.adaptiveEnabled = el("adaptive-enabled").checked;
