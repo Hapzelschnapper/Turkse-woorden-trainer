@@ -25,7 +25,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.90</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.93</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -33,6 +33,16 @@
       <div class="row space-between">
         <span id="badge-type" class="badge badge-word">word</span>
         <div class="muted" id="due-count" style="font-size:.78rem;text-align:right;line-height:1.35;"></div>
+      </div>
+      <div class="row space-between hidden" id="mix-new-words-row" style="margin-top:6px;font-size:.78rem;">
+        <label class="muted" style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="mix-new-words-toggle" style="width:16px;height:16px;">
+          Mix in new words
+        </label>
+        <div class="row hidden" id="mix-new-words-dial-row" style="gap:6px;align-items:center;">
+          <input type="range" id="mix-new-words-dial" min="1" max="5" step="1" value="2" style="width:90px;">
+          <span class="muted" id="mix-new-words-dial-label" style="min-width:44px;">2 / 5</span>
+        </div>
       </div>
       <div class="muted hidden" id="range-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ No words are due for review in your selected CEFR range right now — showing the least practiced word in range instead.</div>
       <div id="tr-word" class="tr-word">…</div>
@@ -362,7 +372,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-17 v2.90</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-17 v2.93</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -557,6 +567,7 @@ const LS_COST      = "turks_cost_v1";          // { byModel: {...} } — bevesti
 const LS_COST_PENDING = "turks_cost_pending_v1"; // { byModel: {...} } — lokaal verbruik nog niet samengevoegd met cloud
 const LS_LESSON_GRADE_OVERRIDES = "turks_lesson_grade_overrides_v1"; // { [lessonId]: grade 0-10 } — handmatig ingesteld persoonlijk minimumcijfer per les ("ik beheers dit al")
 const LS_ACTIVE_TAB = "turks_active_tab_v1"; // laatst geopende tabblad (practice/suffixes/course/words/stats/settings) — puur lokale UI-voorkeur, bewust NIET via saveJSON() (dus niet gesynct naar andere apparaten) en niet meegeteld in de cost-triggerende opslagsleutels
+const LS_WORD_MIX_COUNTER = "turks_word_mix_counter_v1"; // simpele oplopende teller (nooit gereset/afgekapt), gebruikt als counter % 5 om exact settings.newWordsPer5 op elke 5 woordoefeningen te garanderen (zie pickNextItem) i.p.v. een schattend gemiddelde
 
 function loadJSON(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
@@ -619,6 +630,13 @@ function pickSentenceComplexityLevel(){
 }
 if(settings.questionPercent === undefined) settings.questionPercent = 0;
 if(settings.adaptiveEnabled === undefined) settings.adaptiveEnabled = false;
+// Of nieuwe (nog nooit getoonde) woorden meegemengd worden in de reguliere woord-pool op het
+// hoofdscherm, en zo ja in welke verhouding (X per 5 woordoefeningen) -- zie pickNextItem. Zonder dit
+// domineerden nieuwe woorden de praktijk altijd volledig (ze staan op niveau 0, dus gelden als
+// "zwakst" en komen dus als eerste aan de beurt) totdat ze allemaal een keer gezien waren; met deze
+// instelling kan de gebruiker dat temperen. Standaard aan, met een gematigde verhouding.
+if(settings.mixNewWords === undefined) settings.mixNewWords = true;
+if(settings.newWordsPer5 === undefined) settings.newWordsPer5 = 2;
 if(settings.adaptiveThreshold === undefined) settings.adaptiveThreshold = 60;
 if(settings.anthropicApiKey === undefined) settings.anthropicApiKey = "";
 if(settings.proxyUrl === undefined) settings.proxyUrl = "";
@@ -678,6 +696,7 @@ function repairLessonProgressGaps(){
 let checkupState = null;  // state machine van de nieuwe adaptieve trapsgewijze kennischeck (of null)
 let skillPracticeState = null; // { lesson, results:[] } — gerichte oefensessie op precies 1 les (of null)
 let adaptiveWindow = loadJSON(LS_ADAPTIVE_WINDOW, []); // laatste N (correct/fout) van reguliere oefeningen
+let wordMixCounter = loadJSON(LS_WORD_MIX_COUNTER, 0); // oplopende teller voor de nieuw/herhaling-verhouding, zie settings.mixNewWords
 // Kleine in-memory buffer (niet persistent, reset bij herladen) met de laatst gegenereerde TR-zinnen/
 // vragen -- meegegeven aan de AI als "vermijd dit" lijst, puur om te voorkomen dat opeenvolgende
 // oefeningen sterk op elkaar lijken. Bewust klein (RECENT_SENTENCES_MAX) en niet opgeslagen: dit is
@@ -1975,8 +1994,10 @@ Antwoord in JSON.`;
 // niet of het exact dezelfde bewoording is als de oorspronkelijke Engelse aanwijzing.
 async function gradeSuffixDrillAnswer(drill, answer){
   const sys = drill.direction === "tr-en"
-    ? `Je beoordeelt of de Engelse vertaling van een gebruiker de betekenis correct weergeeft van de Turkse vorm "${drill.prompt}" (het werkwoord "${drill.verbTr}" vervoegd met het patroon "${drill.topicKey}"). Een voorbeeldvertaling is "${drill.correct}", maar andere bewoordingen die hetzelfde tijd/aspect/persoon/betekenis correct weergeven zijn ook goed (bv. "he will come" en "he's going to come" zijn beide correct voor een toekomstige tijd). Reken het antwoord FOUT als het een ander tijd/aspect/persoon weergeeft dan de Turkse vorm daadwerkelijk uitdrukt (bv. tegenwoordige tijd i.p.v. toekomstige tijd, of de verkeerde persoon).
-Als het antwoord daadwerkelijk FOUT is: leg in het Engels (max 2 zinnen), rechtstreeks tegen de gebruiker gericht ("you"), uit wat er mis is met hun vertaling "${answer}" t.o.v. wat "${drill.prompt}" daadwerkelijk betekent. Als het antwoord GOED is, laat "diff" leeg.
+    ? `Je beoordeelt of de Engelse vertaling van een gebruiker de betekenis correct weergeeft van de Turkse vorm "${drill.prompt}" (het werkwoord "${drill.verbTr}" vervoegd met het patroon "${drill.topicKey}"). Een voorbeeldvertaling is "${drill.correct}", maar andere bewoordingen die hetzelfde tijd/aspect/persoon correct weergeven zijn OOK goed (bv. "he will come" en "he's going to come" zijn beide correct voor een toekomstige tijd).
+BELANGRIJK: het voorbeeld "${drill.correct}" kan een expliciet verduidelijkend woordje bevatten zoals "usually"/"right now"/"in general" -- dat woordje stond er destijds ALLEEN bij om de Engelse aanwijzing zelf ondubbelzinnig te maken (zodat die niet zowel als present continuous als aorist gelezen kon worden). Bij het beoordelen van de vertaling van de gebruiker is zo'n woordje NOOIT verplicht: een kale eenvoudige tegenwoordige tijd ("I hear") is een volledig correcte vertaling van een aorist-vorm, een kale "is/are + -ing" is een volledig correcte vertaling van -iyor, enzovoort. Reken een antwoord dus NOOIT fout omdat het woordje als "usually" of "right now" ontbreekt, zolang de gekozen Engelse tijdsvorm zelf (simple present vs. present continuous vs. simple future, etc.) bij de Turkse vorm past.
+Reken het antwoord alleen FOUT als het daadwerkelijk een ANDERE tijd/aspect/persoon weergeeft dan de Turkse vorm uitdrukt (bv. tegenwoordige tijd i.p.v. toekomstige tijd, of de verkeerde persoon) -- niet om ontbrekende nuance-woordjes of stilistische verschillen.
+Als het antwoord daadwerkelijk FOUT is: leg in het Engels (max 2 zinnen, geen tegenstrijdige redenering), rechtstreeks tegen de gebruiker gericht ("you"), BEKNOPT uit wat er mis is met hun vertaling "${answer}" t.o.v. wat "${drill.prompt}" daadwerkelijk betekent. Als het antwoord GOED is, laat "diff" leeg.
 Antwoord in JSON.`
     : `Je beoordeelt of het Turkse antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (gebruiker moest deze Engelse frase naar de correct vervoegde Turkse vorm vertalen). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat het antwoord fout wordt. Reken dit soort verschil dus NOOIT fout. NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en reken kleine tikfouten met een ondubbelzinnige bedoeling goed.
 LET OP OP EEN MOGELIJK DUBBELZINNIGE PROMPT: als het Engelse zinnetje "${drill.prompt}" zelf, in kaal Engels, EIGENLIJK op meer dan één Turkse tijd/patroon zou kunnen slaan (het klassieke geval: een Engelse zin zonder expliciete tijdsaanduiding kan zowel de present continuous ALS de aorist/gewoonte-lezing dekken, bv. "Do you drink?" kan zowel "İçer misin?" als "İçiyor musun?" betekenen) -- en het antwoord van de gebruiker is een grammaticaal correcte vervoeging van HETZELFDE werkwoord die bij die ANDERE, even legitieme lezing hoort, reken dat dan GOED, ook al wijkt het af van "${drill.correct}". Dit is de dubbelzinnigheid van de prompt, niet een fout van de gebruiker.
@@ -3244,6 +3265,17 @@ function renderDueCount(){
   if(newCount > 0) lines.push(`${newCount} new word${newCount===1?"":"s"}`);
   if(dueCount > 0) lines.push(`${dueCount} word${dueCount===1?"":"s"} to review`);
   el("due-count").innerHTML = lines.map(l => `<div>${l}</div>`).join("");
+
+  // Schakelaar + draaiknop voor het mengen van nieuwe woorden in de reguliere pool: alleen tonen als
+  // er binnen het huidige CEFR-bereik daadwerkelijk nieuwe woorden zijn (anders is de instelling zinloos).
+  el("mix-new-words-row").classList.toggle("hidden", newCount === 0);
+  if(newCount > 0){
+    el("mix-new-words-toggle").checked = !!settings.mixNewWords;
+    el("mix-new-words-dial-row").classList.toggle("hidden", !settings.mixNewWords);
+    const ratio = settings.newWordsPer5 ?? 2;
+    el("mix-new-words-dial").value = ratio;
+    el("mix-new-words-dial-label").textContent = `${ratio} / 5`;
+  }
 }
 
 function pickNextItem(){
@@ -3260,7 +3292,31 @@ function pickNextItem(){
   // klopt zodra er binnen bereik niets is met due <= nu, ook al kiezen we sowieso een woord uit bereik.
   const wordsInRange = allUnlocked.filter(inRange);
   lastNoneDueInRange = wordsInRange.length > 0 && !wordsInRange.some(w => getProgress(w.en).due <= now);
-  const dueWords = wordsInRange.length ? wordsInRange : allUnlocked;
+
+  // Mix nieuwe (nog nooit getoonde) woorden en al-eerder-geziene woorden volgens settings.mixNewWords/
+  // newWordsPer5, i.p.v. altijd de volledige pool te gebruiken (waarin nieuwe woorden vanzelf domineren
+  // omdat ze op niveau 0 staan en dus als "zwakst" gelden). Zie wordSourceHistory verderop voor hoe de
+  // verhouding over een venster van 5 gestuurd wordt.
+  const newInRange = wordsInRange.filter(w => getProgress(w.en).reps === 0);
+  const reviewInRange = wordsInRange.filter(w => getProgress(w.en).reps > 0);
+  let dueWords;
+  if(!wordsInRange.length){
+    dueWords = allUnlocked; // bestaande fallback: niets binnen bereik -> toch iets tonen
+  } else if(!settings.mixNewWords){
+    // Nieuwe woorden bewust NIET aanbieden in de reguliere pool -- alleen al eerder geziene woorden.
+    // Blijft daar niets van over (bv. nog helemaal niets geoefend), dan toch newInRange gebruiken --
+    // beter een nieuw woord tonen dan de oefening volledig laten vastlopen.
+    dueWords = reviewInRange.length ? reviewInRange : newInRange;
+  } else if(!newInRange.length || !reviewInRange.length){
+    dueWords = wordsInRange; // niets te mixen: alles is al nieuw, of alles is al geïntroduceerd
+  } else {
+    // Exacte kwotering i.p.v. een schattend gemiddelde: van elke opeenvolgende 5 woordoefeningen zijn
+    // de eerste newWordsPer5 "nieuw" en de rest "herhaling", gebaseerd op een simpele oplopende teller
+    // (wordMixCounter % 5) die bij elke daadwerkelijke woordkeuze in pickWeakestSoonest ophoogt -- zo
+    // krijg je gegarandeerd precies X op de 5, niet slechts gemiddeld ongeveer X op de 5.
+    const slot = wordMixCounter % 5;
+    dueWords = (slot < (settings.newWordsPer5 ?? 2)) ? newInRange : reviewInRange;
+  }
 
   // Verhouding woorden/zinnen/vragen (som = 100%, via de driehoek-widget in Instellingen). Kies elke
   // keer het type dat, over de laatste 10 oefeningen, het verst ONDER zijn streefaandeel zit -- dat
@@ -3306,6 +3362,11 @@ function pickNextItem(){
     });
     const chosen = tied[Math.floor(Math.random()*tied.length)];
     markShown(chosen.en);
+    // Teller ophogen voor de volgende beurt (zie de kwotering hierboven) -- ALTIJD, ongeacht of mixen
+    // nu aan of uit staat, zodat de rotatie na het weer inschakelen van mixen gewoon doorloopt vanaf
+    // waar hij was, i.p.v. steeds vanaf 0 te herstarten.
+    wordMixCounter++;
+    saveJSON(LS_WORD_MIX_COUNTER, wordMixCounter);
     // Richting willekeurig kiezen: EN->TR (Engels tonen) of TR->EN (Turks tonen) — vereist een API-
     // sleutel om de Turkse vorm te kunnen genereren/tonen; zonder sleutel altijd EN->TR. De tr-en-lijst
     // is ONAFHANKELIJK gecureerd (zie REVERSE_TR_INDEX) en heeft een EIGEN cefr-veld per Turkse term --
@@ -5161,9 +5222,13 @@ function renderGrammarList(){
     const statusTxt = p.reps===0
       ? (level>0 ? `level ${level}/10 (set manually)` : "not practised yet")
       : `level ${level}/10 · practised ${p.reps}x`;
-    return `<div style="margin-bottom:10px;">
+    // Springt naar de bijbehorende les op de Course-tab (indien die bestaat -- bij een onderwerp met
+    // meerdere varianten/lessen wordt de EERSTE genomen, precies genoeg voor een snelle sprong).
+    const lesson = lessonsForBaseTopicKey(t.key)[0];
+    const clickable = !!lesson;
+    return `<div class="grammar-list-row${clickable ? " clickable" : ""}" data-topic-key="${t.key}" style="margin-bottom:10px;${clickable ? "cursor:pointer;" : ""}">
       <div class="row space-between" style="font-size:.85rem;margin-bottom:3px;">
-        <span title="${t.hint}">${t.label}</span>
+        <span title="${escapeHtml(t.hint)}">${escapeHtml(t.label)} <span class="muted" style="font-size:.75rem;">· ${cefrLabel(t.minCefr)}</span></span>
         <span class="muted">${statusTxt}</span>
       </div>
       <div style="height:6px;border-radius:4px;background:#0d1720;overflow:hidden;">
@@ -5171,6 +5236,16 @@ function renderGrammarList(){
       </div>
     </div>`;
   }).join("");
+  list.querySelectorAll(".grammar-list-row.clickable").forEach(row=>{
+    row.addEventListener("click", ()=>{
+      const lesson = lessonsForBaseTopicKey(row.dataset.topicKey)[0];
+      if(!lesson) return;
+      const idx = LESSONS.indexOf(lesson);
+      if(idx === -1) return;
+      switchTab("course");
+      openLessonModal(idx);
+    });
+  });
 }
 
 
@@ -5388,6 +5463,24 @@ function lessonsForTopicKey(key){
     }
   }
   return _topicToLessonsMap[key] || [];
+}
+let _baseTopicToLessonsMap = null;
+// Zelfde soort index als lessonsForTopicKey hierboven, maar dan op de KALE onderwerp-sleutel i.p.v.
+// een eventueel variant-gescoopte sleutel (bv. "hitap_bicimleri" i.p.v. "hitap_bicimleri::titel") --
+// nodig voor renderGrammarList hieronder, die met de kale GRAMMAR_TOPICS-onderwerpen werkt en bij een
+// onderwerp met varianten anders geen enkele les zou vinden (die staan allemaal alleen variant-gescoopt
+// in l.grammarTopics).
+function lessonsForBaseTopicKey(baseKey){
+  if(!_baseTopicToLessonsMap){
+    _baseTopicToLessonsMap = {};
+    for(const l of LESSONS){
+      if(l.grammarTopics) for(const k of l.grammarTopics){
+        const base = k.includes("::") ? k.split("::")[0] : k;
+        (_baseTopicToLessonsMap[base] = _baseTopicToLessonsMap[base] || []).push(l);
+      }
+    }
+  }
+  return _baseTopicToLessonsMap[baseKey] || [];
 }
 function displayTopicLevel(t){
   const real = getTopicProgress(t).level;
@@ -6045,6 +6138,16 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     b.addEventListener("click", ()=> switchTab(b.dataset.tab));
   });
   el("btn-check").addEventListener("click", handleCheck);
+  el("mix-new-words-toggle").addEventListener("change", ()=>{
+    settings.mixNewWords = el("mix-new-words-toggle").checked;
+    saveJSON(LS_SETTINGS, settings);
+    el("mix-new-words-dial-row").classList.toggle("hidden", !settings.mixNewWords);
+  });
+  el("mix-new-words-dial").addEventListener("input", ()=>{
+    settings.newWordsPer5 = parseInt(el("mix-new-words-dial").value, 10) || 2;
+    saveJSON(LS_SETTINGS, settings);
+    el("mix-new-words-dial-label").textContent = `${settings.newWordsPer5} / 5`;
+  });
   el("answer-input").addEventListener("keydown", e=>{
     if(e.key === "Enter"){
       e.preventDefault();
