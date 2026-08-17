@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.83</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.84</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -355,7 +355,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.83</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.84</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -4991,8 +4991,13 @@ async function handleCheckSuffixTab(){
     finalizeSuffixAnswer(true, "");
     return;
   }
-  if(!hasKeyFor("word")){
-    finalizeSuffixAnswer(false, `Your answer was "${answer}" — the correct form is "${currentSuffixItem.correct}". Set a ${keyNameFor("word")} API key to have other valid forms judged too.`);
+  // BUGFIX: dit gebruikte hasKeyFor("word"), maar gradeSuffixDrillAnswer/generateSuffixDrill hierboven
+  // roepen intern altijd callAI("sentence", ...) aan -- dus deze sleutel-check keek naar de VERKEERDE
+  // instelling. Als je bv. Anthropic alleen voor "sentence" hebt ingesteld (en geen DeepSeek-sleutel
+  // hebt), werd de suffixtrainer hier ten onrechte geblokkeerd, terwijl de generatie zelf allang via
+  // Anthropic liep. Nu consistent op dezelfde categorie ("sentence") als de rest van de suffixtrainer.
+  if(!hasKeyFor("sentence")){
+    finalizeSuffixAnswer(false, `Your answer was "${answer}" — the correct form is "${currentSuffixItem.correct}". Set a ${keyNameFor("sentence")} API key to have other valid forms judged too.`);
     return;
   }
   el("suf-feedback-box").innerHTML = `<div class="feedback pending">🤖 AI is checking your answer…</div>`;
