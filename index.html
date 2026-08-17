@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.88</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.89</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -351,7 +351,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.88</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.89</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -4383,7 +4383,7 @@ async function askDeepSeekJudge(item, answer, isRecheck){
 ${isTrEn
   ? `Je krijgt een Turks woord en het (correcte) Engelse trefwoord, en het Engelse antwoord dat de gebruiker gaf. Beoordeel of het antwoord een acceptabele Engelse vertaling is — accepteer synoniemen en kleine spelfouten. BELANGRIJK: sommige Turkse woorden zijn zelf ambigu/polyseem (bv. "ay" betekent zowel "month" als "moon" — geen vertaalfout, gewoon twee losstaande betekenissen van hetzelfde woord). Als het gegeven Turkse woord ZELF, onafhankelijk van het "verwachte" trefwoord, daadwerkelijk ook de betekenis heeft die de gebruiker gaf, reken dit dan GOED — ook als het een heel ander woord is dan het verwachte trefwoord. Is er hieronder een specifieke "bedoelde betekenis" vermeld, houd je daar dan wél strikt aan (dat is de betekenis die in DEZE oefening getest wordt, niet een andere betekenis van hetzelfde woord).`
   : `Je krijgt een Engels woord, de reeds bekende Turkse vertaling(en), en het Turkse antwoord dat de gebruiker gaf. Beoordeel of het antwoord een acceptabele Turkse vertaling is — accepteer synoniemen, alternatieve (correcte) vervoegingen en kleine spelfouten. Is er hieronder een specifieke "bedoelde betekenis" vermeld (dit Engelse woord heeft meerdere losstaande betekenissen): beoordeel dan ALLEEN tegen die ene betekenis, ook al zou het antwoord bij een ANDERE betekenis van hetzelfde Engelse woord wel correct zijn.`}
-BELANGRIJK OVER TYPEFOUTEN: als het antwoord duidelijk een tikfout bevat en de bedoelde vertaling ondubbelzinnig duidelijk en correct is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Zet dit dan wel kort en concreet in "afwijking" (zie hieronder), en zet "correct" niet op false enkel vanwege een duidelijke tikfout.
+BELANGRIJK OVER TYPEFOUTEN: reken een antwoord GOED als het een tikfout bevat van de bedoelde vertaling, maar alleen als dat woord daadwerkelijk grotendeels dezelfde letters in vrijwel dezelfde volgorde bevat -- bv. één letter verwisseld, één letter te veel/te weinig, of twee letters omgewisseld (voorbeeld: "geliyor" i.p.v. "geliyour", of "tesekkur" i.p.v. "teşekkür"). Dit is GEEN tikfout en moet NIET als zodanig goedgekeurd worden: een kort/anders gespeld woord dat toevallig ergens op lijkt of er een beetje Turks/Engels uitziet, maar in werkelijkheid een ander of niet-bestaand woord is (voorbeeld: "çart" is GEEN tikfout van "grafik" -- die twee delen bijna geen letters, ook al lijkt "çart" fonetisch op het Engelse "chart"). Twijfel je of iets een tikfout is, ga dan uit van NEE (fout antwoord) tenzij de overeenkomst in spelling overduidelijk is. Zet een geaccepteerde tikfout dan wel kort en concreet in "afwijking" (zie hieronder), en zet "correct" niet op false enkel vanwege zo'n duidelijke, geringe tikfout.
 ALS HET ANTWOORD GOED IS MAAR NIET EXACT DE MEEST GANGBARE VORM: vul dan "afwijking" in met een korte, concrete Engelse zin die zegt WAT er afwijkt -- een tikfout (en wat het verschil is), een minder gebruikelijk/formeel synoniem, een andere (maar correcte) vervoeging/vorm, of iets dergelijks. Dit is de tekst die de gebruiker DIRECT bij het resultaat te zien krijgt (niet pas in het uitklapbare uitleg-paneel), dus hou het kort (één zin volstaat meestal). Was het antwoord exact de standaard/meest gangbare vorm, of is het antwoord fout, laat "afwijking" dan leeg ("").
 ALS HET ANTWOORD FOUT IS: geef in "betekenis_antwoord" aan wat het door de gebruiker ingevoerde woord ZELF betekent, VERTAALD NAAR ${isTrEn ? "het Turks" : "het Engels"} (dus NIET in dezelfde taal als het antwoord zelf — dat zou zinloos zijn, bv. nooit "great means great"), mits het een bestaand, betekenisvol woord is — dit helpt de gebruiker begrijpen welk ander woord hij in gedachten had. Is het antwoord geen bestaand woord, laat "betekenis_antwoord" dan leeg (""). Bij een GOED antwoord laat je "betekenis_antwoord" ook leeg.
 "uitleg" is de tekst voor een apart, uitklapbaar "Explanation"-paneel dat de gebruiker vrijwillig opent -- hier mag en moet je ruim de tijd/ruimte voor nemen, dit hoeft GEEN korte tekst te zijn. Schrijf hem ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"), in het Engels, en behandel in aparte, korte alinea's (gescheiden door een lege regel):
@@ -4412,7 +4412,28 @@ Antwoord in JSON.`;
   };
   const raw = await callAI("word", sys, user, 2500, 0, schema);
   try{
-    return parseAIJson(raw);
+    const verdict = parseAIJson(raw);
+    // Vangnet: promptaanpassingen alleen zijn kansrekening, geen garantie -- de AI kan een antwoord
+    // toch nog als "tikfout" bestempelen terwijl het structureel een compleet ander woord is (bv.
+    // "çart" goedgekeurd als tikfout van "grafik", terwijl die woorden bijna geen letters delen). Als
+    // de AI zelf "correct"+een tikfout-achtige "afwijking" teruggeeft, controleer dat hier nog eens
+    // deterministisch met dezelfde Levenshtein-tolerantie als de suffixtrainer, tegen ALLE bekende
+    // geldige vertalingen -- ligt de kleinste afstand daarboven, dan overrulen we naar fout. Legitieme
+    // maar structureel heel andere SYNONIEMEN (bv. "iyi" vs "güzel") worden door de AI nooit als
+    // "tikfout" gelabeld, dus die blijven hierdoor gewoon buiten schot.
+    if(verdict && verdict.correct && /typo|tikfout/i.test(verdict.afwijking || "")){
+      const candidates = isTrEn ? [baseEnOf(item.en)] : tr;
+      const answerFolded = foldTurkishDiacritics(normalize(answer));
+      const isCloseToAny = candidates.some(c => {
+        const cFolded = foldTurkishDiacritics(normalize(c));
+        const dist = levenshteinDistance(answerFolded, cFolded);
+        return dist <= typoTolerance(cFolded.length);
+      });
+      if(!isCloseToAny){
+        return {correct:false, afwijking:"", uitleg:`Your answer, "${answer}," isn't actually a typo of the expected word — it's a different word.`, betekenis_antwoord: verdict.betekenis_antwoord || ""};
+      }
+    }
+    return verdict;
   }catch(e){
     return {correct:false, uitleg:"(kon AI-antwoord niet verwerken: " + raw.slice(0,150) + ")"};
   }
