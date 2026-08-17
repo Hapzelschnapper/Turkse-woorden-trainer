@@ -14,7 +14,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.81</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.83</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -72,6 +72,7 @@
         <span class="badge badge-word">suffix</span>
       </div>
       <div class="muted hidden" id="suf-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ Not enough mastered content yet — you need at least one verb AND one verb-grammar topic at a good level before suffix drills can be generated. Keep practicing on the Practice tab first.</div>
+      <div class="muted" id="suf-verb-label" style="font-size:.85rem;margin-bottom:2px;"></div>
       <div id="suf-word" class="tr-word">…</div>
       <div class="muted" id="suf-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
 
@@ -354,7 +355,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.81</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-16 v2.83</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't change after an update, the new version wasn't uploaded/refreshed correctly — check that the file was really overwritten on GitHub and refresh the page (try an incognito tab against caching).</div>
     </div>
     </div>
@@ -1012,7 +1013,18 @@ const GRAMMAR_TOPICS = [
   {key:"ayrilma_hali",    label:"Ablative (-den/-dan)",              hint:"origin/from, e.g. \"okuldan geldim\" (I came from school) — vary which of the vowel-harmony/hardening forms (-den/-dan/-ten/-tan) comes up across repeated exercises", minCefr:2},
   {key:"belirtme_hali",   label:"Accusative (-i/-ı/-u/-ü)",          hint:"marks a definite direct object, e.g. \"kitabı okudum\" (I read the book) — vary which of the four vowel-harmony forms (-i/-ı/-u/-ü) comes up across repeated exercises", minCefr:2},
   {key:"gecmis_copula",   label:"Past copula -ydi",                  hint:"e.g. \"öğrenciydim\" (I was a student)", minCefr:3},
-  {key:"yeterlik_kipi",   label:"Ability -ebilmek (can)",            hint:"e.g. \"gidebilirim\" (I can go), \"yüzebilir misin?\" (can you swim?)", minCefr:3},
+  {key:"yeterlik_kipi",   label:"Ability -ebilmek (can)",            hint:"e.g. \"gidebilirim\" (I can go), \"yüzebilir misin?\" (can you swim?)", minCefr:3,
+    // Nieuw: was al opgesplitst in 5 lessons.json-lessen (iyor/ir/di/ecek/soru) maar zonder dat deze
+    // variants-array bestond -- grammarTopicByKey viel dus stil terug op de kale topic voor alle 5,
+    // waardoor elke les IN DE PRAKTIJK exact dezelfde (aorist-tijd) oefeningen genereerde, ongeacht
+    // welke tijd de les beweerde te behandelen. Zie ook lessons.json (dezelfde 5 ids).
+    variants: [
+      {id:"iyor", hint:"present continuous ability \"-ebiliyor\" (currently able to/managing to) — e.g. \"gidebiliyorum\" (I'm currently able to go)"},
+      {id:"ir",   hint:"general/aorist ability \"-ebilir\" (the neutral, everyday \"can\") — e.g. \"gidebilirim\" (I can go)"},
+      {id:"di",   hint:"past ability \"-ebildi\" (was able to/managed to, and did) — e.g. \"gidebildim\" (I was able to go)"},
+      {id:"ecek", hint:"future ability \"-ebilecek\" (will be able to) — e.g. \"gidebileceğim\" (I will be able to go)"},
+      {id:"soru", hint:"yes/no question with the ability suffix, in any tense — e.g. \"Gidebilir misin?\" (Can you go?)"},
+    ]},
   {key:"gecmis_di",       label:"Past tense -di (witnessed/certain)", hint:"e.g. \"geldim\" (I came)", minCefr:3},
   {key:"tamlayan_hali",   label:"Genitive (-in/-ın/-un/-ün)",        hint:"possession/compounds, e.g. \"annemin evi\" (my mother's house) — vary which of the four vowel-harmony forms (-in/-ın/-un/-ün) comes up across repeated exercises", minCefr:3},
   {key:"isim_tamlamasi",  label:"Noun compounds (isim tamlaması)",   hint:"e.g. \"araba anahtarı\" (car key), \"okulun bahçesi\" (the school's garden)", minCefr:4},
@@ -1023,38 +1035,77 @@ const GRAMMAR_TOPICS = [
       {id:"register",  hint:"the sen (informal) vs. siz (formal/plural) address register — e.g. asking the same thing with \"Nasılsın?\" (informal) vs. \"Nasılsınız?\" (formal)"},
     ]},
   {key:"edatlar",         label:"Postpositions (için, ile, göre, rağmen)", hint:"e.g. \"senin için\" (for you), \"buna rağmen\" (despite this)", minCefr:4,
+    // BUGFIX: lessons.json splitst "için" al in drie lessen (amaç/neden/fayda), maar deze array had
+    // tot nu toe maar één "icin"-variant -- de variant-lookup faalde dus voor alle drie için-lessen
+    // en viel terug op de kale topic (dus voor/vanwege/ten behoeve van door elkaar).
     variants: [
-      {id:"icin",    hint:"\"için\" (for/because of) — e.g. \"senin için\" (for you)"},
+      {id:"icin_amac",   hint:"\"için\" expressing PURPOSE (what something is for/in order to) — e.g. \"Bu para tatil için.\" (This money is for a vacation.), \"Türkçe öğrenmek için buradayım.\" (I'm here to learn Turkish.)"},
+      {id:"icin_neden",  hint:"\"için\" expressing REASON/CAUSE (because of) — e.g. \"Trafik için geç kaldım.\" (I was late because of traffic.)"},
+      {id:"icin_fayda",  hint:"\"için\" expressing BENEFIT/SAKE (for X's sake/behalf), most often with a personal pronoun — e.g. \"Senin için bir hediye aldım.\" (I bought a gift for you.)"},
       {id:"ile",     hint:"\"ile\" (with) — e.g. \"seninle\" (with you)"},
       {id:"gore",    hint:"\"göre\" (according to) — e.g. \"bana göre\" (according to me)"},
       {id:"ragmen",  hint:"\"rağmen\" (despite) — e.g. \"buna rağmen\" (despite this)"},
     ]},
   {key:"gelecek_zaman",   label:"Future tense -ecek",                hint:"e.g. \"geleceğim\" (I will come)", minCefr:4},
   {key:"karsilastirma",   label:"Comparison (daha, en, kadar, gibi)", hint:"e.g. \"ondan daha büyük\" (bigger than that)", minCefr:5,
+    // BUGFIX: lessons.json splitst "kadar" al in twee lessen (equative vs. temporeel "until"), maar
+    // deze array had tot nu toe maar één "kadar"-variant -- de variant-lookup faalde dus voor BEIDE
+    // "kadar"-lessen en viel terug op de kale topic (dus altijd daha/en/kadar/gibi door elkaar).
     variants: [
       {id:"daha", hint:"\"daha\" comparative (-er/more) — e.g. \"ondan daha büyük\" (bigger than that)"},
       {id:"en",   hint:"\"en\" superlative (the most) — e.g. \"en büyük\" (the biggest)"},
-      {id:"kadar", hint:"\"kadar\" equative (as...as) — e.g. \"senin kadar uzun\" (as tall as you)"},
+      {id:"kadar_esitlik", hint:"\"kadar\" equative (as...as) — e.g. \"senin kadar uzun\" (as tall as you)"},
+      {id:"kadar_zaman",   hint:"\"kadar\" temporal (until) — e.g. \"akşama kadar\" (until evening), \"eve varana kadar\" (until arriving home)"},
       {id:"gibi", hint:"\"gibi\" simile (like/as) — e.g. \"aslan gibi\" (like a lion)"},
     ]},
   {key:"genis_zaman",     label:"Aorist (general truth) -ir",        hint:"habits/facts, e.g. \"her gün koşarım\" (I run every day)", minCefr:5},
   {key:"baglaclar",       label:"Conjunctions (ki, hem...hem, ya...ya)", hint:"e.g. \"hem yorgunum hem açım\" (I'm both tired and hungry)", minCefr:6,
+    // BUGFIX: lessons.json splitst "ki" al in vier lessen (that-clause/zodat/gevolg/verrassing), maar
+    // deze array had tot nu toe maar één "ki"-variant -- de variant-lookup faalde dus voor alle vier
+    // ki-lessen en viel terug op de kale topic (dus ki/hem/ya door elkaar, ongeacht welke les je opende).
     variants: [
-      {id:"ki",      hint:"\"ki\" linking clause (that/who/which, or surprise/emphasis) — e.g. \"öyle bir şey söyledi ki herkes şaşırdı\" (he said something such that everyone was surprised)"},
+      {id:"ki_dat",         hint:"\"ki\" as a relative \"that\"-clause linker — e.g. \"Bilirim ki sen haklısın.\" (I know that you're right.)"},
+      {id:"ki_zodat",       hint:"\"ki\" expressing purpose (\"so that\") — e.g. \"Erken geldim ki seni görebileyim.\" (I came early so that I could see you.)"},
+      {id:"ki_gevolg",      hint:"\"ki\" expressing result (\"so...that\") — e.g. \"O kadar yoruldum ki uyuyakaldım.\" (I got so tired that I fell asleep.)"},
+      {id:"ki_verrassing",  hint:"\"ki\" for rhetorical surprise/emphasis at the end of a clause — e.g. \"Sen kimsin ki bana böyle konuşuyorsun?\" (Who are you [anyway] to talk to me like this?)"},
       {id:"hem_hem", hint:"\"hem...hem\" (both...and) — e.g. \"hem yorgunum hem açım\" (I'm both tired and hungry)"},
       {id:"ya_ya",   hint:"\"ya...ya\" (either...or) — e.g. \"ya gel ya git\" (either come or go)"},
     ]},
   {key:"vurgu_partikelleri", label:"Emphasis Particles (de/da, bile, üstelik, hatta)", hint:"e.g. \"ben de geliyorum\" (I'm coming too), \"bunu bile bilmiyor\" (he doesn't even know this)", minCefr:6,
+    // BUGFIX: lessons.json splitst "de/da" al in drie lessen (additief/contrastief/nadruk), maar deze
+    // array had tot nu toe maar één "de_da"-variant -- zelfde variant-lookup-bug als hierboven bij ki.
     variants: [
-      {id:"de_da",   hint:"\"de/da\" (also/too) — e.g. \"ben de geliyorum\" (I'm coming too)"},
+      {id:"de_da_ekleme",   hint:"additive \"de/da\" (also/too) — e.g. \"Ben de geliyorum.\" (I'm coming too.)"},
+      {id:"de_da_karsit",   hint:"contrastive \"de/da\" (but/and yet) — e.g. \"Çalıştı da geçemedi.\" (He studied, but still couldn't pass.)"},
+      {id:"de_da_vurgu",    hint:"intensifying \"de/da\" in an exclamation (how very...!) — e.g. \"Ne de güzel bir gün!\" (What a beautiful day!)"},
       {id:"bile",    hint:"\"bile\" (even) — e.g. \"bunu bile bilmiyor\" (he doesn't even know this)"},
       {id:"ustelik", hint:"\"üstelik\" (moreover/on top of that) — e.g. \"üstelik geç de kaldı\" (moreover, he was also late)"},
       {id:"hatta",   hint:"\"hatta\" (in fact/even) — e.g. \"hatta bana yardım etti\" (he even helped me)"},
     ]},
-  {key:"gereklilik_kipi", label:"Necessitative -meli",               hint:"must/have to, e.g. \"gitmeliyim\" (I must go)", minCefr:6},
-  {key:"gecmis_mis",      label:"Past tense -miş (hearsay/inferred)", hint:"e.g. \"gelmiş\" (apparently came)", minCefr:6},
+  {key:"gereklilik_kipi", label:"Necessitative -meli",               hint:"must/have to, e.g. \"gitmeliyim\" (I must go)", minCefr:6,
+    // Nieuw: zelfde variant-lookup-bug als hierboven -- lessons.json had al 3 losse lessen
+    // (heden/verleden/vraag) zonder dat deze array bestond.
+    variants: [
+      {id:"simdi",  hint:"present necessity \"-meli\" (must/should, now/in general) — e.g. \"Gitmeliyim.\" (I must go.)"},
+      {id:"gecmis", hint:"past necessity \"-meliydi\" (should have/had to, retrospective) — e.g. \"Gitmeliydim.\" (I should have gone.)"},
+      {id:"soru",   hint:"yes/no question with the necessitative suffix — e.g. \"Gitmeli miyim?\" (Must I go?)"},
+    ]},
+  {key:"gecmis_mis",      label:"Past tense -miş (hearsay/inferred)", hint:"e.g. \"gelmiş\" (apparently came)", minCefr:6,
+    // Nieuw: zelfde variant-lookup-bug -- lessons.json had al 3 losse lessen (gehoord/afgeleid/verrassing)
+    // zonder dat deze array bestond.
+    variants: [
+      {id:"duyum",   hint:"hearsay -miş: reporting something you were TOLD, not witnessed yourself — e.g. \"Ali gelmiş.\" (I heard/was told Ali came.)"},
+      {id:"cikarim", hint:"inferential -miş: concluding something from visible evidence, not witnessed directly — e.g. \"Yağmur yağmış.\" (It must have rained — I see the wet ground.)"},
+      {id:"sasirma", hint:"mirative -miş: expressing your own surprise at something you've just realized — e.g. \"Param bitmiş!\" (Oh, my money's run out! — surprised realization)"},
+    ]},
   {key:"gecmis_devam",    label:"Past continuous -iyordu",           hint:"e.g. \"geliyordum\" (I was coming)", minCefr:7},
-  {key:"sart_kipi",       label:"Conditional -se",                   hint:"if/should, e.g. \"gelirse\" (if he comes)", minCefr:7},
+  {key:"sart_kipi",       label:"Conditional -se",                   hint:"if/should, e.g. \"gelirse\" (if he comes)", minCefr:7,
+    // Nieuw: zelfde variant-lookup-bug -- lessons.json had al 2 losse lessen (werkwoord/naamwoord)
+    // zonder dat deze array bestond.
+    variants: [
+      {id:"fiil", hint:"conditional on a VERB, suffix -se/-sa directly on the verb stem — e.g. \"gelirse\" (if he comes), \"gitseydi\" is a different, hypothetical-past form, stick to the plain \"-se/-sa\" here"},
+      {id:"isim", hint:"conditional on a NOUN/ADJECTIVE predicate, via the conditional copula \"ise\"/\"-se\" — e.g. \"hasta ise\"/\"hastaysa\" (if [he] is sick), \"öğrenciyse\" (if [he] is a student)"},
+    ]},
   {key:"istek_kipi",      label:"Optative (wish) -e",                hint:"e.g. \"gideyim\" (let me go)", minCefr:8},
   {key:"ki_eki",          label:"The suffix -ki (relative/possessive)", hint:"e.g. \"benimki\" (mine), \"masadaki kitap\" (the book on the table)", minCefr:8},
   {key:"madan_once",      label:"Converb -madan/-meden (without/before doing)", hint:"e.g. \"yemeden gitti\" (he left without eating), \"gitmeden önce\" (before going)", minCefr:8},
@@ -1070,7 +1121,13 @@ const GRAMMAR_TOPICS = [
       {id:"ecek", hint:"future participle -ecek (what will/is going to) — e.g. \"okuyacağım kitap\" (the book I will read)"},
     ]},
   {key:"birlesik_gecmis", label:"Compound past combinations -mişti", hint:"e.g. \"gitmişti\" (he had apparently gone)", minCefr:10},
-  {key:"dolayli_anlatim", label:"Direct/indirect speech",            hint:"e.g. \"'geliyorum' dedi\" (he said 'I'm coming') vs \"geleceğini söyledi\" (he said he'd come)", minCefr:10},
+  {key:"dolayli_anlatim", label:"Direct/indirect speech",            hint:"e.g. \"'geliyorum' dedi\" (he said 'I'm coming') vs \"geleceğini söyledi\" (he said he'd come)", minCefr:10,
+    // Nieuw: zelfde variant-lookup-bug -- lessons.json had al 2 losse lessen (direct/indirect) zonder
+    // dat deze array bestond.
+    variants: [
+      {id:"direct",   hint:"DIRECT speech: quoting the exact original words with \"dedi,\" no tense/person shift — e.g. \"'Geliyorum' dedi.\" (\"I'm coming,\" he said.)"},
+      {id:"indirect", hint:"INDIRECT speech: reporting the content, verb turned into a verbal noun + possessive + söyledi/dedi, with pronoun/tense shifted to fit the reporter's perspective — e.g. \"Geleceğini söyledi.\" (He said he would come.)"},
+    ]},
   {key:"dikce",           label:"Converb -dıkça (the more.../every time)", hint:"e.g. \"okudukça öğrenirsin\" (the more you read, the more you learn)", minCefr:11},
   {key:"zarf_fiil",       label:"Converbs (-erek, -ken)",             hint:"e.g. \"koşarak geldi\" (he came running), \"gelirken\" (while coming)", minCefr:10},
   {key:"edilgen_cati",    label:"Passive voice (-il/-in)",            hint:"e.g. \"kapı kapatıldı\" (the door was closed)", minCefr:11},
@@ -1078,8 +1135,20 @@ const GRAMMAR_TOPICS = [
   {key:"ettirgen_cati",   label:"Causative (make/have done, -dir/-t)", hint:"e.g. \"yaptırdım\" (I had it made)", minCefr:12},
   {key:"donusluluk_cati", label:"Reflexive voice (-in)",              hint:"oneself, e.g. \"yıkandım\" (I washed myself)", minCefr:12},
   {key:"sart_bilesik",    label:"Compound conditional (hypothetical past, -seydi)", hint:"e.g. \"gitseydim\" (if I had gone), \"gitmiş olsaydı\" (if he had [reportedly] gone) — a hypothetical about something that did NOT happen, distinct from the basic -se conditional", minCefr:13},
-  {key:"tezlik_fiili",    label:"Rapid-action verb -(y)Iver",         hint:"e.g. \"gidiver\" (just go / go right away), \"bakıver\" (just take a quick look) — adds a sense of speed, ease, or suddenness to the action", minCefr:13},
-  {key:"rivayet_bilesik", label:"Compound hearsay tenses (-(i)yormuş, -mişmiş)", hint:"e.g. \"gidiyormuş\" (apparently he's going), \"gitmişmiş\" (apparently he had [reportedly] gone) — layering the hearsay/inferential -miş onto another tense, distinct from the simple -miş past", minCefr:14},
+  {key:"tezlik_fiili",    label:"Rapid-action verb -(y)Iver",         hint:"e.g. \"gidiver\" (just go / go right away), \"bakıver\" (just take a quick look) — adds a sense of speed, ease, or suddenness to the action", minCefr:13,
+    // Nieuw: zelfde variant-lookup-bug -- lessons.json had al 2 losse lessen (gebiedende wijs/verteld)
+    // zonder dat deze array bestond.
+    variants: [
+      {id:"emir",   hint:"-(y)Iver in the IMPERATIVE, a brisk/casual command — e.g. \"Gidiver!\" (Just go!/Go already!), \"Bakıver.\" (Just take a quick look.)"},
+      {id:"anlati", hint:"-(y)Iver in a narrated past or future tense, describing a quick/easy completed or upcoming action — e.g. \"Hemen bitiriverdim.\" (I finished it right away.), \"Yarın halledeceğim.\" is NOT this form — use \"halliverecek\" (he'll just take care of it quickly)"},
+    ]},
+  {key:"rivayet_bilesik", label:"Compound hearsay tenses (-(i)yormuş, -mişmiş)", hint:"e.g. \"gidiyormuş\" (apparently he's going), \"gitmişmiş\" (apparently he had [reportedly] gone) — layering the hearsay/inferential -miş onto another tense, distinct from the simple -miş past", minCefr:14,
+    // Nieuw: zelfde variant-lookup-bug -- lessons.json had al 2 losse lessen (-(i)yormuş/-mişmiş)
+    // zonder dat deze array bestond.
+    variants: [
+      {id:"iyormus", hint:"hearsay layered onto the PRESENT CONTINUOUS: -(i)yormuş (apparently is/was doing) — e.g. \"Gidiyormuş.\" (Apparently he's going / was going, based on hearsay.)"},
+      {id:"mismis",  hint:"hearsay layered onto the -miş PAST itself, doubling it: -mişmiş (apparently had [reportedly] done) — e.g. \"Gitmişmiş.\" (Apparently he had gone, [so I'm told].)"},
+    ]},
   {key:"ileri_baglaclar", label:"Correlative conjunctions (ne...ne de, gerek...gerek, ister...ister)", hint:"e.g. \"ne çay ne de kahve\" (neither tea nor coffee), \"gerek anne gerek baba\" (both mother and father), \"ister gel ister gelme\" (whether you come or not) — paired conjunctions linking two items/options", minCefr:14,
     variants: [
       {id:"ne_ne_de",   hint:"\"ne...ne de\" (neither...nor) — e.g. \"ne çay ne de kahve\" (neither tea nor coffee)"},
@@ -1138,7 +1207,14 @@ const GRAMMAR_TOPICS = [
       {id:"vorming", hint:"how an adverb is FORMED from an adjective (unmarked, or with -ca/-ce) — e.g. \"hızlı\" (fast) -> \"hızlıca\"/\"hızlı\" (quickly)"},
       {id:"positie", hint:"where the adverb is PLACED in the sentence (typically right before the verb it modifies) — e.g. \"çok hızlı koştu\" (he ran very fast)"},
     ]},
-  {key:"arac_hali",         label:"Instrumental case (-(y)la/-(y)le)", hint:"e.g. \"otobüsle\" (by bus), \"kalemle yazdım\" (I wrote with a pen) — the suffixed form of \"ile\" — vary which of the two vowel-harmony forms (-(y)la/-(y)le) comes up across repeated exercises", minCefr:6},
+  {key:"arac_hali",         label:"Instrumental case (-(y)la/-(y)le)", hint:"e.g. \"otobüsle\" (by bus), \"kalemle yazdım\" (I wrote with a pen) — the suffixed form of \"ile\" — vary which of the two vowel-harmony forms (-(y)la/-(y)le) comes up across repeated exercises", minCefr:6,
+    // Nieuw: zelfde variant-lookup-bug -- lessons.json had al 3 losse lessen (instrumentaal/comitatief/
+    // voegwoord) zonder dat deze array bestond.
+    variants: [
+      {id:"instrumentaal", hint:"instrumental \"with what/by means of\" (a tool/method) — e.g. \"kalemle yazdım\" (I wrote with a pen), \"otobüsle geldim\" (I came by bus)"},
+      {id:"comitatief",    hint:"comitative \"with whom\" (accompaniment) — e.g. \"arkadaşımla geldim\" (I came with my friend)"},
+      {id:"baglac",        hint:"conjunctive use, linking two nouns like \"and\" — e.g. \"çayla kahve\" (tea and coffee), equivalent to \"çay ve kahve\""},
+    ]},
   {key:"belirsiz_zamirler", label:"Indefinite pronouns & quantifiers", hint:"e.g. \"biri\" (someone), \"herkes\" (everyone), \"hiç kimse\" (no one), \"bazı\" (some), \"her\" (every)", minCefr:6,
     variants: [
       {id:"biri",     hint:"\"biri\" (someone/one of them) — e.g. \"biri geldi\" (someone came)"},
@@ -1147,7 +1223,14 @@ const GRAMMAR_TOPICS = [
       {id:"bazi",     hint:"\"bazı\" (some) — e.g. \"bazı insanlar\" (some people)"},
       {id:"her",      hint:"\"her\" (every) — e.g. \"her gün\" (every day)"},
     ]},
-  {key:"kendi_zamiri",      label:"The reflexive pronoun kendi", hint:"e.g. \"kendim\" (myself), \"kendine bak\" (look after yourself) — distinct from the reflexive verb suffix -in", minCefr:8},
+  {key:"kendi_zamiri",      label:"The reflexive pronoun kendi", hint:"e.g. \"kendim\" (myself), \"kendine bak\" (look after yourself) — distinct from the reflexive verb suffix -in", minCefr:8,
+    // Nieuw: zelfde variant-lookup-bug -- lessons.json had al 3 losse lessen (object/nadruk/bezit)
+    // zonder dat deze array bestond.
+    variants: [
+      {id:"nesne",  hint:"kendi as a reflexive OBJECT (myself/yourself/...), taking a case suffix — e.g. \"Kendimi gördüm.\" (I saw myself.), \"Kendine iyi bak.\" (Take good care of yourself.)"},
+      {id:"vurgu",  hint:"kendi for EMPHASIS, alongside a subject pronoun, meaning \"...myself/personally\" — e.g. \"Ben kendim yaptım.\" (I did it myself.)"},
+      {id:"iyelik", hint:"kendi + possessive suffix meaning \"my/your/... OWN\" — e.g. \"Kendi evim var.\" (I have my own house.)"},
+    ]},
   {key:"diktan_sonra",      label:"Converb -DIktan sonra (after doing)", hint:"e.g. \"yemek yedikten sonra\" (after eating), \"eve geldikten sonra\" (after coming home) — the counterpart to -madan önce", minCefr:8},
   {key:"ip_baglaci",        label:"Converb -Ip (sequential actions)", hint:"e.g. \"gidip aldım\" (I went and got it), \"alıp geldi\" (he took it and came) — links same-subject actions without repeating tense/person", minCefr:9},
   {key:"yardimci_fiiller",  label:"Light verb constructions (etmek/olmak/yapmak)", hint:"e.g. \"yardım etmek\" (to help), \"teşekkür etmek\" (to thank), \"hasta olmak\" (to become sick)", minCefr:10,
@@ -2145,7 +2228,7 @@ Antwoord in JSON.`;
   const breakdown = (Array.isArray(parsed.breakdown) && parsed.breakdown.length)
     ? parsed.breakdown.filter(s => s && s.form && s.meaning)
     : [{form: parsed.correct, meaning: parsed.prompt}]; // veiligheidsnet: geen (bruikbare) breakdown terug -> toon tenminste de eindvorm
-  return {type:"suffix", en: `suffix:${verb.en}:${topic.key}`, direction:"en-tr", prompt: parsed.prompt, correct: parsed.correct, verbEn: verb.en, topicKey: topic.key, breakdown};
+  return {type:"suffix", en: `suffix:${verb.en}:${topic.key}`, direction:"en-tr", prompt: parsed.prompt, correct: parsed.correct, verbEn: verb.en, verbTr, topicKey: topic.key, breakdown};
 }
 
 // Beoordeelt een suffix-antwoord: alleen goed/fout, GEEN algemene uitleg -- bij een fout antwoord
@@ -4844,12 +4927,14 @@ async function renderSuffixPractice(){
   el("suf-btn-skip").disabled = true;
 
   if(!canOfferSuffixDrill()){
+    el("suf-verb-label").textContent = "";
     el("suf-word").textContent = "—";
     el("suf-word-meta").textContent = "";
     el("suf-empty-notice").classList.remove("hidden");
     return;
   }
   el("suf-empty-notice").classList.add("hidden");
+  el("suf-verb-label").textContent = "";
   el("suf-word").textContent = "🤖 …";
   el("suf-word-meta").textContent = "";
 
@@ -4860,8 +4945,13 @@ async function renderSuffixPractice(){
     return;
   }
 
+  // Toont het te vervoegen werkwoord voortaan als GEHEEL (de volledige infinitief -mek/-mak, bv.
+  // "etmek", "yapmak", "hareket etmek") boven de Engelse aanwijzing, i.p.v. de gebruiker te laten
+  // gokken/onthouden welk Turks werkwoord er precies bij het Engelse prompt-zinnetje hoort. Het
+  // werkwoord komt nog steeds uit de beheerst-pool (masteredVerbsForSuffixDrill, ongewijzigd).
+  el("suf-verb-label").innerHTML = `Verb: <b>${escapeHtml(currentSuffixItem.verbTr)}</b> (${escapeHtml(displayEnglishWord(currentSuffixItem.verbEn))})`;
   el("suf-word").textContent = currentSuffixItem.prompt;
-  el("suf-word-meta").textContent = "conjugate this verb using a grammar pattern you've already mastered";
+  el("suf-word-meta").textContent = "conjugate the verb above using a grammar pattern you've already mastered";
   el("suf-answer-input").disabled = false;
   el("suf-btn-check").disabled = false;
   el("suf-btn-skip").disabled = false;
