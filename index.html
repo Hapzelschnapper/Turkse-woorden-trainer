@@ -25,7 +25,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.93</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.94</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -1902,14 +1902,34 @@ ${cfg.instr(...words, topic)}` + (correctionNote ? `\n\nNOTE: your previous atte
 function drillTurkishText(drill){
   return drill.direction === "tr-en" ? drill.prompt : drill.correct;
 }
-// SUFFIX-OEFENING: een woord dat de gebruiker al beheerst (level >= 7) wordt vervoegd met een
-// grammaticaal patroon dat de gebruiker ook al beheerst (level >= 7 op dat GRAMMAR_TOPICS-onderwerp).
-// Puur woordniveau -- geen zin, geen context -- de gebruiker typt precies ÉÉN vervoegde Turkse vorm.
-// Geen eigen scoresysteem meer (zie screen-suffixes): puur goed/fout, met een morfeem-opbouw als
-// uitleg (zie "breakdown" hieronder) i.p.v. een niveau 0-10.
-const SUFFIX_DRILL_MIN_LEVEL = 7;
+// SUFFIX-OEFENING: een woord dat de gebruiker al minstens 1x is TEGENGEKOMEN wordt vervoegd met een
+// grammaticaal patroon dat de gebruiker ook al minstens 1x geoefend heeft. Puur woordniveau -- geen
+// zin, geen context -- de gebruiker typt precies ÉÉN vervoegde Turkse vorm. Geen eigen scoresysteem
+// meer (zie screen-suffixes): puur goed/fout, met een morfeem-opbouw als uitleg (zie "breakdown"
+// hieronder) i.p.v. een niveau 0-10.
+// BUGFIX: ontgrendelvereiste versoepeld van "BEHEERST" (level >= 7, voor zowel werkwoord als
+// onderwerp) naar puur "TEGENGEKOMEN" (reps >= 1) -- bij een nog vrij nieuwe gebruiker bleef de pool
+// met de oude, strenge drempel zo goed als altijd leeg (level 7 op EN een werkwoord EN een
+// grammatica-onderwerp is een hoge lat), waardoor het tabblad wekenlang ontoegankelijk bleef. Net als
+// bij masteredVerbsForSuffixDrill()/masteredTopicsForSuffixDrill() hieronder telt nu ook het
+// ingestelde CEFR-bereik mee (voorheen ontbrak die check hier volledig) -- alleen de BOVENgrens: een
+// allang-bekend, "te makkelijk" werkwoord/onderwerp is prima bruikbaar, alleen iets BOVEN je huidige
+// bereik (nog niet relevant/te moeilijk) wordt geweerd.
 function masteredVerbsForSuffixDrill(){
-  return EN_WORDS_DATA.filter(w => w.pos === "verb" && getProgress(w.en).level >= SUFFIX_DRILL_MIN_LEVEL);
+  const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
+  return EN_WORDS_DATA.filter(w => w.pos === "verb" && vocabCefrBand(w.cefr) <= hi && getProgress(w.en).reps >= 1);
+}
+// Kiest, binnen de pool van al-tegengekomen werkwoorden, bij VOORKEUR een al goed BEHEERST exemplaar
+// (level >= SUFFIX_DRILL_PREFERRED_VERB_LEVEL) -- dat geeft een prettigere oefening (je hoeft niet ook
+// nog aan het werkwoord zelf te twijfelen, alleen aan het grammaticapatroon). Is er nog geen enkel zo
+// goed beheerst werkwoord, dan valt dit terug op de volledige pool.
+const SUFFIX_DRILL_PREFERRED_VERB_LEVEL = 7;
+function pickSuffixDrillVerb(){
+  const pool = masteredVerbsForSuffixDrill();
+  if(!pool.length) return null;
+  const wellKnown = pool.filter(w => getProgress(w.en).level >= SUFFIX_DRILL_PREFERRED_VERB_LEVEL);
+  const source = wellKnown.length ? wellKnown : pool;
+  return source[Math.floor(Math.random()*source.length)];
 }
 // BUGFIX: hierboven wordt ALTIJD een werkwoord vervoegd, dus alleen grammatica-onderwerpen die
 // daadwerkelijk op een werkwoord toegepast worden (framework "verb"/"verb2" in
@@ -1920,7 +1940,10 @@ function masteredVerbsForSuffixDrill(){
 // onderaan GRAMMAR_TOPIC_FRAMEWORK) worden voorzichtigheidshalve ook uitgesloten.
 const SUFFIX_DRILL_VERB_FRAMEWORKS = new Set(["verb", "verb2"]);
 function masteredTopicsForSuffixDrill(){
-  return GRAMMAR_TOPICS.filter(t => SUFFIX_DRILL_VERB_FRAMEWORKS.has(GRAMMAR_TOPIC_FRAMEWORK[t.key]) && getTopicProgress(t).level >= SUFFIX_DRILL_MIN_LEVEL);
+  const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
+  return GRAMMAR_TOPICS.filter(t => SUFFIX_DRILL_VERB_FRAMEWORKS.has(GRAMMAR_TOPIC_FRAMEWORK[t.key])
+    && vocabCefrBand(t.minCefr) <= hi
+    && getTopicProgress(t).reps >= 1);
 }
 function canOfferSuffixDrill(){
   return masteredVerbsForSuffixDrill().length > 0 && masteredTopicsForSuffixDrill().length > 0;
@@ -1928,8 +1951,8 @@ function canOfferSuffixDrill(){
 async function generateSuffixDrill(){
   const verbs = masteredVerbsForSuffixDrill();
   const topics = masteredTopicsForSuffixDrill();
-  if(!verbs.length || !topics.length) throw new Error("No mastered verb + mastered verb-grammar-topic combination available yet.");
-  const verb = verbs[Math.floor(Math.random()*verbs.length)];
+  if(!verbs.length || !topics.length) throw new Error("No exposed verb + exposed verb-grammar topic combination available yet.");
+  const verb = pickSuffixDrillVerb();
   const topic = topics[Math.floor(Math.random()*topics.length)];
   const verbTr = (await getOrFetchTranslation(verb.en))[0];
   const verbBaseEn = baseEnOf(verb.en);
@@ -1966,8 +1989,41 @@ Antwoord in JSON.`;
     }
   };
   const raw = await callAI("sentence", sys, `Werkwoord: ${verbBaseEn} (${verbTr}) | Patroon: ${topic.label}`, 700, 0.5, schema);
-  const parsed = parseAIJson(raw);
+  let parsed = parseAIJson(raw);
   if(!parsed.prompt || !parsed.correct) throw new Error("AI did not return a valid suffix drill.");
+  // BUGFIX: sommige patronen (met name de 2e-persoon-enkelvoud-imperatief) vallen in het Turks samen
+  // met de KALE stam van het werkwoord (bv. "gel!" = gewoon de stam "gel"). Als het patroon dat getest
+  // wordt NIET zelf de imperatief is, maar de AI toch zo'n kale, van de stam niet te onderscheiden vorm
+  // teruggeeft, is de oefening onoplosbaar zonder context. Wordt zo'n dubbelzinnige kale vorm gedetecteerd,
+  // dan wordt één keer opnieuw gevraagd met een expliciete correctienotitie.
+  function looksAmbiguousBareForm(correct){
+    const stem = verbTr.replace(/mek$|mak$/i, "").trim().toLowerCase();
+    return correct.trim().toLowerCase() === stem;
+  }
+  if(looksAmbiguousBareForm(parsed.correct)){
+    const retryUser = `Werkwoord: ${verbBaseEn} (${verbTr}) | Patroon: ${topic.label}\n\nNOTE: your previous attempt gave "${parsed.correct}" as "correct" -- that is EXACTLY equal to the bare stem of the verb itself, so without extra context a user cannot tell this is meant to test the pattern "${topic.label}" rather than just the bare stem. Give a form that is clearly distinguishable from the bare stem (add the required suffix(es)/particle(s) for this pattern, or if the pattern genuinely IS the bare-stem imperative, make that unambiguous in "prompt"), for both "correct" and the last breakdown step, and only then repeat.`;
+    const raw2 = await callAI("sentence", sys, retryUser, 700, 0.5, schema);
+    const parsed2 = parseAIJson(raw2);
+    if(parsed2.prompt && parsed2.correct) parsed = parsed2;
+  }
+  // BUGFIX: "prompt" mag het antwoord niet verklappen (ondanks de instructie hierboven kwam het voor
+  // dat de AI de Turkse vorm toch letterlijk of tussen haakjes in de Engelse aanwijzing zelf zette, of
+  // er een extra instructiezin met een vervoeg-werkwoord als "conjugate"/"form"/"inflect" in stopte).
+  // Detecteert dit via drie signalen en vraagt dan één keer opnieuw met een expliciete notitie.
+  function promptLeaksAnswer(prompt, correct){
+    const p = prompt.toLowerCase();
+    const c = correct.trim().toLowerCase();
+    if(c.length >= 3 && p.includes(c)) return true;
+    if(/\bconjugate|\binflect|\bform the\b/i.test(prompt)) return true;
+    if(prompt.length > 70) return true;
+    return false;
+  }
+  if(promptLeaksAnswer(parsed.prompt, parsed.correct)){
+    const retryUser2 = `Werkwoord: ${verbBaseEn} (${verbTr}) | Patroon: ${topic.label}\n\nNOTE: your previous attempt gave as "prompt": "${parsed.prompt}" -- this leaks the answer (contains the Turkish form itself, literally or in parentheses) and/or contains an extra instruction sentence (e.g. with a verb like "conjugate"/"form"/"inflect" in it). "prompt" must be ONLY the short English cue sentence itself -- nothing more, no parenthetical with the Turkish form, no extra instruction sentence after it. Only then repeat.`;
+    const raw3 = await callAI("sentence", sys, retryUser2, 700, 0.5, schema);
+    const parsed3 = parseAIJson(raw3);
+    if(parsed3.prompt && parsed3.correct && !promptLeaksAnswer(parsed3.prompt, parsed3.correct)) parsed = parsed3;
+  }
   const breakdown = (Array.isArray(parsed.breakdown) && parsed.breakdown.length)
     ? parsed.breakdown.filter(s => s && s.form && s.meaning)
     : [{form: parsed.correct, meaning: parsed.prompt}]; // veiligheidsnet: geen (bruikbare) breakdown terug -> toon tenminste de eindvorm
