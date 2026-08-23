@@ -25,7 +25,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.97</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.00</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -33,6 +33,15 @@
       <div class="row space-between">
         <span id="badge-type" class="badge badge-word">word</span>
         <div class="muted" id="due-count" style="font-size:.78rem;text-align:right;line-height:1.35;"></div>
+      </div>
+      <div class="row space-between" style="margin-top:6px;font-size:.78rem;gap:6px;">
+        <label class="muted" style="display:flex;align-items:center;gap:6px;">Word direction:</label>
+        <select id="word-direction-select" class="select-input" style="flex:1;max-width:180px;">
+          <option value="all">EN→TR + TR→EN (mixed pool)</option>
+          <option value="random">Random 50/50 each turn</option>
+          <option value="en-tr">EN→TR only</option>
+          <option value="tr-en">TR→EN only</option>
+        </select>
       </div>
       <div class="row space-between hidden" id="mix-new-words-row" style="margin-top:6px;font-size:.78rem;">
         <label class="muted" style="display:flex;align-items:center;gap:6px;cursor:pointer;">
@@ -166,20 +175,20 @@
         <span class="muted" id="words-count">0 words</span>
       </div>
       <input type="text" id="words-search" placeholder="Search Turkish or translation…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-bottom:8px;">
-      <div class="row" style="gap:6px;">
-        <select id="words-sort" class="select-input" style="flex:1;">
+      <div class="row" style="gap:6px;flex-wrap:wrap;">
+        <select id="words-sort" class="select-input" style="flex:1 1 160px;min-width:0;">
           <option value="proficiency-asc">Score: low → high</option>
           <option value="proficiency-desc">Score: high → low</option>
           <option value="ease-asc">Difficulty (ease-factor): hardest first</option>
           <option value="alpha">Alphabetical (A-Z)</option>
         </select>
-        <select id="words-filter" class="select-input" style="flex:1;">
+        <select id="words-filter" class="select-input" style="flex:1 1 160px;min-width:0;">
           <option value="introduced">Already introduced</option>
           <option value="all">All words</option>
         </select>
       </div>
-      <div class="row" style="gap:6px;margin-top:6px;">
-        <select id="words-cefr-filter" class="select-input" style="flex:1;">
+      <div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap;">
+        <select id="words-cefr-filter" class="select-input" style="flex:1 1 160px;min-width:0;">
           <option value="all">All CEFR levels</option>
           <option value="A1">A1 and below</option>
           <option value="A2">A2 and below</option>
@@ -187,6 +196,11 @@
           <option value="B2">B2 and below</option>
           <option value="C1">C1 and below</option>
           <option value="C2">C2 and below</option>
+        </select>
+        <select id="words-direction-filter" class="select-input" style="flex:1 1 160px;min-width:0;">
+          <option value="en-tr">EN → TR list</option>
+          <option value="tr-en">TR → EN list</option>
+          <option value="all">Both lists</option>
         </select>
       </div>
     </div>
@@ -375,7 +389,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v2.97</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.00</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -641,6 +655,12 @@ if(settings.adaptiveEnabled === undefined) settings.adaptiveEnabled = false;
 // instelling kan de gebruiker dat temperen. Standaard aan, met een gematigde verhouding.
 if(settings.mixNewWords === undefined) settings.mixNewWords = true;
 if(settings.newWordsPer5 === undefined) settings.newWordsPer5 = 2;
+// Welke woordenlijst(en) de losse-woord-oefeningen op het hoofdscherm gebruiken: "en-tr" (alleen de
+// en-tr-lijst, zoals vroeger), "tr-en" (alleen de onafhankelijk gecureerde tr-en-lijst), of "all"
+// (allebei, elk met hun EIGEN score/SRS -- zie TR_WORDS_DATA/practiceWordEntries). Standaard "all",
+// zodat bestaande gebruikers net als voorheen beide richtingen te zien blijven krijgen, alleen nu met
+// een eigen score per richting i.p.v. één gedeelde score per Engels woord.
+if(settings.wordDirection === undefined) settings.wordDirection = "all";
 if(settings.adaptiveThreshold === undefined) settings.adaptiveThreshold = 60;
 if(settings.anthropicApiKey === undefined) settings.anthropicApiKey = "";
 if(settings.proxyUrl === undefined) settings.proxyUrl = "";
@@ -1205,11 +1225,61 @@ async function loadAllData(){
   GRAMMAR_LESSONS = grammarLessons;
 
   curatedTr = {...curatedTr, ...EMBEDDED_CURATED_TR};
+  TR_WORDS_DATA = buildTrWordsData();
 
   LESSONS = buildFullLessonList();
   GRAMMAR_TRACK = LESSONS.filter(l => l.track === "grammar");
   VOCAB_TRACK = LESSONS.filter(l => l.track === "vocab");
   repairLessonProgressGaps();
+}
+
+/* ===================== TR-EN WOORDENLIJST (eigen, onafhankelijke SRS-pool) =====================
+   REVERSE_TR_INDEX is { [en]: [{tr, gloss, pos, register, note, cefr}] } -- gereverst vanuit de APART
+   gecureerde tr-en-brondata. Voor een eigen tr-en-woordenlijst (met een EIGEN score per Turks woord,
+   los van de en-tr-kaart) flatten we dit terug tot rijen, gegroepeerd op (tr + woordsoort): dezelfde
+   Turkse term kan onder meerdere Engelse trefwoorden voorkomen (bv. "geçmek" onder zowel "pass" als
+   "cross") -- dat zijn geen twee losstaande Turkse termen maar twee acceptabele Engelse vertalingen
+   van ÉÉN term, dus die groeperen we tot ÉÉN entry (primair trefwoord = de eerst-gevonden gloss; de
+   bestaande antwoord-validatie in checkStaticMatch/askDeepSeekJudge accepteert de andere gloss toch al
+   automatisch via REVERSE_TR_INDEX, dus hoeft niet apart opgeslagen te worden). Een AFWIJKENDE
+   woordsoort bij hetzelfde Turkse woord blijft wel een eigen, zelfstandige entry (net als bij de en-tr-
+   lijst: "close" als werkwoord vs. bijvoeglijk naamwoord blijven ook losstaande termen). */
+let TR_WORDS_DATA = [];
+function buildTrWordsData(){
+  const groups = new Map(); // key "tr::pos" -> entry
+  for(const en in REVERSE_TR_INDEX){
+    const senses = REVERSE_TR_INDEX[en] || [];
+    senses.forEach(s => {
+      if(!s || !s.tr) return;
+      const pos = s.pos || "";
+      const groupKey = s.tr + "::" + pos;
+      let entry = groups.get(groupKey);
+      if(!entry){
+        entry = {
+          key: "trword:" + groupKey,
+          tr: s.tr,
+          en,
+          pos: s.pos || null,
+          cefr: typeof s.cefr === "number" ? s.cefr : 9,
+          register: s.register || "neutral",
+          gloss: s.gloss || null,
+          note: s.note || null,
+        };
+        groups.set(groupKey, entry);
+      }
+    });
+  }
+  return [...groups.values()];
+}
+function trWordDataOf(key){
+  return TR_WORDS_DATA.find(w => w.key === key) || null;
+}
+// Toont het Engelse trefwoord van een tr-en-entry, met "to " ervoor als het een werkwoord is -- gebruikt
+// het EIGEN, al bekende pos-veld van de tr-en-entry zelf i.p.v. te gokken via de (mogelijk afwijkende)
+// en-tr-woordsoort van hetzelfde Engelse trefwoord.
+function displayTrEntryGloss(entry){
+  if(!entry) return "";
+  return entry.pos === "verb" ? `to ${entry.en}` : entry.en;
 }
 
 function trackListOf(track){ return track === "grammar" ? GRAMMAR_TRACK : VOCAB_TRACK; }
@@ -3388,11 +3458,45 @@ function renderDueCount(){
   }
 }
 
+// Kandidatenpool voor de losse-woord-oefeningen op het hoofdscherm: de en-tr-lijst (EN_WORDS_DATA,
+// richting vast op "en-tr") en/of de tr-en-lijst (TR_WORDS_DATA, richting vast op "tr-en"), afhankelijk
+// van settings.wordDirection. Elke entry krijgt een EIGEN progress-sleutel ("key") -- voor en-tr-entries
+// is dat gewoon het Engelse woord (ongewijzigd, dus bestaande scores blijven behouden), voor tr-en-
+// entries is dat de aparte "trword:"-sleutel uit TR_WORDS_DATA. Zo houdt bv. "ball" (en-tr) een eigen
+// score los van "top" (tr-en), ook al zijn het elkaars vertaling.
+// Kandidatenpool voor de losse-woord-oefeningen op het hoofdscherm: de en-tr-lijst (EN_WORDS_DATA,
+// richting vast op "en-tr") en/of de tr-en-lijst (TR_WORDS_DATA, richting vast op "tr-en"), afhankelijk
+// van de opgegeven richting ("en-tr" | "tr-en" | "all"). Elke entry krijgt een EIGEN progress-sleutel
+// ("key") -- voor en-tr-entries is dat gewoon het Engelse woord (ongewijzigd, dus bestaande scores
+// blijven behouden), voor tr-en-entries is dat de aparte "trword:"-sleutel uit TR_WORDS_DATA. Zo houdt
+// bv. "ball" (en-tr) een eigen score los van "top" (tr-en), ook al zijn het elkaars vertaling.
+function practiceWordEntries(dir){
+  const entries = [];
+  if(dir !== "tr-en"){
+    for(const w of EN_WORDS_DATA) entries.push({key: w.en, en: w.en, cefr: w.cefr, direction: "en-tr", source: "en"});
+  }
+  if(dir !== "en-tr"){
+    for(const w of TR_WORDS_DATA) entries.push({key: w.key, en: w.en, tr: w.tr, cefr: w.cefr, direction: "tr-en", source: "tr", trData: w});
+  }
+  return entries;
+}
+
+// Bepaalt welke richting(en) DEZE beurt gebruikt worden. "all" mengt en-tr en tr-en in ÉÉN pool en
+// laat daarbinnen puur het zwakste niveau/de eerstvolgende duedatum winnen -- als de ene lijst structureel
+// meer/zwakkere woorden heeft, kan die de andere dus geruime tijd domineren. "random" doet dat NIET: elke
+// beurt wordt eerst (50/50) geloot UIT WELKE VAN DE TWEE LIJSTEN dit keer gekozen wordt, en pas daarna
+// binnen die ene lijst het zwakste/eerstvolgende woord gekozen -- dat garandeert een ongeveer gelijke
+// verdeling tussen de twee richtingen, los van hoe (on)gebalanceerd hun niveaus onderling zijn.
+function resolveWordDirectionForThisTurn(){
+  const dir = settings.wordDirection || "all";
+  if(dir !== "random") return dir;
+  return Math.random() < 0.5 ? "en-tr" : "tr-en";
+}
+
 function pickNextItem(){
-  const unlockedEns = unlockedWordSet();
   const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
   const inRange = w => typeof w.cefr !== "number" || (vocabCefrBand(w.cefr) >= lo && vocabCefrBand(w.cefr) <= hi);
-  const allUnlocked = allWords().filter(w => unlockedEns.has(w.en));
+  const allUnlocked = practiceWordEntries(resolveWordDirectionForThisTurn()); // en-tr en/of tr-en, al naar gelang settings.wordDirection -- beide altijd volledig "ontgrendeld"
   const now = Date.now();
 
   // Woordselectie kiest ALTIJD uit het ingestelde CEFR-bereik, ongeacht of een woord "due" is of al
@@ -3401,14 +3505,14 @@ function pickNextItem(){
   // nooit meer buiten bereik gezocht -- lastNoneDueInRange is puur een melding, geen terugval: hij
   // klopt zodra er binnen bereik niets is met due <= nu, ook al kiezen we sowieso een woord uit bereik.
   const wordsInRange = allUnlocked.filter(inRange);
-  lastNoneDueInRange = wordsInRange.length > 0 && !wordsInRange.some(w => getProgress(w.en).due <= now);
+  lastNoneDueInRange = wordsInRange.length > 0 && !wordsInRange.some(w => getProgress(w.key).due <= now);
 
   // Mix nieuwe (nog nooit getoonde) woorden en al-eerder-geziene woorden volgens settings.mixNewWords/
   // newWordsPer5, i.p.v. altijd de volledige pool te gebruiken (waarin nieuwe woorden vanzelf domineren
   // omdat ze op niveau 0 staan en dus als "zwakst" gelden). Zie wordSourceHistory verderop voor hoe de
   // verhouding over een venster van 5 gestuurd wordt.
-  const newInRange = wordsInRange.filter(w => getProgress(w.en).reps === 0);
-  const reviewInRange = wordsInRange.filter(w => getProgress(w.en).reps > 0);
+  const newInRange = wordsInRange.filter(w => getProgress(w.key).reps === 0);
+  const reviewInRange = wordsInRange.filter(w => getProgress(w.key).reps > 0);
   let dueWords;
   if(!wordsInRange.length){
     dueWords = allUnlocked; // bestaande fallback: niets binnen bereik -> toch iets tonen
@@ -3450,7 +3554,10 @@ function pickNextItem(){
   // Sorteer op zwakste niveau eerst, en bij gelijk niveau op de dichtstbijzijnde duedatum (nog-nooit-
   // getoonde woorden staan al op niveau 0 met due = "nu", dus die komen vanzelf bovenaan). Bij een
   // exacte gelijke stand (zelfde niveau EN zelfde duedatum) alsnog willekeurig kiezen, anders krijg je
-  // steeds precies hetzelfde woord.
+  // steeds precies hetzelfde woord. Werkt nu over de GECOMBINEERDE en-tr + tr-en-pool (elk item heeft
+  // zijn eigen progress-sleutel "key"), zodat een due tr-en-item evengoed kan winnen als een due en-tr-
+  // item -- de richting van het gekozen item ligt al vast (zie practiceWordEntries), geen losse
+  // willekeurige direction-flip meer nodig/nuttig.
   function pickWeakestSoonest(list){
     if(!list.length) return null;
     // Eerst woorden die de laatste 5 minuten al aan de beurt zijn geweest uitsluiten, zodat een net
@@ -3458,43 +3565,26 @@ function pickNextItem(){
     // meer overblijft (bv. een heel smal CEFR-bereik met maar een paar woorden), toch de volledige lijst
     // gebruiken -- beter een woord iets te vroeg herhalen dan helemaal geen oefening meer kunnen tonen.
     const now = Date.now();
-    const eligible = list.filter(it => !isInCooldown(it.en, now));
+    const eligible = list.filter(it => !isInCooldown(it.key, now));
     const pool = eligible.length ? eligible : list;
     const sorted = [...pool].sort((a,b)=>{
-      const pa = getProgress(a.en), pb = getProgress(b.en);
+      const pa = getProgress(a.key), pb = getProgress(b.key);
       if(pa.level !== pb.level) return pa.level - pb.level;
       return pa.due - pb.due;
     });
-    const top = getProgress(sorted[0].en);
+    const top = getProgress(sorted[0].key);
     const tied = sorted.filter(it=>{
-      const p = getProgress(it.en);
+      const p = getProgress(it.key);
       return p.level === top.level && p.due === top.due;
     });
     const chosen = tied[Math.floor(Math.random()*tied.length)];
-    markShown(chosen.en);
+    markShown(chosen.key);
     // Teller ophogen voor de volgende beurt (zie de kwotering hierboven) -- ALTIJD, ongeacht of mixen
     // nu aan of uit staat, zodat de rotatie na het weer inschakelen van mixen gewoon doorloopt vanaf
     // waar hij was, i.p.v. steeds vanaf 0 te herstarten.
     wordMixCounter++;
     saveJSON(LS_WORD_MIX_COUNTER, wordMixCounter);
-    // Richting willekeurig kiezen: EN->TR (Engels tonen) of TR->EN (Turks tonen) — vereist een API-
-    // sleutel om de Turkse vorm te kunnen genereren/tonen; zonder sleutel altijd EN->TR. De tr-en-lijst
-    // is ONAFHANKELIJK gecureerd (zie REVERSE_TR_INDEX) en heeft een EIGEN cefr-veld per Turkse term --
-    // dat kan afwijken van het cefr-niveau van het Engelse woord (bv. "end"=A1 maar de Turkse vorm
-    // "sona ermek" is feitelijk B1-niveau Turks). Een tr-en-oefening wordt daarom alleen aangeboden als
-    // de EIGEN Turkse moeilijkheidsgraad ook echt binnen het ingestelde bereik valt, niet zomaar omdat
-    // het onderliggende Engelse woord toevallig in bereik zit.
-    let direction = "en-tr";
-    if(hasKeyFor("word") && Math.random() < 0.5){
-      const trEnOpts = REVERSE_TR_INDEX[baseEnOf(chosen.en)];
-      if(trEnOpts && trEnOpts.length){
-        const wantedPos = wordPosOf(chosen.en);
-        const trEnEntry = trEnOpts.find(o => o.pos === wantedPos) || trEnOpts[0];
-        const trEnBand = vocabCefrBand(typeof trEnEntry.cefr === "number" ? trEnEntry.cefr : chosen.cefr);
-        if(trEnBand >= lo && trEnBand <= hi) direction = "tr-en";
-      }
-    }
-    return {...chosen, type:"word", direction};
+    return {type:"word", direction: chosen.direction, progressKey: chosen.key, en: chosen.en, cefr: chosen.cefr, wordSource: chosen.source, trData: chosen.trData};
   }
 
   // Suffix-oefening (vervoeging/suffixen): sinds v2.76 een EIGEN tab i.p.v. een 15%-kans binnen de
@@ -4515,26 +4605,37 @@ async function renderPractice(){
     el("tr-word").textContent = "🤖 …";
     el("level-fill").style.width = "0%";
     el("level-label").textContent = "please wait…";
-    let sense = await resolveWordSense(picked.en, picked.direction);
-    if(sense){
-      picked.tr = sense.tr[0];
-      picked.senseTr = sense.tr; // de volledige, bij DEZE oefening horende vertaal-lijst -- gebruikt bij het beoordelen
-      picked.gloss = sense.gloss; // alleen gezet als dit woord >1 betekenis heeft
-      picked.note = sense.note; // korte, altijd zichtbare betekenis-hint -- zie wordMetaText()
-      picked.registerInfo = (sense.register && sense.register !== "neutral") ? {register: sense.register, note: ""} : null;
+    if(picked.wordSource === "tr"){
+      // tr-en-item: alle gegevens staan al rechtstreeks in TR_WORDS_DATA (trData), geen aparte
+      // resolveWordSense/REVERSE_TR_INDEX-opzoeking nodig -- dat zou hetzelfde nogmaals doen.
+      const td = picked.trData;
+      picked.tr = td.tr;
+      picked.senseTr = [td.tr];
+      picked.gloss = td.gloss;
+      picked.note = td.note;
+      picked.registerInfo = (td.register && td.register !== "neutral") ? {register: td.register, note: ""} : null;
     } else {
-      picked.tr = null; // geen sleutel of fout: en-tr blijft dan werken via tekstinvoer, tr-en niet mogelijk
-      if(picked.direction === "tr-en") picked.direction = "en-tr";
+      let sense = await resolveWordSense(picked.en, picked.direction);
+      if(sense){
+        picked.tr = sense.tr[0];
+        picked.senseTr = sense.tr; // de volledige, bij DEZE oefening horende vertaal-lijst -- gebruikt bij het beoordelen
+        picked.gloss = sense.gloss; // alleen gezet als dit woord >1 betekenis heeft
+        picked.note = sense.note; // korte, altijd zichtbare betekenis-hint -- zie wordMetaText()
+        picked.registerInfo = (sense.register && sense.register !== "neutral") ? {register: sense.register, note: ""} : null;
+      } else {
+        picked.tr = null; // geen sleutel of fout: en-tr blijft dan werken via tekstinvoer, tr-en niet mogelijk
+        if(picked.direction === "tr-en") picked.direction = "en-tr";
+      }
     }
   }
 
   if(!picked){
-    // val terug op het eerst beschikbare woord (bv. na een mislukte generatie)
+    // val terug op het eerst beschikbare EN-TR-woord (bv. na een mislukte generatie)
     const words = allWords();
     const now = Date.now();
     const due = words.filter(w => getProgress(w.en).due <= now);
     const base = due.length ? due[0] : words[0];
-    picked = {...base, type:"word", direction:"en-tr"};
+    picked = {...base, type:"word", direction:"en-tr", progressKey: base.en, wordSource:"en"};
   }
 
   currentItem = picked;
@@ -4554,7 +4655,7 @@ async function renderPractice(){
 
   el("badge-type").textContent = isSuffix ? "suffix" : (isQuestion ? "question" : (isSentence ? "sentence" : (isTrEn ? "TR → EN" : "EN → TR")));
   el("badge-type").className = "badge " + (isQuestion ? "badge-question" : (isSentence ? "badge-sentence" : "badge-word"));
-  el("btn-edit-flashcard").classList.toggle("hidden", !isWord);
+  el("btn-edit-flashcard").classList.toggle("hidden", !isWord || currentItem.wordSource === "tr");
   el("btn-reveal-word").classList.toggle("hidden", !isWord);
   const wordEl = el("tr-word");
   wordEl.textContent = isSuffix ? currentItem.prompt : ((isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || baseEnOf(currentItem.en)));
@@ -4562,8 +4663,16 @@ async function renderPractice(){
   wordEl.className = "tr-word" + ((isSentence||isQuestion) ? " sentence" : "");
 
   if(isWord){
-    const cefr18 = wordCefrOf(currentItem.en);
-    el("word-meta").textContent = wordMetaText(cefr18, currentItem.en, currentItem.note);
+    if(currentItem.wordSource === "tr"){
+      // tr-en-item: gebruik het EIGEN pos/cefr van de tr-en-entry, niet de (mogelijk afwijkende)
+      // en-tr-gegevens van hetzelfde Engelse trefwoord.
+      const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
+      const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
+      el("word-meta").textContent = [cefrTxt, posAbbr || null].filter(Boolean).join(" · ");
+    } else {
+      const cefr18 = wordCefrOf(currentItem.en);
+      el("word-meta").textContent = wordMetaText(cefr18, currentItem.en, currentItem.note);
+    }
   } else if(isSuffix){
     el("word-meta").textContent = "conjugate this verb using a grammar pattern you've already mastered";
   } else {
@@ -4596,7 +4705,7 @@ async function renderPractice(){
     el("level-fill").style.width = "0%";
     renderWordChips();
   } else {
-    const p = getProgress(currentItem.en);
+    const p = getProgress(currentItem.progressKey || currentItem.en);
     el("level-fill").style.width = (p.level*10) + "%";
     el("level-label").textContent = fmtLevel(p);
   }
@@ -4633,6 +4742,14 @@ function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning, 
   return [wrongPart, goodPart].filter(Boolean).join("<br>") + registerPart + deviationPart;
 }
 
+// Toont het correcte Engelse antwoord bij een tr-en-oefening -- voor een tr-en-item afkomstig uit de
+// EIGEN tr-en-lijst (TR_WORDS_DATA) gebruikt dit het EIGEN pos-veld van die entry (displayTrEntryGloss),
+// i.p.v. te gokken via de mogelijk afwijkende woordsoort van hetzelfde Engelse trefwoord in de en-tr-lijst.
+function correctEnglishDisplayFor(item){
+  if(item.wordSource === "tr" && item.trData) return displayTrEntryGloss(item.trData);
+  return displayEnglishWord(item.en);
+}
+
 async function handleCheck(){
   if(!currentItem || currentAnswered) return;
   const answer = el("answer-input").value.trim();
@@ -4663,7 +4780,7 @@ async function handleCheck(){
     // -- hier kost niks-doen geen informatie, want de statische vertaling is toch al meteen beschikbaar.
     // De uitleg-knop blijft hier ook zichtbaar (met de vertaling erin), zodat "check" indrukken zonder
     // iets in te vullen niet stilzwijgend het uitleg-paneel laat verdwijnen.
-    const correctAnswer = currentItem.direction === "tr-en" ? displayEnglishWord(currentItem.en) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
+    const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
     setExplanation("No answer entered, so this was counted as wrong." + (correctAnswer ? ` Correct answer: ${correctAnswer}.` : ""));
     finalizeAnswer(false, "❌<br>" + answerCompareLine("", correctAnswer, false));
     return;
@@ -4677,7 +4794,7 @@ async function handleCheck(){
     return;
   }
 
-  const correctAnswer = currentItem.direction === "tr-en" ? displayEnglishWord(currentItem.en) : (cachedTranslation(currentItem.en)||[]).join(", ");
+  const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (cachedTranslation(currentItem.en)||[]).join(", ");
 
   if(!hasKeyFor("word")){
     finalizeAnswer(false, "❌<br>" + answerCompareLine(answer, correctAnswer, false) + "<br><span class='muted'>Set a " + keyNameFor("word") + " API key to have other translations judged too, or dispute this result.</span>");
@@ -4838,7 +4955,7 @@ async function handleCheckQuestion(answer){
 // als fout telt (zie revealWord/revealedWords hierboven).
 function revealWordHint(){
   if(!currentItem || currentItem.type !== "word" || currentAnswered) return;
-  const correctAnswer = currentItem.direction === "tr-en" ? displayEnglishWord(currentItem.en) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
+  const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
   el("answer-input").disabled = true;
   setExplanation("You revealed the translation, so this was counted as wrong." + (correctAnswer ? ` Correct answer: ${correctAnswer}.` : ""));
   finalizeAnswer(false, "👁️<br>" + answerCompareLine("", correctAnswer, false));
@@ -4856,7 +4973,7 @@ function finalizeAnswer(correct, message){
   currentAnswered = true;
   currentCorrect = correct;
   recordHistory("word");
-  recordResult(currentItem.en, correct);
+  recordResult(currentItem.progressKey || currentItem.en, correct);
   const lessonNote = advanceLessonSession();
   const adaptiveNote = recordAdaptiveResult(correct);
   showFeedback(correct ? "correct" : "wrong", message + lessonNote + adaptiveNote);
@@ -4865,7 +4982,7 @@ function finalizeAnswer(correct, message){
   el("btn-check").disabled = false;
   el("btn-dispute").classList.toggle("hidden", !!correct);
   el("btn-reveal-word").classList.add("hidden");
-  const p = getProgress(currentItem.en);
+  const p = getProgress(currentItem.progressKey || currentItem.en);
   el("level-fill").style.width = (p.level*10) + "%";
   el("level-label").textContent = fmtLevel(p);
   el("answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken
@@ -5184,9 +5301,10 @@ async function disputeAnswer(){
   try{
     const verdict = await askDeepSeekJudge(currentItem, answer, true);
     setExplanation(verdict.uitleg);
+    const pgKey = currentItem.progressKey || currentItem.en;
     if(verdict.correct){
       if(currentItem.direction === "en-tr") promptAddTranslation(currentItem, answer);
-      const p = getProgress(currentItem.en);
+      const p = getProgress(pgKey);
       p.level = Math.min(10, p.level + 2);
       nextWordIntervalMinutes(p, "dispute");
       p.due = Date.now() + p.intervalMin * 60 * 1000;
@@ -5199,7 +5317,7 @@ async function disputeAnswer(){
       el("level-fill").style.width = (p.level*10) + "%";
       el("level-label").textContent = fmtLevel(p);
     } else {
-      const correctAnswer = currentItem.direction === "tr-en" ? displayEnglishWord(currentItem.en) : (cachedTranslation(currentItem.en)||[]).join(", ");
+      const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (cachedTranslation(currentItem.en)||[]).join(", ");
       showFeedback("wrong",
         "🔁 ❌<br>" +
         (correctAnswer ? answerCompareLine(answer, correctAnswer, false, verdict.betekenis_antwoord) + "<br><br>" : "") +
@@ -5207,7 +5325,7 @@ async function disputeAnswer(){
       el("btn-force-add").onclick = ()=>{
         if(!confirm('Are you sure "' + answer + '" is a correct translation, despite the AI\'s judgement?')) return;
         if(currentItem.direction === "en-tr") promptAddTranslation(currentItem, answer);
-        const p = getProgress(currentItem.en);
+        const p = getProgress(pgKey);
         p.level = Math.min(10, p.level + 2);
         nextWordIntervalMinutes(p, "dispute");
         p.due = Date.now() + p.intervalMin * 60 * 1000;
@@ -5411,9 +5529,45 @@ function renderWordsTab(){
   const sort = el("words-sort").value;
   const filter = el("words-filter").value;
   const cefrFilter = el("words-cefr-filter").value;
+  const dirFilter = el("words-direction-filter").value;
   const search = el("words-search").value.trim().toLowerCase();
 
-  let words = allWords().map(w => ({...w, level: getProgress(w.en).level, reps: getProgress(w.en).reps, ease: easeOf(w.en), tr: cachedTranslation(w.en)}));
+  // Combineert de en-tr-lijst (EN_WORDS_DATA) en/of de tr-en-lijst (TR_WORDS_DATA) tot rijen met een
+  // gemeenschappelijke vorm, elk met hun EIGEN progress-sleutel/score -- zie practiceWordEntries() voor
+  // dezelfde en/tr-scheiding zoals ook de daadwerkelijke oefening 'm gebruikt.
+  let words = [];
+  if(dirFilter !== "tr-en"){
+    words.push(...EN_WORDS_DATA.map(w => {
+      const p = getProgress(w.en);
+      const trans = cachedTranslation(w.en);
+      const hasOverride = !!(overrides[w.en] && ((overrides[w.en].tr && overrides[w.en].tr.length) || overrides[w.en].en));
+      return {
+        key: w.en, source: "en", cefr: w.cefr, level: p.level, reps: p.reps, ease: easeOf(w.en),
+        sortKey: baseEnOf(w.en),
+        displayWord: overrides[w.en]?.en || baseEnOf(w.en),
+        displayTrans: trans ? trans.join(", ") : "(not yet translated)",
+        pos: wordCategoryOf(w.en),
+        hasOverride,
+        editEn: w.en,
+        searchText: (baseEnOf(w.en) + " " + (trans ? trans.join(" ") : "")).toLowerCase(),
+      };
+    }));
+  }
+  if(dirFilter !== "en-tr"){
+    words.push(...TR_WORDS_DATA.map(w => {
+      const p = getProgress(w.key);
+      return {
+        key: w.key, source: "tr", cefr: w.cefr, level: p.level, reps: p.reps, ease: easeOf(w.key),
+        sortKey: w.tr,
+        displayWord: w.tr,
+        displayTrans: displayTrEntryGloss(w),
+        pos: (WORD_CATEGORY_ABBR[w.pos] || w.pos || ""),
+        hasOverride: false,
+        editEn: null,
+        searchText: (w.tr + " " + w.en).toLowerCase(),
+      };
+    }));
+  }
 
   if(filter === "introduced") words = words.filter(w => w.reps > 0);
 
@@ -5425,39 +5579,36 @@ function renderWordsTab(){
   }
 
   if(search){
-    words = words.filter(w =>
-      baseEnOf(w.en).toLowerCase().includes(search) ||
-      (w.tr && w.tr.join(" ").toLowerCase().includes(search))
-    );
+    words = words.filter(w => w.searchText.includes(search));
   }
 
-  if(sort === "proficiency-asc") words.sort((a,b)=> a.level - b.level || baseEnOf(a.en).localeCompare(baseEnOf(b.en)));
-  else if(sort === "proficiency-desc") words.sort((a,b)=> b.level - a.level || baseEnOf(a.en).localeCompare(baseEnOf(b.en)));
+  if(sort === "proficiency-asc") words.sort((a,b)=> a.level - b.level || a.sortKey.localeCompare(b.sortKey));
+  else if(sort === "proficiency-desc") words.sort((a,b)=> b.level - a.level || a.sortKey.localeCompare(b.sortKey));
   // Laagste ease-factor eerst = het woord dat de SRS zelf (los van het 0-10 niveau) als moeilijkst
   // beschouwt, omdat het intervallen na foute antwoorden telkens weer laat inkrimpen.
-  else if(sort === "ease-asc") words.sort((a,b)=> a.ease - b.ease || baseEnOf(a.en).localeCompare(baseEnOf(b.en)));
-  else words.sort((a,b)=> baseEnOf(a.en).localeCompare(baseEnOf(b.en)));
+  else if(sort === "ease-asc") words.sort((a,b)=> a.ease - b.ease || a.sortKey.localeCompare(b.sortKey));
+  else words.sort((a,b)=> a.sortKey.localeCompare(b.sortKey));
 
   el("words-count").textContent = words.length + " word" + (words.length===1?"":"s");
 
   el("words-list").innerHTML = words.map(w=>{
-    const trans = w.tr ? w.tr.join(", ") : "(not yet translated)";
     const color = w.reps===0 ? "#4a5568" : (w.level<=3 ? "#e0333f" : w.level<=6 ? "#e0a733" : "#2fae6a");
     const scoreLabel = w.reps===0 ? "new" : `${w.level}/10`;
     const easeLabel = w.reps===0 ? "" : ` <span class="muted" style="font-size:.65rem;" title="Individual ease-factor (steers repeat timing)">⚙️${w.ease.toFixed(2)}</span>`;
     const cefrTxt = typeof w.cefr === "number" ? cefrLabel(w.cefr) : "?";
-    const pos = wordCategoryOf(w.en);
-    const hasOverride = !!(overrides[w.en] && ((overrides[w.en].tr && overrides[w.en].tr.length) || overrides[w.en].en));
-    const displayEn = overrides[w.en]?.en || baseEnOf(w.en);
+    const dirTag = w.source === "tr" ? ` <span class="muted" style="font-size:.65rem;">TR→EN</span>` : ` <span class="muted" style="font-size:.65rem;">EN→TR</span>`;
+    const fixBtn = w.source === "en"
+      ? `<button class="btn-ghost btn-small edit-word-btn" data-en="${w.editEn.replace(/"/g,'&quot;')}" style="margin-top:4px;padding:1px 6px;font-size:.68rem;">✏️ Fix</button>`
+      : "";
     return `<div class="word-row">
       <div>
-        <div class="word-row-tr">${escapeHtml(displayEn)}${pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${pos}</span>` : ""}${hasOverride ? ` <span class="muted" style="font-size:.68rem;" title="Manually corrected">✏️</span>` : ""}</div>
-        <div class="word-row-trans">${escapeHtml(trans)}</div>
+        <div class="word-row-tr">${escapeHtml(w.displayWord)}${w.pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${w.pos}</span>` : ""}${w.hasOverride ? ` <span class="muted" style="font-size:.68rem;" title="Manually corrected">✏️</span>` : ""}${dirTag}</div>
+        <div class="word-row-trans">${escapeHtml(w.displayTrans)}</div>
       </div>
       <div style="text-align:right;">
         <div class="word-row-score" style="color:${color};">${scoreLabel}${easeLabel}</div>
         <div class="muted" style="font-size:.68rem;margin-top:2px;">${cefrTxt}</div>
-        <button class="btn-ghost btn-small edit-word-btn" data-en="${w.en.replace(/"/g,'&quot;')}" style="margin-top:4px;padding:1px 6px;font-size:.68rem;">✏️ Fix</button>
+        ${fixBtn}
       </div>
     </div>`;
   }).join("") || `<div class="muted" style="padding:12px 0;">No words found.</div>`;
@@ -5485,10 +5636,17 @@ function weaknessScore(w, maxWrong, now){
 }
 function getWeakestWords(count){
   const now = Date.now();
-  const practiced = allWords()
+  const enPool = EN_WORDS_DATA
     .filter(w => inCefrRangeEn(w.en))
-    .map(w => { const p = getProgress(w.en); return {...w, level: p.level, reps: p.reps, correct: p.correct || 0, wrong: p.reps - (p.correct || 0), lastWrongAt: p.lastWrongAt || null}; })
-    .filter(w => w.reps > 0);
+    .map(w => { const p = getProgress(w.en); return {key:w.en, source:"en", cefr:w.cefr, level: p.level, reps: p.reps, correct: p.correct || 0, wrong: p.reps - (p.correct || 0), lastWrongAt: p.lastWrongAt || null}; });
+  // tr-en-pool heeft zijn EIGEN cefr per Turkse term (zie TR_WORDS_DATA) i.p.v. het cefr van het
+  // onderliggende Engelse woord -- vocabCefrBand-vergelijking i.p.v. inCefrRangeEn (dat alleen EN-
+  // sleutels kent).
+  const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
+  const trPool = TR_WORDS_DATA
+    .filter(w => typeof w.cefr !== "number" || (vocabCefrBand(w.cefr) >= lo && vocabCefrBand(w.cefr) <= hi))
+    .map(w => { const p = getProgress(w.key); return {key:w.key, source:"tr", cefr:w.cefr, trData:w, level: p.level, reps: p.reps, correct: p.correct || 0, wrong: p.reps - (p.correct || 0), lastWrongAt: p.lastWrongAt || null}; });
+  const practiced = [...enPool, ...trPool].filter(w => w.reps > 0);
   const maxWrong = practiced.reduce((m,w)=>Math.max(m,w.wrong), 0);
   const sorted = practiced.sort((a,b)=> weaknessScore(b,maxWrong,now) - weaknessScore(a,maxWrong,now));
   return sorted.slice(0, count);
@@ -5511,20 +5669,35 @@ function renderWeakWordsList(){
     return;
   }
   const rows = words.map(w=>{
+    if(w.source === "tr"){
+      const color = w.level<=3 ? "#e0333f" : w.level<=6 ? "#e0a733" : "#2fae6a";
+      const dirTag = ` <span class="muted" style="font-size:.65rem;">TR→EN</span>`;
+      return `<div class="word-row">
+        <div>
+          <div class="word-row-tr">${escapeHtml(w.trData.tr)}${w.trData.pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${WORD_CATEGORY_ABBR[w.trData.pos] || w.trData.pos}</span>` : ""}${dirTag}</div>
+          <div class="word-row-trans">${escapeHtml(displayTrEntryGloss(w.trData))}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="word-row-score" style="color:${color};">${w.level}/10</div>
+          <div class="muted" style="font-size:.68rem;margin-top:2px;">${w.wrong} wrong</div>
+        </div>
+      </div>`;
+    }
     // pickWordSense geeft de SPECIFIEKE, primaire betekenis (incl. gloss om te disambigueren bij een
     // woord met meerdere losstaande betekenissen) i.p.v. cachedTranslation's platgeslagen lijst van ALLE
     // betekenissen door elkaar -- zo is meteen duidelijk welke vertaling bij dit specifieke woord (en,
     // bij meerdere zelfstandige "en"-entries voor hetzelfde basiswoord, welke betekenis) precies zwak is.
-    const sense = pickWordSense(w.en, "en-tr");
-    const cached = cachedTranslation(w.en);
+    const sense = pickWordSense(w.key, "en-tr");
+    const cached = cachedTranslation(w.key);
     const transTxt = (sense && sense.tr && sense.tr.length) ? sense.tr.join(", ") : (cached ? cached.join(", ") : "(not yet translated)");
     const glossTxt = (sense && sense.gloss) ? ` <span class="muted" style="font-size:.68rem;">(${escapeHtml(sense.gloss)})</span>` : "";
     const color = w.level<=3 ? "#e0333f" : w.level<=6 ? "#e0a733" : "#2fae6a";
-    const displayEn = overrides[w.en]?.en || baseEnOf(w.en);
-    const pos = wordCategoryOf(w.en);
+    const displayEn = overrides[w.key]?.en || baseEnOf(w.key);
+    const pos = wordCategoryOf(w.key);
+    const dirTag = ` <span class="muted" style="font-size:.65rem;">EN→TR</span>`;
     return `<div class="word-row">
       <div>
-        <div class="word-row-tr">${escapeHtml(displayEn)}${pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${pos}</span>` : ""}</div>
+        <div class="word-row-tr">${escapeHtml(displayEn)}${pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${pos}</span>` : ""}${dirTag}</div>
         <div class="word-row-trans">${escapeHtml(transTxt)}${glossTxt}</div>
       </div>
       <div style="text-align:right;">
@@ -5533,11 +5706,20 @@ function renderWeakWordsList(){
       </div>
     </div>`;
   }).join("");
-  el("weak-words-list").innerHTML = rows +
-    `<button id="btn-practice-weak-words" class="btn-primary" style="width:100%;margin-top:10px;">▶️ Practice these ${words.length} words</button>`;
-  el("btn-practice-weak-words").addEventListener("click", ()=>{
-    startSkillPractice({id:"weak-words-session", title:`${words.length} weakest words`, words: words.map(w=>w.en)});
-  });
+  // De "Practice"-sessieknop hieronder gebruikt de bestaande skill-practice-modal, die (net als lessen
+  // en de kennischeck) alleen de en-tr-lijst kent -- tr-en-woorden in deze lijst worden daarom wél
+  // getoond, maar niet in die sessie meegenomen. Ze komen vanzelf aan de beurt via de gewone Practice-
+  // tab (met "Word direction" op TR→EN of Both), die WEL de tr-en-SRS gebruikt.
+  const enOnly = words.filter(w => w.source === "en");
+  const practiceBtn = enOnly.length
+    ? `<button id="btn-practice-weak-words" class="btn-primary" style="width:100%;margin-top:10px;">▶️ Practice these ${enOnly.length} EN→TR words</button>`
+    : `<div class="muted" style="font-size:.78rem;margin-top:10px;">These are TR→EN words — practise them via the Practice tab (set "Word direction" to TR→EN or Both).</div>`;
+  el("weak-words-list").innerHTML = rows + practiceBtn;
+  if(enOnly.length){
+    el("btn-practice-weak-words").addEventListener("click", ()=>{
+      startSkillPractice({id:"weak-words-session", title:`${enOnly.length} weakest words`, words: enOnly.map(w=>w.key)});
+    });
+  }
 }
 
 // Toont/verbergt de zwakste-woordenlijst met dezelfde knop -- "Show list" <-> "Hide list".
@@ -6301,6 +6483,11 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     saveJSON(LS_SETTINGS, settings);
     el("mix-new-words-dial-row").classList.toggle("hidden", !settings.mixNewWords);
   });
+  el("word-direction-select").value = settings.wordDirection || "all";
+  el("word-direction-select").addEventListener("change", ()=>{
+    settings.wordDirection = el("word-direction-select").value;
+    saveJSON(LS_SETTINGS, settings);
+  });
   el("mix-new-words-dial").addEventListener("input", ()=>{
     settings.newWordsPer5 = parseInt(el("mix-new-words-dial").value, 10) || 2;
     saveJSON(LS_SETTINGS, settings);
@@ -6319,7 +6506,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
       for(const w of currentItem.words) recordResult(w.en, false);
     } else {
       recordHistory("word");
-      recordResult(currentItem.en, false);
+      recordResult(currentItem.progressKey || currentItem.en, false);
     }
     const lessonNote = advanceLessonSession();
     const adaptiveNote = recordAdaptiveResult(false);
@@ -6360,6 +6547,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   el("words-sort").addEventListener("change", renderWordsTab);
   el("words-filter").addEventListener("change", renderWordsTab);
   el("words-cefr-filter").addEventListener("change", renderWordsTab);
+  el("words-direction-filter").addEventListener("change", renderWordsTab);
   el("words-search").addEventListener("input", renderWordsTab);
   el("btn-ask-ai").addEventListener("click", openAiModal);
   el("btn-edit-flashcard").addEventListener("click", ()=>{
