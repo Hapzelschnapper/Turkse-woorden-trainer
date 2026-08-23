@@ -25,7 +25,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.95</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.96</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -373,7 +373,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-22 v2.95</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v2.96</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -4647,7 +4647,10 @@ async function handleCheck(){
   if(!answer){
     // leeg antwoord bij een los woord = "ik weet het niet", meteen als fout tellen, geen AI-call nodig
     // -- hier kost niks-doen geen informatie, want de statische vertaling is toch al meteen beschikbaar.
+    // De uitleg-knop blijft hier ook zichtbaar (met de vertaling erin), zodat "check" indrukken zonder
+    // iets in te vullen niet stilzwijgend het uitleg-paneel laat verdwijnen.
     const correctAnswer = currentItem.direction === "tr-en" ? displayEnglishWord(currentItem.en) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
+    setExplanation("No answer entered, so this was counted as wrong." + (correctAnswer ? ` Correct answer: ${correctAnswer}.` : ""));
     finalizeAnswer(false, "❌<br>" + answerCompareLine("", correctAnswer, false));
     return;
   }
