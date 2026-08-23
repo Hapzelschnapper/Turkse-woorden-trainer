@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.08</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.10</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.08</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.10</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -399,7 +399,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.08</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.10</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -1330,6 +1330,27 @@ function buildTrWordsData(){
 }
 function trWordDataOf(key){
   return TR_WORDS_DATA.find(w => w.key === key) || null;
+}
+// Vindt de TR_WORDS_DATA-progress-sleutel die hoort bij een tr-en-oefening op Engels woord `en` --
+// hergebruikt EXACT dezelfde pos/transitivity-matchlogica als pickWordSense(en,"tr-en") (zie hierboven),
+// zodat de sleutel altijd overeenkomt met de daadwerkelijk getoonde Turkse vorm. Nodig omdat checkup/
+// skill-practice de tr-en-richting nog via de oude REVERSE_TR_INDEX-flip op het Engelse woord kiezen
+// (i.p.v. rechtstreeks uit TR_WORDS_DATA zoals het hoofdscherm) -- dit koppelt dat resultaat alsnog aan
+// de juiste EIGEN tr-en-score, i.p.v. aan de gedeelde en-tr-score van hetzelfde Engelse woord.
+function trWordsDataKeyFor(en){
+  const trEnOptions = REVERSE_TR_INDEX[baseEnOf(en)];
+  if(!trEnOptions || !trEnOptions.length) return null;
+  const wantedPos = wordPosOf(en);
+  const wantedTransitivity = wordTransitivityOf(en);
+  let chosen;
+  if(wantedPos){
+    const candidates = trEnOptions.filter(o => o.pos === wantedPos);
+    chosen = (wantedTransitivity && candidates.length > 1) ? candidates.find(o => o.transitivity === wantedTransitivity) : candidates[0];
+  } else {
+    chosen = trEnOptions[0];
+  }
+  if(!chosen) return null;
+  return "trword:" + chosen.tr + "::" + (chosen.pos || "");
 }
 // Toont het Engelse trefwoord van een tr-en-entry, met "to " ervoor als het een werkwoord is -- gebruikt
 // het EIGEN, al bekende pos-veld van de tr-en-entry zelf i.p.v. te gokken via de (mogelijk afwijkende)
@@ -2336,9 +2357,13 @@ async function nextCheckupQuestion(){
     // kennischeck stilletjes, zonder enige verklaring ("wordt zomaar afgebroken"). Nu: 3x herkansen
     // met een ander woord, dan een duidelijke stopmelding i.p.v. een stille crash.
     try{
-      const direction = hasKeyFor("word") && Math.random() < 0.5 ? "tr-en" : "en-tr";
+      const direction = resolveCheckupWordDirection();
       const sense = await resolveWordSense(word.en, direction);
-      checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, note: sense ? sense.note : null, direction: sense ? direction : "en-tr"};
+      // tr-en-richting: apart, EIGEN progress-sleutel (net als het hoofdscherm) i.p.v. de gedeelde en-tr-
+      // score van hetzelfde Engelse woord -- zie trWordsDataKeyFor.
+      const progressKey = (sense && direction === "tr-en") ? (trWordsDataKeyFor(word.en) || word.en) : word.en;
+      const trData = direction === "tr-en" ? trWordDataOf(progressKey) : null;
+      checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, note: sense ? sense.note : null, direction: sense ? direction : "en-tr", progressKey};
       el("checkup-word").textContent = checkupState.current.direction === "tr-en" ? checkupState.current.tr : displayEnglishWord(checkupState.current.en);
       el("checkup-word").className = "tr-word";
       checkupState.current.hintRevealed = false;
@@ -2354,7 +2379,15 @@ async function nextCheckupQuestion(){
         el("checkup-word").style.cursor = "default";
         el("checkup-word").onclick = null;
       }
-      el("checkup-word-meta").textContent = wordMetaText(word.cefr, word.en, checkupState.current.note);
+      // Bij tr-en: EIGEN cefr/pos van de tr-en-entry tonen (kan afwijken van het en-tr-cefr van
+      // hetzelfde Engelse woord), consistent met hoe het hoofdscherm dit al deed.
+      if(trData){
+        const posAbbr = WORD_CATEGORY_ABBR[trData.pos] || trData.pos || "";
+        const cefrTxt = typeof trData.cefr === "number" ? cefrLabel(trData.cefr) : null;
+        el("checkup-word-meta").textContent = [cefrTxt, posAbbr || null].filter(Boolean).join(" · ");
+      } else {
+        el("checkup-word-meta").textContent = wordMetaText(word.cefr, word.en, checkupState.current.note);
+      }
       el("checkup-answer-input").placeholder = checkupState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
       checkupState.consecutiveFailures = 0;
     }catch(e){
@@ -2452,7 +2485,7 @@ async function submitCheckupAnswer(){
         }catch(e){ correct = false; }
       }
     }
-    recordResult(cur.en, correct); // telt gewoon mee voor je normale voortgang op dat woord
+    recordResult(cur.progressKey || cur.en, correct); // telt gewoon mee voor je normale voortgang op dat woord
     checkupState.vocabLevelResults.push(correct);
   } else {
     correctAnswerTxt = cur.drill.correct;
@@ -2651,9 +2684,11 @@ async function nextSkillPracticeQuestion(){
         return;
       }catch(e){ /* generatie mislukt: val terug op de gewone, kale woordoefening hieronder */ }
     }
-    const direction = hasKeyFor("word") && Math.random() < 0.5 ? "tr-en" : "en-tr";
+    const direction = resolveCheckupWordDirection();
     const sense = await resolveWordSense(en, direction);
-    skillPracticeState.current = {type:"word", en, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, note: sense ? sense.note : null, direction: sense ? direction : "en-tr"};
+    const progressKey = (sense && direction === "tr-en") ? (trWordsDataKeyFor(en) || en) : en;
+    const trData = direction === "tr-en" ? trWordDataOf(progressKey) : null;
+    skillPracticeState.current = {type:"word", en, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, note: sense ? sense.note : null, direction: sense ? direction : "en-tr", progressKey};
     el("checkup-word").textContent = skillPracticeState.current.direction === "tr-en" ? skillPracticeState.current.tr : displayEnglishWord(en);
     el("checkup-word").className = "tr-word";
     skillPracticeState.current.hintRevealed = false;
@@ -2668,7 +2703,13 @@ async function nextSkillPracticeQuestion(){
       el("checkup-word").style.cursor = "default";
       el("checkup-word").onclick = null;
     }
-    el("checkup-word-meta").textContent = wordMetaText(wordCefrOf(en), en, skillPracticeState.current.note);
+    if(trData){
+      const posAbbr = WORD_CATEGORY_ABBR[trData.pos] || trData.pos || "";
+      const cefrTxt = typeof trData.cefr === "number" ? cefrLabel(trData.cefr) : null;
+      el("checkup-word-meta").textContent = [cefrTxt, posAbbr || null].filter(Boolean).join(" · ");
+    } else {
+      el("checkup-word-meta").textContent = wordMetaText(wordCefrOf(en), en, skillPracticeState.current.note);
+    }
     el("checkup-answer-input").placeholder = skillPracticeState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
     badgeEl.textContent = "grammar"; badgeEl.className = "badge badge-sentence";
@@ -2742,7 +2783,7 @@ async function submitSkillPracticeAnswer(){
         try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; deviation = v.afwijking || ""; }catch(e){ correct = false; }
       }
     }
-    recordResult(cur.en, correct);
+    recordResult(cur.progressKey || cur.en, correct);
     chatItem = {type:"word", en:cur.en, tr:cur.tr || correctAnswerTxt, direction:cur.direction};
   } else {
     correctAnswerTxt = cur.drill.correct;
@@ -2811,7 +2852,7 @@ function toggleSkillPracticeExplanation(){
 async function skipSkillPracticeQuestion(){
   const cur = skillPracticeState.current;
   if(!cur) return;
-  if(cur.type === "word") recordResult(cur.en, false);
+  if(cur.type === "word") recordResult(cur.progressKey || cur.en, false);
   else recordGrammarResult(cur.topic.key, false);
   skillPracticeState.roundResults.push(false);
   if(skillPracticeState.roundResults.length >= SKILL_PRACTICE_ROUND_SIZE){
@@ -2838,7 +2879,7 @@ async function disputeSkillPracticeAnswer(){
       const drill = cur.sentenceDrill;
       if(drill){ const v = await gradeGrammarDrillAnswer(drill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }
       else { const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, true); correct = !!v.correct; uitleg = v.uitleg || ""; }
-      if(correct) recordResult(cur.en, true);
+      if(correct) recordResult(cur.progressKey || cur.en, true);
     } else {
       const v = await gradeGrammarDrillAnswer(cur.drill, answer);
       correct = !!v.correct; uitleg = v.uitleg || "";
@@ -3655,6 +3696,21 @@ function resolveWordDirectionForThisTurn(){
   const trFresh = poolHasEligibleCandidate("tr-en", lo, hi, now);
   if(enFresh && !trFresh) return "en-tr";
   if(trFresh && !enFresh) return "tr-en";
+  return Math.random() < 0.5 ? "en-tr" : "tr-en";
+}
+
+// Zelfde richtingsvoorkeur (settings.wordDirection) als het hoofdscherm, maar dan voor kennischeck/
+// skill-practice -- die kiezen het WOORD zelf via een heel ander mechanisme (CEFR-niveau resp. een vaste
+// lesbrede woordenlijst, geen SRS-due-cascade), dus de volledige due->nieuw->uitgeput-logica van
+// pickNextItem is hier niet van toepassing. Alleen de richtingskeuze wordt gelijkgetrokken: voorheen was
+// dat een losstaande 50/50-worp die alleen bij een API-sleutel tr-en overwoog; nu volgt het gewoon de
+// ingestelde voorkeur (en-tr only / tr-en only / random), net als overal elders in de app. Heeft het
+// gekozen woord toch geen tr-en-tegenhanger, dan valt resolveWordSense() vanzelf terug op en-tr (zie
+// de nulcontrole bij de aanroepers).
+function resolveCheckupWordDirection(){
+  const dir = settings.wordDirection || "random";
+  if(dir === "en-tr") return "en-tr";
+  if(dir === "tr-en") return "tr-en";
   return Math.random() < 0.5 ? "en-tr" : "tr-en";
 }
 
