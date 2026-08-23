@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.03</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.05</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.03</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.05</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -53,7 +53,15 @@
           <span class="muted" id="mix-new-words-dial-label" style="min-width:44px;">2 / 5</span>
         </div>
       </div>
-      <div class="muted hidden" id="range-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ No words are due for review in your selected CEFR range right now — showing the least practiced word in range instead.</div>
+      <div class="muted hidden" id="range-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ No words are due for review in your selected CEFR range right now — falling back to a new word instead.</div>
+      <div class="hidden" id="range-exhausted-notice" style="color:#c0392b;font-size:.85rem;margin-top:4px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.3);border-radius:8px;padding:10px;">
+        ⚠️ No words can currently be presented — everything in your selected CEFR range has already been introduced, and nothing is due for review yet.<br>
+        Raise the maximum range to <b id="range-expand-target"></b> so there's new material to practise?
+        <div class="row" style="gap:6px;margin-top:8px;">
+          <button class="btn-primary btn-small" id="btn-expand-range-yes" style="flex:1;">Yes, raise it</button>
+          <button class="btn-secondary btn-small" id="btn-expand-range-no" style="flex:1;">No</button>
+        </div>
+      </div>
       <div id="tr-word" class="tr-word">…</div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="word-meta" style="font-size:.78rem;margin-top:2px;"></div>
@@ -389,7 +397,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.03</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.05</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -3506,12 +3514,6 @@ function renderDueCount(){
 
 // Kandidatenpool voor de losse-woord-oefeningen op het hoofdscherm: de en-tr-lijst (EN_WORDS_DATA,
 // richting vast op "en-tr") en/of de tr-en-lijst (TR_WORDS_DATA, richting vast op "tr-en"), afhankelijk
-// van settings.wordDirection. Elke entry krijgt een EIGEN progress-sleutel ("key") -- voor en-tr-entries
-// is dat gewoon het Engelse woord (ongewijzigd, dus bestaande scores blijven behouden), voor tr-en-
-// entries is dat de aparte "trword:"-sleutel uit TR_WORDS_DATA. Zo houdt bv. "ball" (en-tr) een eigen
-// score los van "top" (tr-en), ook al zijn het elkaars vertaling.
-// Kandidatenpool voor de losse-woord-oefeningen op het hoofdscherm: de en-tr-lijst (EN_WORDS_DATA,
-// richting vast op "en-tr") en/of de tr-en-lijst (TR_WORDS_DATA, richting vast op "tr-en"), afhankelijk
 // van de opgegeven richting ("en-tr" | "tr-en" | "all"). Elke entry krijgt een EIGEN progress-sleutel
 // ("key") -- voor en-tr-entries is dat gewoon het Engelse woord (ongewijzigd, dus bestaande scores
 // blijven behouden), voor tr-en-entries is dat de aparte "trword:"-sleutel uit TR_WORDS_DATA. Zo houdt
@@ -3527,14 +3529,34 @@ function practiceWordEntries(dir){
   return entries;
 }
 
+// Heeft een richting ("en-tr"/"tr-en") binnen het ingestelde CEFR-bereik nog minstens 1 woord dat NIET
+// in de 5-minuten-afkoeltijd zit? Gebruikt door resolveWordDirectionForThisTurn (random-modus) om een
+// net getoond, piepklein poolletje (bv. een kersvers, amper-gevulde tr-en-bereik) te ontwijken i.p.v. --
+// via de bestaande cooldown-terugval-naar-volledige-lijst hieronder -- gedwongen hetzelfde woord
+// meteen opnieuw te tonen terwijl de ANDERE richting nog volop verse kandidaten heeft.
+function poolHasEligibleCandidate(dir, lo, hi, now){
+  return practiceWordEntries(dir).some(w => {
+    if(typeof w.cefr === "number" && (vocabCefrBand(w.cefr) < lo || vocabCefrBand(w.cefr) > hi)) return false;
+    return !isInCooldown(w.key, now);
+  });
+}
+
 // Bepaalt welke richting DEZE beurt gebruikt wordt. Bij "en-tr"/"tr-en" is dat simpelweg die ene, vaste
-// lijst; bij "random" wordt elke beurt eerst (50/50) geloot UIT WELKE VAN DE TWEE LIJSTEN dit keer
-// gekozen wordt, en pas daarna binnen die ene lijst het zwakste/eerstvolgende woord -- dat garandeert een
-// ongeveer gelijke verdeling tussen de twee richtingen, i.p.v. dat de ene lijst (bv. omdat hij structureel
-// meer/zwakkere woorden heeft) de andere geruime tijd zou domineren in één gemengde pool.
+// lijst; bij "random" wordt eerst gekeken welke van de twee lijsten (binnen het CEFR-bereik) nog verse,
+// niet-afgekoelde kandidaten heeft -- alleen als BEIDE dat hebben, wordt er daadwerkelijk 50/50 geloot.
+// Heeft er maar één verse kandidaten, dan wordt die richting gebruikt (voorkomt geforceerde herhaling
+// van hetzelfde woord terwijl de andere richting nog frisse stof had); hebben BEIDE niets vers meer
+// (zeldzaam, alleen bij een heel smal bereik), dan valt het alsnog terug op een gewone 50/50-worp --
+// een herhaling is dan sowieso onvermijdelijk, ongeacht welke richting gekozen wordt.
 function resolveWordDirectionForThisTurn(){
   const dir = settings.wordDirection || "random";
   if(dir !== "random") return dir;
+  const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
+  const now = Date.now();
+  const enFresh = poolHasEligibleCandidate("en-tr", lo, hi, now);
+  const trFresh = poolHasEligibleCandidate("tr-en", lo, hi, now);
+  if(enFresh && !trFresh) return "en-tr";
+  if(trFresh && !enFresh) return "tr-en";
   return Math.random() < 0.5 ? "en-tr" : "tr-en";
 }
 
@@ -3544,23 +3566,31 @@ function pickNextItem(){
   const allUnlocked = practiceWordEntries(resolveWordDirectionForThisTurn()); // en-tr en/of tr-en, al naar gelang settings.wordDirection -- beide altijd volledig "ontgrendeld"
   const now = Date.now();
 
-  // Woordselectie kiest ALTIJD uit het ingestelde CEFR-bereik, ongeacht of een woord "due" is of al
-  // eerder getoond -- due-status en niveau bepalen alleen nog de VOLGORDE (zwakste niveau eerst, bij
-  // gelijk niveau de dichtstbijzijnde duedatum), niet OF een woord in aanmerking komt. Er wordt dus
-  // nooit meer buiten bereik gezocht -- lastNoneDueInRange is puur een melding, geen terugval: hij
-  // klopt zodra er binnen bereik niets is met due <= nu, ook al kiezen we sowieso een woord uit bereik.
+  // Woordselectie kiest uit het ingestelde CEFR-bereik. Prioriteit: (1) due woorden -- normale mix-
+  // logica hieronder; (2) niets due, maar wél nog nooit-getoonde woorden -- expliciete terugval op
+  // NIEUWE woorden, ongeacht settings.mixNewWords (dat regelt alleen de nieuw/herhaling-verhouding
+  // wanneer er wél iets due is, niet wat er moet gebeuren als er NIETS due is); (3) niets due EN niets
+  // nieuws -- er is dan letterlijk niks zinvols te tonen binnen dit bereik; renderPractice toont dan een
+  // melding i.p.v. een oefening, met een voorstel om het maximumbereik met 1 te verhogen.
   const wordsInRange = allUnlocked.filter(inRange);
-  lastNoneDueInRange = wordsInRange.length > 0 && !wordsInRange.some(w => getProgress(w.key).due <= now);
+  const dueNow = wordsInRange.filter(w => getProgress(w.key).reps > 0 && getProgress(w.key).due <= now);
+  const neverShown = wordsInRange.filter(w => getProgress(w.key).reps === 0);
+  lastNoneDueInRange = wordsInRange.length > 0 && dueNow.length === 0 && neverShown.length > 0; // melding: terugval op nieuwe woorden
+  wordsExhausted = wordsInRange.length > 0 && dueNow.length === 0 && neverShown.length === 0; // melding: niets te bieden, bereik vergroten?
 
   // Mix nieuwe (nog nooit getoonde) woorden en al-eerder-geziene woorden volgens settings.mixNewWords/
   // newWordsPer5, i.p.v. altijd de volledige pool te gebruiken (waarin nieuwe woorden vanzelf domineren
   // omdat ze op niveau 0 staan en dus als "zwakst" gelden). Zie wordSourceHistory verderop voor hoe de
   // verhouding over een venster van 5 gestuurd wordt.
-  const newInRange = wordsInRange.filter(w => getProgress(w.key).reps === 0);
+  const newInRange = neverShown;
   const reviewInRange = wordsInRange.filter(w => getProgress(w.key).reps > 0);
   let dueWords;
   if(!wordsInRange.length){
     dueWords = allUnlocked; // bestaande fallback: niets binnen bereik -> toch iets tonen
+  } else if(dueNow.length === 0 && newInRange.length > 0){
+    dueWords = newInRange; // niets due -> expliciete terugval op nieuwe woorden
+  } else if(dueNow.length === 0){
+    dueWords = []; // niets due EN niets nieuws -> wordsExhausted, hieronder afgehandeld (geen woord-item)
   } else if(!settings.mixNewWords){
     // Nieuwe woorden bewust NIET aanbieden in de reguliere pool -- alleen al eerder geziene woorden.
     // Blijft daar niets van over (bv. nog helemaal niets geoefend), dan toch newInRange gebruiken --
@@ -3638,6 +3668,11 @@ function pickNextItem(){
   // aparte tab.
   if(bestType === "sentence" && canGenerate) return {needsGeneration:true, kind:"sentence"};
   if(bestType === "question" && canGenerate) return {needsGeneration:true, kind:"question"};
+
+  // Geen due woorden EN geen nieuwe woorden binnen dit bereik -> er is niets zinvols te tonen. Geen
+  // woord-item teruggeven; renderPractice toont dan de melding + voorstel om het maximumbereik te
+  // verhogen i.p.v. alsnog (zoals voorheen) stilzwijgend een willekeurig, niet-due woord te herhalen.
+  if(wordsExhausted) return {needsRangeExpansion: true};
 
   return pickWeakestSoonest(dueWords);
 }
@@ -4524,7 +4559,8 @@ Beantwoord vragen kort, duidelijk, rechtstreeks tegen de gebruiker gericht (spre
 
 /* ===================== UI STATE ===================== */
 let currentItem = null;
-let lastNoneDueInRange = false; // true als er binnen het ingestelde CEFR-bereik geen enkel woord due is (puur een melding, geen terugval -- er wordt sowieso uit bereik geselecteerd)
+let lastNoneDueInRange = false; // true als er niets due is, maar er WEL nog nieuwe woorden zijn om op terug te vallen
+let wordsExhausted = false; // true als er niets due EN niets nieuws is binnen het ingestelde CEFR-bereik -- niets zinvols te tonen
 let currentAnswered = false;
 let currentCorrect = null;
 let chatMsgs = []; // voor de "vraag aan AI"-modal, per huidige item
@@ -4606,6 +4642,53 @@ function revealWord(en){
   renderWordChips();
 }
 
+// Verhoogt settings.cefrMax met 1 (geklemd op MAX_VOCAB_CEFR_IDX) en houdt de CEFR-range-UI in
+// Instellingen synchroon, mocht die net zichtbaar zijn. Gedeelde, globale tegenhanger van de nested
+// applyCefrRange()-helper in de DOMContentLoaded-init (die niet van buiten die scope aan te roepen is).
+function bumpMaxCefrRangeByOne(){
+  const newMax = Math.min(MAX_VOCAB_CEFR_IDX, (settings.cefrMax ?? 0) + 1);
+  if(newMax === settings.cefrMax) return false; // al op het maximum -- niets te verhogen
+  settings.cefrMax = newMax;
+  if(settings.cefrMin > settings.cefrMax) settings.cefrMin = settings.cefrMax;
+  saveJSON(LS_SETTINGS, settings);
+  if(el("cefr-max-slider")){
+    el("cefr-max-slider").value = settings.cefrMax;
+    el("cefr-max-select").value = settings.cefrMax;
+    el("cefr-max-label").textContent = cefrLabel(settings.cefrMax);
+    el("cefr-min-slider").value = settings.cefrMin;
+    el("cefr-min-select").value = settings.cefrMin;
+    el("cefr-min-label").textContent = cefrLabel(settings.cefrMin);
+  }
+  updateCefrUnlockedInfo();
+  return true;
+}
+
+// Toont de "niets te tonen binnen dit bereik"-melding i.p.v. een oefening: geen due woorden EN geen
+// nieuwe woorden meer binnen het ingestelde CEFR-bereik. Stelt concreet voor het maximumbereik met 1
+// te verhogen (ja/nee) -- bij "ja" wordt dat direct doorgevoerd en de oefening opnieuw geladen.
+function showRangeExhaustedNotice(){
+  currentItem = null;
+  el("badge-type").textContent = "word";
+  el("badge-type").className = "badge badge-word";
+  el("tr-word").textContent = "No words available";
+  el("tr-word").className = "tr-word";
+  el("word-meta").textContent = "";
+  el("btn-edit-flashcard").classList.add("hidden");
+  el("btn-reveal-word").classList.add("hidden");
+  el("level-fill").style.width = "0%";
+  el("level-label").textContent = "";
+  el("answer-instruction").querySelector("span").textContent = "";
+  el("answer-input").value = "";
+  el("answer-input").disabled = true;
+  el("btn-check").disabled = true;
+  el("btn-skip").disabled = true;
+  el("range-empty-notice").classList.add("hidden");
+  const nextMax = Math.min(MAX_VOCAB_CEFR_IDX, (settings.cefrMax ?? 0) + 1);
+  el("range-expand-target").textContent = cefrLabel(nextMax);
+  el("btn-expand-range-yes").classList.toggle("hidden", nextMax === settings.cefrMax); // al op het plafond -> geen zinloze "ja"-knop
+  el("range-exhausted-notice").classList.remove("hidden");
+}
+
 async function renderPractice(){
   currentAnswered = false;
   currentCorrect = null;
@@ -4621,9 +4704,15 @@ async function renderPractice(){
   el("btn-check").disabled = true;
 
   el("btn-skip").disabled = true;
+  el("range-exhausted-notice").classList.add("hidden");
   renderDueCount();
 
   let picked = pickNextItem();
+
+  if(picked && picked.needsRangeExpansion){
+    showRangeExhaustedNotice();
+    return;
+  }
 
   if(picked && picked.needsGeneration){
     const kind = picked.kind || "sentence";
@@ -6522,6 +6611,13 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   });
   el("btn-check").addEventListener("click", ()=>{
     if(!currentAnswered) handleCheck(); else renderPractice();
+  });
+  el("btn-expand-range-yes").addEventListener("click", ()=>{
+    bumpMaxCefrRangeByOne();
+    renderPractice();
+  });
+  el("btn-expand-range-no").addEventListener("click", ()=>{
+    el("range-exhausted-notice").classList.add("hidden");
   });
   el("mix-new-words-toggle").addEventListener("change", ()=>{
     settings.mixNewWords = el("mix-new-words-toggle").checked;
