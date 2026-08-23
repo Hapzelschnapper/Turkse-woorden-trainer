@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.05</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.07</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.05</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.07</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -54,6 +54,7 @@
         </div>
       </div>
       <div class="muted hidden" id="range-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ No words are due for review in your selected CEFR range right now — falling back to a new word instead.</div>
+      <div class="muted hidden" id="direction-switch-notice" style="color:#2f7cae;font-size:.8rem;margin-top:4px;">↔️ No <span id="direction-switch-from"></span> words due right now — automatically switched to <span id="direction-switch-to"></span> for this turn.</div>
       <div class="hidden" id="range-exhausted-notice" style="color:#c0392b;font-size:.85rem;margin-top:4px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.3);border-radius:8px;padding:10px;">
         ⚠️ No words can currently be presented — everything in your selected CEFR range has already been introduced, and nothing is due for review yet.<br>
         Raise the maximum range to <b id="range-expand-target"></b> so there's new material to practise?
@@ -397,7 +398,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.05</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.07</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -3474,18 +3475,29 @@ async function getOrFetchTranslation(en){
 // nog-nooit-getoonde woorden mee (die zijn "nieuw", niet "te herhalen" -- zie countNewWords hieronder).
 function countDueWords(){
   const now = Date.now();
-  const unlockedEns = unlockedWordSet();
-  return allWords().filter(w => {
-    if(!unlockedEns.has(w.en) || !inCefrRangeEn(w.en)) return false;
-    const p = getProgress(w.en);
+  const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
+  // Telt over de pool die het huidige settings.wordDirection ook daadwerkelijk gebruikt (en-tr, tr-en,
+  // of -- bij "random" -- allebei; practiceWordEntries() sluit alleen uit bij een letterlijke "en-tr"/
+  // "tr-en"-waarde, elke andere waarde levert dus al beide lijsten). Voorheen telde dit UITSLUITEND de
+  // en-tr-lijst, ongeacht de ingestelde richting -- dat gaf een misleidend getal zodra er ook (of vooral)
+  // in tr-en geoefend werd.
+  return practiceWordEntries(settings.wordDirection || "random").filter(w => {
+    if(typeof w.cefr === "number" && (vocabCefrBand(w.cefr) < lo || vocabCefrBand(w.cefr) > hi)) return false;
+    const p = getProgress(w.key);
     return p.reps > 0 && p.due <= now;
   }).length;
 }
 // Aantal woorden binnen het ingestelde CEFR-bereik dat nog NOOIT getoond is -- de tegenhanger van
-// countDueWords hierboven. Hergebruikt getIntroducibleWords() (dezelfde pool die ook daadwerkelijk als
-// "nieuw woord" gekozen wordt) zodat dit getal en de praktijk nooit uit elkaar kunnen lopen.
+// countDueWords hierboven. LET OP: dit is bewust een ANDERE telling dan getIntroducibleWords()/
+// pickEnglishWordForSentence (die blijven EN-only, want zinnen worden alleen rond Engelse woorden
+// opgebouwd) -- deze telling is puur voor de "X nieuwe woorden"-weergave en volgt daarom dezelfde
+// en-tr/tr-en/random-richting als de daadwerkelijke losse-woord-oefening (zie practiceWordEntries).
 function countNewWords(){
-  return getIntroducibleWords().length;
+  const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
+  return practiceWordEntries(settings.wordDirection || "random").filter(w => {
+    if(typeof w.cefr === "number" && (vocabCefrBand(w.cefr) < lo || vocabCefrBand(w.cefr) > hi)) return false;
+    return getProgress(w.key).reps === 0;
+  }).length;
 }
 // Toont twee losse regels i.p.v. één enkel getal: hoeveel woorden nog nieuw zijn (nog nooit getoond,
 // binnen bereik) en hoeveel al eerder getoonde woorden nu due zijn voor herhaling. Voorheen liet dit
@@ -3541,18 +3553,38 @@ function poolHasEligibleCandidate(dir, lo, hi, now){
   });
 }
 
-// Bepaalt welke richting DEZE beurt gebruikt wordt. Bij "en-tr"/"tr-en" is dat simpelweg die ene, vaste
-// lijst; bij "random" wordt eerst gekeken welke van de twee lijsten (binnen het CEFR-bereik) nog verse,
-// niet-afgekoelde kandidaten heeft -- alleen als BEIDE dat hebben, wordt er daadwerkelijk 50/50 geloot.
-// Heeft er maar één verse kandidaten, dan wordt die richting gebruikt (voorkomt geforceerde herhaling
-// van hetzelfde woord terwijl de andere richting nog frisse stof had); hebben BEIDE niets vers meer
-// (zeldzaam, alleen bij een heel smal bereik), dan valt het alsnog terug op een gewone 50/50-worp --
-// een herhaling is dan sowieso onvermijdelijk, ongeacht welke richting gekozen wordt.
+// Bepaalt welke richting DEZE beurt gebruikt wordt.
+// - "random": eerst kijken welke van de twee lijsten (binnen het CEFR-bereik) nog verse, niet-
+//   afgekoelde kandidaten heeft -- alleen als BEIDE dat hebben, wordt er daadwerkelijk 50/50 geloot.
+//   Heeft er maar één verse kandidaten, dan wordt die richting gebruikt (voorkomt geforceerde herhaling
+//   van hetzelfde woord terwijl de andere richting nog frisse stof had); hebben BEIDE niets vers meer
+//   (zeldzaam, alleen bij een heel smal bereik), dan valt het alsnog terug op een gewone 50/50-worp --
+//   een herhaling is dan sowieso onvermijdelijk, ongeacht welke richting gekozen wordt.
+// - "en-tr"/"tr-en" (vaste richting): normaal gewoon die ene lijst, MAAR als die vaste richting binnen
+//   bereik geen enkel DUE woord heeft terwijl de ANDERE richting dat wel heeft, wordt er voor deze beurt
+//   automatisch naar die andere richting overgeschakeld (en vice versa) -- i.p.v. te wachten tot je
+//   zelf de instelling omzet, of een "nieuw woord"/"niets te bieden"-melding te krijgen terwijl er
+//   elders due stof ligt. Hebben BEIDE richtingen niets due, dan blijft de ingestelde richting gewoon
+//   staan -- de due->nieuw->uitgeput-cascade in pickNextItem handelt dat verder af.
 function resolveWordDirectionForThisTurn(){
   const dir = settings.wordDirection || "random";
-  if(dir !== "random") return dir;
   const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
   const now = Date.now();
+  lastAutoSwitchedFrom = null; // reset -- alleen gezet als er deze beurt daadwerkelijk werd overgeschakeld
+  if(dir !== "random"){
+    const poolHasDue = (d) => practiceWordEntries(d).some(w => {
+      if(typeof w.cefr === "number" && (vocabCefrBand(w.cefr) < lo || vocabCefrBand(w.cefr) > hi)) return false;
+      const p = getProgress(w.key);
+      return p.reps > 0 && p.due <= now;
+    });
+    if(poolHasDue(dir)) return dir;
+    const other = dir === "en-tr" ? "tr-en" : "en-tr";
+    if(poolHasDue(other)){
+      lastAutoSwitchedFrom = dir;
+      return other;
+    }
+    return dir;
+  }
   const enFresh = poolHasEligibleCandidate("en-tr", lo, hi, now);
   const trFresh = poolHasEligibleCandidate("tr-en", lo, hi, now);
   if(enFresh && !trFresh) return "en-tr";
@@ -4561,6 +4593,7 @@ Beantwoord vragen kort, duidelijk, rechtstreeks tegen de gebruiker gericht (spre
 let currentItem = null;
 let lastNoneDueInRange = false; // true als er niets due is, maar er WEL nog nieuwe woorden zijn om op terug te vallen
 let wordsExhausted = false; // true als er niets due EN niets nieuws is binnen het ingestelde CEFR-bereik -- niets zinvols te tonen
+let lastAutoSwitchedFrom = null; // bij een vaste richting: de richting waar deze beurt vanaf geswitcht is (null = geen switch), zie resolveWordDirectionForThisTurn
 let currentAnswered = false;
 let currentCorrect = null;
 let chatMsgs = []; // voor de "vraag aan AI"-modal, per huidige item
@@ -4705,6 +4738,7 @@ async function renderPractice(){
 
   el("btn-skip").disabled = true;
   el("range-exhausted-notice").classList.add("hidden");
+  el("direction-switch-notice").classList.add("hidden");
   renderDueCount();
 
   let picked = pickNextItem();
@@ -4846,6 +4880,12 @@ async function renderPractice(){
 
   el("no-key-warning").style.display = hasKeyFor("word") ? "none" : "block";
   el("range-empty-notice").classList.toggle("hidden", !lastNoneDueInRange);
+  const showSwitchNotice = currentItem.type === "word" && !!lastAutoSwitchedFrom;
+  if(showSwitchNotice){
+    el("direction-switch-from").textContent = lastAutoSwitchedFrom === "en-tr" ? "EN→TR" : "TR→EN";
+    el("direction-switch-to").textContent = lastAutoSwitchedFrom === "en-tr" ? "TR→EN" : "EN→TR";
+  }
+  el("direction-switch-notice").classList.toggle("hidden", !showSwitchNotice);
   setTimeout(()=> el("answer-input").focus(), 50);
 }
 
