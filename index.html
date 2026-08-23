@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.10</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.12</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.10</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.12</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -64,7 +64,7 @@
         </div>
       </div>
       <div id="tr-word" class="tr-word">…</div>
-      <div class="muted hidden" id="word-peek-hint" style="font-size:.85rem;margin-top:2px;"></div>
+      <div class="hidden" id="word-peek-hint" style="font-size:1.4rem;font-weight:600;margin-top:4px;color:#2f7cae;"></div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="word-meta" style="font-size:.78rem;margin-top:2px;"></div>
         <div class="row" style="gap:4px;">
@@ -399,7 +399,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.10</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.12</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -479,7 +479,7 @@
     <span id="checkup-badge" class="badge badge-word hidden" style="margin-bottom:8px;display:inline-block;">word</span>
     <div id="checkup-question-box">
       <div class="tr-word" id="checkup-word">…</div>
-      <div class="muted hidden" id="checkup-peek-hint" style="font-size:.85rem;margin-top:2px;"></div>
+      <div class="hidden" id="checkup-peek-hint" style="font-size:1.4rem;font-weight:600;margin-top:4px;color:#2f7cae;"></div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="checkup-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
         <button class="btn-ghost btn-small hidden" id="btn-checkup-reveal" style="margin-top:0;padding:2px 8px;font-size:.75rem;" title="Show the answer — counts this as wrong">👁️ Reveal</button>
@@ -2294,20 +2294,27 @@ async function gradeGrammarDrillAnswer(drill, answer){
 }
 
 // Klik op het kale checkup/skill-practice-woord (alleen onderstreept als de vertaling lokaal bekend is):
-// zelfde niet-blokkerende peek-mechanisme als peekCurrentWord() op het hoofdscherm -- toont de betekenis
-// meteen, zonder de oefening te beëindigen, maar telt bij de daadwerkelijke Check-actie linea recta als
-// fout (SRS-terugval op de score die op dit moment achter dit woord zit).
+// zelfde progressieve letterhint als peekCurrentWord() op het hoofdscherm -- 1e klik toont de eerste
+// letter + puntjes, elke volgende klik voegt een letter toe, zonder de oefening te beëindigen. Telt al
+// bij de eerste hint-letter bij de daadwerkelijke Check-actie linea recta als fout (SRS-terugval op de
+// score die op dit moment achter dit woord zit).
 function peekCheckupWord(){
   const state = skillPracticeState || checkupState;
   const cur = state && state.current;
-  if(!cur || cur.type !== "word" || cur.sentenceDrill || cur.peeked) return;
+  if(!cur || cur.type !== "word" || cur.sentenceDrill) return;
+  const primary = cur.direction === "tr-en" ? baseEnOf(cur.en) : (cur.tr || (cachedTranslation(cur.en)||[])[0] || "");
+  if(!primary) return;
+  const letterCount = primary.replace(/\s/g, "").length;
+  cur.hintLevel = Math.min(letterCount, (cur.hintLevel || 0) + 1);
   cur.peeked = true;
-  const meaning = cur.direction === "tr-en" ? baseEnOf(cur.en) : (cur.tr || (cachedTranslation(cur.en)||[]).join(", "));
-  el("checkup-peek-hint").textContent = "💡 " + meaning + " (counts as wrong)";
+  const fullyRevealed = cur.hintLevel >= letterCount;
+  el("checkup-peek-hint").textContent = "💡 " + maskWordForHint(primary, cur.hintLevel) + (fullyRevealed ? "" : "  (tap for another letter)");
   el("checkup-peek-hint").classList.remove("hidden");
-  el("checkup-word").style.cursor = "default";
-  el("checkup-word").style.textDecoration = "none";
-  el("checkup-word").onclick = null;
+  if(fullyRevealed){
+    el("checkup-word").style.cursor = "default";
+    el("checkup-word").style.textDecoration = "none";
+    el("checkup-word").onclick = null;
+  }
 }
 
 async function nextCheckupQuestion(){
@@ -3729,8 +3736,20 @@ function pickNextItem(){
   const wordsInRange = allUnlocked.filter(inRange);
   const dueNow = wordsInRange.filter(w => getProgress(w.key).reps > 0 && getProgress(w.key).due <= now);
   const neverShown = wordsInRange.filter(w => getProgress(w.key).reps === 0);
-  lastNoneDueInRange = wordsInRange.length > 0 && dueNow.length === 0 && neverShown.length > 0; // melding: terugval op nieuwe woorden
-  wordsExhausted = wordsInRange.length > 0 && dueNow.length === 0 && neverShown.length === 0; // melding: niets te bieden, bereik vergroten?
+  // "Mix in new words" op 5/5 betekent: ALTIJD een nieuw woord, NOOIT terugvallen op due/review -- dat
+  // is dan geen uitzonderlijke "terugval" meer maar het normale, ingestelde gedrag. Daarom in die stand:
+  // geen "geen due woorden"-melding tonen (die klopt dan gewoon nooit, want er wordt sowieso nooit uit
+  // due geput), en als er ook geen nieuwe woorden meer over zijn, NIET alsnog stiekem op due/review
+  // terugvallen (dat was de bug: due woorden konden dan toch verschijnen) -- dan geldt dit bereik als
+  // "uitgeput" voor nieuwe stof, punt.
+  const alwaysNew = settings.mixNewWords && (settings.newWordsPer5 ?? 2) >= 5;
+  if(alwaysNew){
+    lastNoneDueInRange = false;
+    wordsExhausted = wordsInRange.length > 0 && neverShown.length === 0;
+  } else {
+    lastNoneDueInRange = wordsInRange.length > 0 && dueNow.length === 0 && neverShown.length > 0; // melding: terugval op nieuwe woorden
+    wordsExhausted = wordsInRange.length > 0 && dueNow.length === 0 && neverShown.length === 0; // melding: niets te bieden, bereik vergroten?
+  }
 
   // Mix nieuwe (nog nooit getoonde) woorden en al-eerder-geziene woorden volgens settings.mixNewWords/
   // newWordsPer5, i.p.v. altijd de volledige pool te gebruiken (waarin nieuwe woorden vanzelf domineren
@@ -3741,6 +3760,10 @@ function pickNextItem(){
   let dueWords;
   if(!wordsInRange.length){
     dueWords = allUnlocked; // bestaande fallback: niets binnen bereik -> toch iets tonen
+  } else if(alwaysNew){
+    // 5/5: uitsluitend nieuwe woorden. Leeg als er niets nieuws meer is -- dat wordt hieronder via
+    // wordsExhausted afgehandeld (geen woord-item), NIET stiekem op due/review teruggevallen.
+    dueWords = newInRange;
   } else if(dueNow.length === 0 && newInRange.length > 0){
     dueWords = newInRange; // niets due -> expliciete terugval op nieuwe woorden
   } else if(dueNow.length === 0){
@@ -4716,6 +4739,7 @@ let currentItem = null;
 let lastNoneDueInRange = false; // true als er niets due is, maar er WEL nog nieuwe woorden zijn om op terug te vallen
 let wordsExhausted = false; // true als er niets due EN niets nieuws is binnen het ingestelde CEFR-bereik -- niets zinvols te tonen
 let lastAutoSwitchedFrom = null; // bij een vaste richting: de richting waar deze beurt vanaf geswitcht is (null = geen switch), zie resolveWordDirectionForThisTurn
+let retryPending = false; // true na een fout antwoord op een los woord: de fout is al geregistreerd, maar "Next" blijft geblokkeerd tot het juiste antwoord alsnog getypt is
 let currentAnswered = false;
 let currentCorrect = null;
 let chatMsgs = []; // voor de "vraag aan AI"-modal, per huidige item
@@ -4846,6 +4870,7 @@ function showRangeExhaustedNotice(){
 
 async function renderPractice(){
   currentAnswered = false;
+  retryPending = false;
   currentCorrect = null;
   chatMsgs = [];
   revealedWords = new Set();
@@ -5070,23 +5095,69 @@ function correctEnglishDisplayFor(item){
   return displayEnglishWord(item.en);
 }
 
+// Masking-helper voor de progressieve letterhint: toont de eerste `revealCount` letters, de rest als
+// puntjes -- spaties (bij een meerwoordig antwoord, bv. "diş hekimi") blijven altijd zichtbaar en tellen
+// niet mee als "letter".
+function maskWordForHint(word, revealCount){
+  let shown = 0;
+  return word.split("").map(ch=>{
+    if(ch === " ") return " ";
+    shown++;
+    return shown <= revealCount ? ch : "•";
+  }).join("");
+}
+
 // Klik op het woord zelf (alleen actief als onderstreept, d.w.z. de vertaling lokaal/zonder AI bekend
-// is): toont de betekenis meteen inline, ZONDER de oefening te beëindigen of het antwoordveld te
-// blokkeren -- dat gebeurt pas zodra je daadwerkelijk op Check drukt (zie handleCheck hieronder), net
-// als bij het klikbare-woord-chips-mechanisme binnen zinnen/vragen. Dit peeken markeert het woord wél
-// meteen als "opgezocht", zodat het bij die latere Check-actie linea recta als fout wordt geteld --
-// een SRS-terugval, ongeacht wat je daarna nog typt.
+// is): geeft een PROGRESSIEVE hint -- 1e klik toont de eerste letter + puntjes voor de rest, elke
+// volgende klik voegt daar nog een letter aan toe, tot het hele woord onthuld is. Dit gebeurt ZONDER de
+// oefening te beëindigen of het antwoordveld te blokkeren -- dat gebeurt pas zodra je daadwerkelijk op
+// Check drukt (zie handleCheck hieronder), net als bij het klikbare-woord-chips-mechanisme binnen
+// zinnen/vragen. Al bij de EERSTE hint-letter geldt dit woord als "opgezocht", zodat het bij die latere
+// Check-actie linea recta als fout wordt geteld -- een SRS-terugval, ongeacht wat je daarna nog typt.
 function peekCurrentWord(){
   if(!currentItem || currentItem.type !== "word" || currentAnswered) return;
   const key = currentItem.progressKey || currentItem.en;
-  if(revealedWords.has(key)) return; // al gepiept, niets te doen
-  revealedWords.add(key);
-  const meaning = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
-  el("word-peek-hint").textContent = "💡 " + meaning + " (counts as wrong)";
+  const primary = currentItem.direction === "tr-en"
+    ? correctEnglishDisplayFor(currentItem)
+    : ((currentItem.senseTr && currentItem.senseTr[0]) || (cachedTranslation(currentItem.en) || [])[0] || "");
+  if(!primary) return;
+  const letterCount = primary.replace(/\s/g, "").length;
+  currentItem.hintLevel = Math.min(letterCount, (currentItem.hintLevel || 0) + 1);
+  revealedWords.add(key); // al bij de eerste hint-letter telt dit woord als "opgezocht" voor de score
+  const fullyRevealed = currentItem.hintLevel >= letterCount;
+  el("word-peek-hint").textContent = "💡 " + maskWordForHint(primary, currentItem.hintLevel) + (fullyRevealed ? "" : "  (tap for another letter)");
   el("word-peek-hint").classList.remove("hidden");
-  el("tr-word").style.cursor = "default";
-  el("tr-word").style.textDecoration = "none";
-  el("tr-word").onclick = null;
+  if(fullyRevealed){
+    el("tr-word").style.cursor = "default";
+    el("tr-word").style.textDecoration = "none";
+    el("tr-word").onclick = null;
+  }
+}
+
+// Wordt aangeroepen bij een fout antwoord op een los woord (verkeerd getypt, leeg, gepiept, of AI-
+// afgekeurd): registreert de fout ÉÉNMALIG (zoals voorheen), maar schakelt -- in tegenstelling tot
+// finalizeAnswer() -- NIET meteen door naar "Next": het antwoordveld blijft actief en btn-check blijft
+// "Check" tonen, zodat de gebruiker gedwongen wordt het juiste antwoord alsnog te typen voordat hij
+// verder kan. Zie de `retryPending`-tak bovenaan handleCheck() voor de herkansing zelf.
+function enterWordRetry(message){
+  currentCorrect = false;
+  recordHistory("word");
+  recordResult(currentItem.progressKey || currentItem.en, false);
+  const lessonNote = advanceLessonSession();
+  const adaptiveNote = recordAdaptiveResult(false);
+  showFeedback("wrong", message + lessonNote + adaptiveNote);
+  el("post-actions").classList.remove("hidden");
+  el("btn-dispute").classList.remove("hidden");
+  el("btn-reveal-word").classList.add("hidden");
+  const p = getProgress(currentItem.progressKey || currentItem.en);
+  el("level-fill").style.width = (p.level*10) + "%";
+  el("level-label").textContent = fmtLevel(p);
+  retryPending = true;
+  el("btn-check").textContent = "Check"; // blijft "Check" i.p.v. "Next" -- geforceerde herkansing
+  el("btn-check").disabled = false;
+  el("answer-input").value = "";
+  el("answer-input").disabled = false;
+  if(hasLikelyPhysicalKeyboard()) el("answer-input").focus();
 }
 
 async function handleCheck(){
@@ -5114,13 +5185,38 @@ async function handleCheck(){
     return;
   }
 
+  if(retryPending){
+    // Er is deze beurt al een fout antwoord geregistreerd (zie enterWordRetry) -- nu wordt alleen nog
+    // gecontroleerd of het juiste antwoord getypt is, zonder opnieuw te scoren of een AI-call te doen.
+    const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
+    const match = checkStaticMatch(currentItem, answer);
+    if(match){
+      retryPending = false;
+      currentAnswered = true;
+      showFeedback("correct", "✅ Correct!");
+      el("post-actions").classList.remove("hidden");
+      el("btn-check").textContent = "Next ▶";
+      el("btn-check").disabled = false;
+      el("btn-skip").disabled = true;
+      el("answer-input").disabled = false;
+      if(hasLikelyPhysicalKeyboard()) el("answer-input").focus();
+    } else {
+      showFeedback("wrong", "Not quite yet — type <b>" + escapeHtml(correctAnswer) + "</b> to continue.");
+      el("btn-check").disabled = false;
+      el("answer-input").value = "";
+      el("answer-input").disabled = false;
+      if(hasLikelyPhysicalKeyboard()) el("answer-input").focus();
+    }
+    return;
+  }
+
   const pgKey = currentItem.progressKey || currentItem.en;
   if(revealedWords.has(pgKey)){
     // Dit woord is deze beurt al gepiept (zie peekCurrentWord) -- telt sowieso als fout, geen AI-call
     // nodig om dat vast te stellen.
     const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
-    setExplanation("You peeked at the meaning, so this was counted as wrong." + (correctAnswer ? ` Correct answer: ${correctAnswer}.` : ""));
-    finalizeAnswer(false, "👁️<br>" + answerCompareLine(answer, correctAnswer, false));
+    setExplanation("You peeked at the meaning, so this round is counted as a miss. Type the answer to continue.");
+    enterWordRetry("👁️<br>" + answerCompareLine(answer, correctAnswer, false));
     return;
   }
 
@@ -5130,8 +5226,8 @@ async function handleCheck(){
     // De uitleg-knop blijft hier ook zichtbaar (met de vertaling erin), zodat "check" indrukken zonder
     // iets in te vullen niet stilzwijgend het uitleg-paneel laat verdwijnen.
     const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
-    setExplanation("No answer entered, so this was counted as wrong." + (correctAnswer ? ` Correct answer: ${correctAnswer}.` : ""));
-    finalizeAnswer(false, "❌<br>" + answerCompareLine("", correctAnswer, false));
+    setExplanation("No answer entered, so this round is counted as a miss. Type the answer to continue.");
+    enterWordRetry("❌<br>" + answerCompareLine("", correctAnswer, false));
     return;
   }
 
@@ -5140,13 +5236,14 @@ async function handleCheck(){
   if(staticMatch){
     const regInfo = currentItem.direction === "en-tr" ? currentItem.registerInfo : null;
     finalizeAnswer(true, "✅" + (regInfo ? `<br><span class="muted">ℹ️ Heads up: this is a bit ${regInfo.register}${regInfo.note ? " — " + escapeHtml(regInfo.note) : ""}.</span>` : ""));
+    el("btn-skip").disabled = true;
     return;
   }
 
   const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (cachedTranslation(currentItem.en)||[]).join(", ");
 
   if(!hasKeyFor("word")){
-    finalizeAnswer(false, "❌<br>" + answerCompareLine(answer, correctAnswer, false) + "<br><span class='muted'>Set a " + keyNameFor("word") + " API key to have other translations judged too, or dispute this result.</span>");
+    enterWordRetry("❌<br>" + answerCompareLine(answer, correctAnswer, false) + "<br><span class='muted'>Set a " + keyNameFor("word") + " API key to have other translations judged too, or dispute this result.</span>");
     return;
   }
 
@@ -5155,9 +5252,12 @@ async function handleCheck(){
     const verdict = await askDeepSeekJudge(currentItem, answer);
     setExplanation(verdict.uitleg);
     const regInfo = (verdict.correct && currentItem.direction === "en-tr") ? currentItem.registerInfo : null;
-    finalizeAnswer(!!verdict.correct,
-      (verdict.correct ? "✅" : "❌") +
-      (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, !!verdict.correct, verdict.betekenis_antwoord, regInfo, verdict.afwijking) : ""));
+    if(verdict.correct){
+      finalizeAnswer(true, "✅" + (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, true, verdict.betekenis_antwoord, regInfo, verdict.afwijking) : ""));
+      el("btn-skip").disabled = true;
+    } else {
+      enterWordRetry("❌" + (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, false, verdict.betekenis_antwoord, regInfo, verdict.afwijking) : ""));
+    }
     if(verdict.correct && currentItem.direction === "en-tr"){
       el("post-actions").querySelector("#btn-add-answer")?.remove();
       const addBtn = document.createElement("button");
@@ -5168,7 +5268,7 @@ async function handleCheck(){
       el("post-actions").appendChild(addBtn);
     }
   }catch(e){
-    finalizeAnswer(false, "⚠️ Could not reach the AI: " + e.message + ". Answer counted as incorrect for now — you can dispute this.");
+    enterWordRetry("⚠️ Could not reach the AI: " + e.message + ". Counted as a miss for now — you can dispute this.");
   }
 }
 
@@ -5303,11 +5403,10 @@ async function handleCheckQuestion(answer){
 // leeg ingediend antwoord -- consistent met hoe een opgezocht woord binnen een zin/vraag ook altijd
 // als fout telt (zie revealWord/revealedWords hierboven).
 function revealWordHint(){
-  if(!currentItem || currentItem.type !== "word" || currentAnswered) return;
+  if(!currentItem || currentItem.type !== "word" || currentAnswered || retryPending) return;
   const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
-  el("answer-input").disabled = true;
-  setExplanation("You revealed the translation, so this was counted as wrong." + (correctAnswer ? ` Correct answer: ${correctAnswer}.` : ""));
-  finalizeAnswer(false, "👁️<br>" + answerCompareLine("", correctAnswer, false));
+  setExplanation("You revealed the translation, so this round is counted as a miss. Type the answer to continue.");
+  enterWordRetry("👁️<br>" + answerCompareLine("", correctAnswer, false));
 }
 
 // "👁️ Reveal"-knop in de kennischeck/les-oefeningen-modal: functioneel identiek aan met een LEEG
@@ -5331,6 +5430,7 @@ function finalizeAnswer(correct, message){
   el("btn-check").disabled = false;
   el("btn-dispute").classList.toggle("hidden", !!correct);
   el("btn-reveal-word").classList.add("hidden");
+  el("btn-skip").disabled = true;
   const p = getProgress(currentItem.progressKey || currentItem.en);
   el("level-fill").style.width = (p.level*10) + "%";
   el("level-label").textContent = fmtLevel(p);
@@ -5665,6 +5765,14 @@ async function disputeAnswer(){
       el("btn-dispute").classList.add("hidden");
       el("level-fill").style.width = (p.level*10) + "%";
       el("level-label").textContent = fmtLevel(p);
+      // Dispuut geaccepteerd -- de AI bevestigt dat het antwoord toch klopte, dus de geforceerde
+      // herkansing (indien actief) is niet meer nodig: rechtstreeks door naar "Next".
+      retryPending = false;
+      currentAnswered = true;
+      el("btn-check").textContent = "Next ▶";
+      el("btn-check").disabled = false;
+      el("btn-skip").disabled = true;
+      el("answer-input").disabled = false;
     } else {
       const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (cachedTranslation(currentItem.en)||[]).join(", ");
       showFeedback("wrong",
@@ -5683,8 +5791,16 @@ async function disputeAnswer(){
         el("btn-dispute").classList.add("hidden");
         el("level-fill").style.width = (p.level*10) + "%";
         el("level-label").textContent = fmtLevel(p);
+        retryPending = false;
+        currentAnswered = true;
+        el("btn-check").textContent = "Next ▶";
+        el("btn-check").disabled = false;
+        el("btn-skip").disabled = true;
+        el("answer-input").disabled = false;
       };
       el("btn-dispute").disabled = false;
+      // Dispuut afgewezen: de geforceerde herkansing (indien actief) blijft gewoon staan -- de gebruiker
+      // moet nog steeds het juiste antwoord typen om verder te kunnen, of alsnog "Add anyway" gebruiken.
     }
   }catch(e){
     showFeedback("wrong", "⚠️ Re-check failed: " + e.message);
@@ -6857,6 +6973,13 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   });
   el("btn-skip").addEventListener("click", ()=>{
     if(!currentItem) return;
+    if(retryPending){
+      // Er is bij het starten van de geforceerde herkansing al 1x fout geregistreerd (zie enterWordRetry)
+      // -- skip is hier puur een ontsnappingsroute uit die herkansing, geen nieuwe score-registratie.
+      retryPending = false;
+      renderPractice();
+      return;
+    }
     if(currentItem.type === "sentence" || currentItem.type === "question"){
       recordHistory(currentItem.type);
       for(const w of currentItem.words) recordResult(w.en, false);
