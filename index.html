@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.12</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.14</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.12</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.14</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -399,7 +399,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.12</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.14</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -2310,6 +2310,8 @@ function peekCheckupWord(){
   const fullyRevealed = cur.hintLevel >= letterCount;
   el("checkup-peek-hint").textContent = "💡 " + maskWordForHint(primary, cur.hintLevel) + (fullyRevealed ? "" : "  (tap for another letter)");
   el("checkup-peek-hint").classList.remove("hidden");
+  el("checkup-peek-hint").style.cursor = fullyRevealed ? "default" : "pointer";
+  el("checkup-peek-hint").onclick = fullyRevealed ? null : peekCheckupWord;
   if(fullyRevealed){
     el("checkup-word").style.cursor = "default";
     el("checkup-word").style.textDecoration = "none";
@@ -2326,6 +2328,7 @@ async function nextCheckupQuestion(){
   el("btn-checkup-reveal").classList.add("hidden");
   el("checkup-peek-hint").classList.add("hidden");
   el("checkup-peek-hint").textContent = "";
+  el("checkup-peek-hint").onclick = null;
 
   if(checkupState.phase === "vocab"){
     el("checkup-modal-title").textContent = "📋 Knowledge Check — Vocabulary";
@@ -2656,6 +2659,7 @@ async function nextSkillPracticeQuestion(){
   el("btn-checkup-reveal").classList.add("hidden");
   el("checkup-peek-hint").classList.add("hidden");
   el("checkup-peek-hint").textContent = "";
+  el("checkup-peek-hint").onclick = null;
   el("btn-checkup-skip").classList.remove("hidden");
   el("checkup-explanation-box").classList.add("hidden");
   el("checkup-post-actions").classList.add("hidden");
@@ -3724,8 +3728,36 @@ function resolveCheckupWordDirection(){
 function pickNextItem(){
   const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
   const inRange = w => typeof w.cefr !== "number" || (vocabCefrBand(w.cefr) >= lo && vocabCefrBand(w.cefr) <= hi);
-  const allUnlocked = practiceWordEntries(resolveWordDirectionForThisTurn()); // en-tr en/of tr-en, al naar gelang settings.wordDirection -- beide altijd volledig "ontgrendeld"
   const now = Date.now();
+
+  // Bouwt de kandidatenpool (due/nieuw) voor een specifieke richting -- apart als functie, want bij
+  // "random" moet er soms een tweede keer geprobeerd worden met de ANDERE richting (zie hieronder).
+  function computePoolFor(dir){
+    const allUnlocked = practiceWordEntries(dir);
+    const wordsInRange = allUnlocked.filter(inRange);
+    const dueNow = wordsInRange.filter(w => getProgress(w.key).reps > 0 && getProgress(w.key).due <= now);
+    const neverShown = wordsInRange.filter(w => getProgress(w.key).reps === 0);
+    return {allUnlocked, wordsInRange, dueNow, neverShown};
+  }
+
+  let chosenDir = resolveWordDirectionForThisTurn();
+  let pool = computePoolFor(chosenDir);
+
+  // Bij "random" kan de 50/50-worp toevallig net de richting treffen die op DIT moment niets te bieden
+  // heeft (geen due, geen nieuw), terwijl de ANDERE richting wél volop due/nieuwe woorden heeft -- dat
+  // gaf ten onrechte "geen woorden beschikbaar" te zien (bv. 367 nieuwe en-tr-woorden, maar de worp
+  // trof toevallig een (nog) lege tr-en-pool). Bij zo'n loze worp alsnog de andere richting proberen
+  // vóórdat de oefening als "uitgeput" wordt behandeld.
+  if((settings.wordDirection || "random") === "random" && pool.wordsInRange.length > 0 && pool.dueNow.length === 0 && pool.neverShown.length === 0){
+    const otherDir = chosenDir === "en-tr" ? "tr-en" : "en-tr";
+    const otherPool = computePoolFor(otherDir);
+    if(otherPool.dueNow.length > 0 || otherPool.neverShown.length > 0){
+      chosenDir = otherDir;
+      pool = otherPool;
+    }
+  }
+
+  const {allUnlocked, wordsInRange, dueNow, neverShown} = pool;
 
   // Woordselectie kiest uit het ingestelde CEFR-bereik. Prioriteit: (1) due woorden -- normale mix-
   // logica hieronder; (2) niets due, maar wél nog nooit-getoonde woorden -- expliciete terugval op
@@ -3733,9 +3765,6 @@ function pickNextItem(){
   // wanneer er wél iets due is, niet wat er moet gebeuren als er NIETS due is); (3) niets due EN niets
   // nieuws -- er is dan letterlijk niks zinvols te tonen binnen dit bereik; renderPractice toont dan een
   // melding i.p.v. een oefening, met een voorstel om het maximumbereik met 1 te verhogen.
-  const wordsInRange = allUnlocked.filter(inRange);
-  const dueNow = wordsInRange.filter(w => getProgress(w.key).reps > 0 && getProgress(w.key).due <= now);
-  const neverShown = wordsInRange.filter(w => getProgress(w.key).reps === 0);
   // "Mix in new words" op 5/5 betekent: ALTIJD een nieuw woord, NOOIT terugvallen op due/review -- dat
   // is dan geen uitzonderlijke "terugval" meer maar het normale, ingestelde gedrag. Daarom in die stand:
   // geen "geen due woorden"-melding tonen (die klopt dan gewoon nooit, want er wordt sowieso nooit uit
@@ -4978,6 +5007,7 @@ async function renderPractice(){
   wordEl.className = "tr-word" + ((isSentence||isQuestion) ? " sentence" : "");
   el("word-peek-hint").classList.add("hidden");
   el("word-peek-hint").textContent = "";
+  el("word-peek-hint").onclick = null;
 
   if(isWord){
     // Alleen onderstreept/klikbaar als de vertaling lokaal (zonder AI) bekend is -- tr-en-woorden komen
@@ -5127,6 +5157,10 @@ function peekCurrentWord(){
   const fullyRevealed = currentItem.hintLevel >= letterCount;
   el("word-peek-hint").textContent = "💡 " + maskWordForHint(primary, currentItem.hintLevel) + (fullyRevealed ? "" : "  (tap for another letter)");
   el("word-peek-hint").classList.remove("hidden");
+  // De hint-tekst zelf moet ook klikbaar zijn -- "tap for another letter" staat IN dat blokje, dus wie
+  // daarop tikt (i.p.v. op het woord erboven) moet ook echt een letter erbij krijgen.
+  el("word-peek-hint").style.cursor = fullyRevealed ? "default" : "pointer";
+  el("word-peek-hint").onclick = fullyRevealed ? null : peekCurrentWord;
   if(fullyRevealed){
     el("tr-word").style.cursor = "default";
     el("tr-word").style.textDecoration = "none";
