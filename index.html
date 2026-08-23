@@ -25,7 +25,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.00</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.01</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -389,7 +389,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.00</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.01</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -1226,11 +1226,54 @@ async function loadAllData(){
 
   curatedTr = {...curatedTr, ...EMBEDDED_CURATED_TR};
   TR_WORDS_DATA = buildTrWordsData();
+  seedTrProgressFromEnCounterpart();
 
   LESSONS = buildFullLessonList();
   GRAMMAR_TRACK = LESSONS.filter(l => l.track === "grammar");
   VOCAB_TRACK = LESSONS.filter(l => l.track === "vocab");
   repairLessonProgressGaps();
+}
+
+// Vindt de EN_WORDS_DATA-tegenhanger van een tr-en-entry: normaal gewoon een exacte match op het
+// trefwoord, maar bij een op woordsoort GESPLITST Engels woord (bv. "close__v"/"close__a") moet de
+// entry met de juiste pos gekozen worden -- baseEnOf() strip zo'n "__pos"-suffix weer terug tot het
+// kale woord, dus vergelijk daarop i.p.v. op het rauwe "en"-veld.
+function findEnCounterpartKey(trEntry){
+  const candidates = EN_WORDS_DATA.filter(w => baseEnOf(w.en) === trEntry.en);
+  if(!candidates.length) return null;
+  if(candidates.length === 1) return candidates[0].en;
+  const posMatch = candidates.find(w => w.pos === trEntry.pos);
+  return (posMatch || candidates[0]).en;
+}
+
+// EENMALIGE migratie (v3.01): geeft elk nog-nooit-geoefend tr-en-woord als startpositie de score van
+// zijn en-tr-tegenhanger mee, i.p.v. gewoon bij niveau 0 te beginnen -- een woord dat je in het en-tr-
+// spoor al goed kent, hoeft niet vanaf nul herleerd te worden zodra het (met v2.99) ook een eigen tr-en-
+// score krijgt. Raakt UITSLUITEND tr-en-woorden aan die zelf nog reps=0 hebben (al zelf geoefende tr-en-
+// woorden blijven onaangeroerd), en alleen als de en-tr-tegenhanger zelf al minstens 1x geoefend is.
+// Draait maar één keer per apparaat/Gist (zie LS_TR_SEED_DONE) -- dit is een startpositie, geen
+// doorlopende regel die bij elke herlaad opnieuw scores zou overschrijven.
+const LS_TR_SEED_DONE = "turks_tr_seed_from_en_v1";
+function seedTrProgressFromEnCounterpart(){
+  if(localStorage.getItem(LS_TR_SEED_DONE)) return;
+  let seeded = 0;
+  for(const w of TR_WORDS_DATA){
+    const trP = getProgress(w.key);
+    if(trP.reps > 0) continue; // al zelf geoefend in tr-en -> niet overschrijven
+    const enKey = findEnCounterpartKey(w);
+    if(!enKey) continue;
+    const enP = progress[enKey];
+    if(!enP || !enP.reps) continue; // en-tr-tegenhanger zelf nog nooit geoefend -> niets om over te nemen
+    trP.level = enP.level;
+    trP.ease = typeof enP.ease === "number" ? enP.ease : EASE_START;
+    trP.reps = 1; // niet 0: anders behandelt recordResult de eerstvolgende beurt als "eerste keer" en overschrijft dit meteen weer
+    trP.correct = 1;
+    trP.intervalMin = intervalMinutes(trP.level);
+    trP.due = Date.now() + trP.intervalMin * 60 * 1000;
+    seeded++;
+  }
+  if(seeded) saveJSON(LS_PROGRESS, progress);
+  localStorage.setItem(LS_TR_SEED_DONE, "1");
 }
 
 /* ===================== TR-EN WOORDENLIJST (eigen, onafhankelijke SRS-pool) =====================
