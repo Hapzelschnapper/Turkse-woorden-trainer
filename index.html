@@ -25,7 +25,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.01</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.02</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -37,10 +37,9 @@
       <div class="row space-between" style="margin-top:6px;font-size:.78rem;gap:6px;">
         <label class="muted" style="display:flex;align-items:center;gap:6px;">Word direction:</label>
         <select id="word-direction-select" class="select-input" style="flex:1;max-width:180px;">
-          <option value="all">EN→TR + TR→EN (mixed pool)</option>
-          <option value="random">Random 50/50 each turn</option>
-          <option value="en-tr">EN→TR only</option>
-          <option value="tr-en">TR→EN only</option>
+          <option value="en-tr">EN→TR</option>
+          <option value="tr-en">TR→EN</option>
+          <option value="random">Random</option>
         </select>
       </div>
       <div class="row space-between hidden" id="mix-new-words-row" style="margin-top:6px;font-size:.78rem;">
@@ -389,7 +388,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.01</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.02</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -655,12 +654,15 @@ if(settings.adaptiveEnabled === undefined) settings.adaptiveEnabled = false;
 // instelling kan de gebruiker dat temperen. Standaard aan, met een gematigde verhouding.
 if(settings.mixNewWords === undefined) settings.mixNewWords = true;
 if(settings.newWordsPer5 === undefined) settings.newWordsPer5 = 2;
-// Welke woordenlijst(en) de losse-woord-oefeningen op het hoofdscherm gebruiken: "en-tr" (alleen de
-// en-tr-lijst, zoals vroeger), "tr-en" (alleen de onafhankelijk gecureerde tr-en-lijst), of "all"
-// (allebei, elk met hun EIGEN score/SRS -- zie TR_WORDS_DATA/practiceWordEntries). Standaard "all",
-// zodat bestaande gebruikers net als voorheen beide richtingen te zien blijven krijgen, alleen nu met
-// een eigen score per richting i.p.v. één gedeelde score per Engels woord.
-if(settings.wordDirection === undefined) settings.wordDirection = "all";
+// Welke woordenlijst de losse-woord-oefeningen op het hoofdscherm gebruikt: "en-tr" (alleen de en-tr-
+// lijst), "tr-en" (alleen de onafhankelijk gecureerde tr-en-lijst), of "random" (elke beurt 50/50 geloot
+// tussen de twee, elk met hun EIGEN score/SRS -- zie TR_WORDS_DATA/practiceWordEntries). Standaard
+// "random", zodat bestaande gebruikers net als voorheen beide richtingen te zien blijven krijgen.
+if(settings.wordDirection === undefined) settings.wordDirection = "random";
+// Migratie: de vroegere "all"-optie (en-tr + tr-en in ÉÉN gemengde pool, gewogen op niveau) is
+// vervangen door "random" (elke beurt geloot tussen de twee lijsten) -- die optie is niet meer
+// selecteerbaar in de UI, dus bestaande instellingen worden hier eenmalig omgezet.
+if(settings.wordDirection === "all") settings.wordDirection = "random";
 if(settings.adaptiveThreshold === undefined) settings.adaptiveThreshold = 60;
 if(settings.anthropicApiKey === undefined) settings.anthropicApiKey = "";
 if(settings.proxyUrl === undefined) settings.proxyUrl = "";
@@ -3524,14 +3526,13 @@ function practiceWordEntries(dir){
   return entries;
 }
 
-// Bepaalt welke richting(en) DEZE beurt gebruikt worden. "all" mengt en-tr en tr-en in ÉÉN pool en
-// laat daarbinnen puur het zwakste niveau/de eerstvolgende duedatum winnen -- als de ene lijst structureel
-// meer/zwakkere woorden heeft, kan die de andere dus geruime tijd domineren. "random" doet dat NIET: elke
-// beurt wordt eerst (50/50) geloot UIT WELKE VAN DE TWEE LIJSTEN dit keer gekozen wordt, en pas daarna
-// binnen die ene lijst het zwakste/eerstvolgende woord gekozen -- dat garandeert een ongeveer gelijke
-// verdeling tussen de twee richtingen, los van hoe (on)gebalanceerd hun niveaus onderling zijn.
+// Bepaalt welke richting DEZE beurt gebruikt wordt. Bij "en-tr"/"tr-en" is dat simpelweg die ene, vaste
+// lijst; bij "random" wordt elke beurt eerst (50/50) geloot UIT WELKE VAN DE TWEE LIJSTEN dit keer
+// gekozen wordt, en pas daarna binnen die ene lijst het zwakste/eerstvolgende woord -- dat garandeert een
+// ongeveer gelijke verdeling tussen de twee richtingen, i.p.v. dat de ene lijst (bv. omdat hij structureel
+// meer/zwakkere woorden heeft) de andere geruime tijd zou domineren in één gemengde pool.
 function resolveWordDirectionForThisTurn(){
-  const dir = settings.wordDirection || "all";
+  const dir = settings.wordDirection || "random";
   if(dir !== "random") return dir;
   return Math.random() < 0.5 ? "en-tr" : "tr-en";
 }
@@ -6526,7 +6527,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     saveJSON(LS_SETTINGS, settings);
     el("mix-new-words-dial-row").classList.toggle("hidden", !settings.mixNewWords);
   });
-  el("word-direction-select").value = settings.wordDirection || "all";
+  el("word-direction-select").value = settings.wordDirection || "random";
   el("word-direction-select").addEventListener("change", ()=>{
     settings.wordDirection = el("word-direction-select").value;
     saveJSON(LS_SETTINGS, settings);
