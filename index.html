@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.07</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.08</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.07</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.08</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -64,6 +64,7 @@
         </div>
       </div>
       <div id="tr-word" class="tr-word">…</div>
+      <div class="muted hidden" id="word-peek-hint" style="font-size:.85rem;margin-top:2px;"></div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="word-meta" style="font-size:.78rem;margin-top:2px;"></div>
         <div class="row" style="gap:4px;">
@@ -398,7 +399,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.07</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.08</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -478,6 +479,7 @@
     <span id="checkup-badge" class="badge badge-word hidden" style="margin-bottom:8px;display:inline-block;">word</span>
     <div id="checkup-question-box">
       <div class="tr-word" id="checkup-word">…</div>
+      <div class="muted hidden" id="checkup-peek-hint" style="font-size:.85rem;margin-top:2px;"></div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="checkup-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
         <button class="btn-ghost btn-small hidden" id="btn-checkup-reveal" style="margin-top:0;padding:2px 8px;font-size:.75rem;" title="Show the answer — counts this as wrong">👁️ Reveal</button>
@@ -2270,6 +2272,23 @@ async function gradeGrammarDrillAnswer(drill, answer){
   return parseAIJson(raw);
 }
 
+// Klik op het kale checkup/skill-practice-woord (alleen onderstreept als de vertaling lokaal bekend is):
+// zelfde niet-blokkerende peek-mechanisme als peekCurrentWord() op het hoofdscherm -- toont de betekenis
+// meteen, zonder de oefening te beëindigen, maar telt bij de daadwerkelijke Check-actie linea recta als
+// fout (SRS-terugval op de score die op dit moment achter dit woord zit).
+function peekCheckupWord(){
+  const state = skillPracticeState || checkupState;
+  const cur = state && state.current;
+  if(!cur || cur.type !== "word" || cur.sentenceDrill || cur.peeked) return;
+  cur.peeked = true;
+  const meaning = cur.direction === "tr-en" ? baseEnOf(cur.en) : (cur.tr || (cachedTranslation(cur.en)||[]).join(", "));
+  el("checkup-peek-hint").textContent = "💡 " + meaning + " (counts as wrong)";
+  el("checkup-peek-hint").classList.remove("hidden");
+  el("checkup-word").style.cursor = "default";
+  el("checkup-word").style.textDecoration = "none";
+  el("checkup-word").onclick = null;
+}
+
 async function nextCheckupQuestion(){
   el("checkup-question-box").classList.remove("hidden");
   el("checkup-result-box").classList.add("hidden");
@@ -2277,6 +2296,8 @@ async function nextCheckupQuestion(){
   el("checkup-answer-input").disabled = true;
   el("btn-checkup-next").disabled = true;
   el("btn-checkup-reveal").classList.add("hidden");
+  el("checkup-peek-hint").classList.add("hidden");
+  el("checkup-peek-hint").textContent = "";
 
   if(checkupState.phase === "vocab"){
     el("checkup-modal-title").textContent = "📋 Knowledge Check — Vocabulary";
@@ -2297,6 +2318,9 @@ async function nextCheckupQuestion(){
         checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: null, direction: drill.direction, sentenceDrill: drill};
         el("checkup-word").textContent = drill.prompt;
         el("checkup-word").className = "tr-word sentence";
+        el("checkup-word").style.textDecoration = "none";
+        el("checkup-word").style.cursor = "default";
+        el("checkup-word").onclick = null;
         el("checkup-answer-input").placeholder = drill.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
         checkupState.consecutiveFailures = 0; // gelukte generatie -> teller resetten
         persistCheckupState();
@@ -2318,6 +2342,18 @@ async function nextCheckupQuestion(){
       el("checkup-word").textContent = checkupState.current.direction === "tr-en" ? checkupState.current.tr : displayEnglishWord(checkupState.current.en);
       el("checkup-word").className = "tr-word";
       checkupState.current.hintRevealed = false;
+      checkupState.current.peeked = false;
+      const knownCu = !!sense;
+      if(knownCu){
+        el("checkup-word").style.textDecoration = "underline";
+        el("checkup-word").style.textDecorationStyle = "dotted";
+        el("checkup-word").style.cursor = "pointer";
+        el("checkup-word").onclick = peekCheckupWord;
+      } else {
+        el("checkup-word").style.textDecoration = "none";
+        el("checkup-word").style.cursor = "default";
+        el("checkup-word").onclick = null;
+      }
       el("checkup-word-meta").textContent = wordMetaText(word.cefr, word.en, checkupState.current.note);
       el("checkup-answer-input").placeholder = checkupState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
       checkupState.consecutiveFailures = 0;
@@ -2347,6 +2383,9 @@ async function nextCheckupQuestion(){
       checkupState.consecutiveFailures = 0; // gelukte generatie -> teller resetten
       el("checkup-word").textContent = drill.prompt;
       el("checkup-word").className = "tr-word sentence";
+      el("checkup-word").style.textDecoration = "none";
+      el("checkup-word").style.cursor = "default";
+      el("checkup-word").onclick = null;
     }catch(e){
       checkupState.consecutiveFailures = (checkupState.consecutiveFailures || 0) + 1;
       if(checkupState.consecutiveFailures >= 3){
@@ -2399,7 +2438,11 @@ async function submitCheckupAnswer(){
       if(!correctAnswerTxt && cur.direction !== "tr-en"){
         try{ const tr = await getOrFetchTranslation(cur.en); correctAnswerTxt = tr[0]; cur.tr = tr[0]; cur.senseTr = tr; }catch(e){ /* nog steeds niks -- feedback toont dan geen vertaling, het antwoord wordt wel gewoon beoordeeld */ }
       }
-      if(answer && normalize(answer) === normalize(correctAnswerTxt)){
+      if(cur.peeked){
+        // Dit woord is deze beurt al gepiept (zie peekCheckupWord) -- telt sowieso als fout, geen
+        // AI-call nodig om dat vast te stellen.
+        correct = false;
+      } else if(answer && normalize(answer) === normalize(correctAnswerTxt)){
         correct = true;
       } else if(answer){
         try{
@@ -2571,6 +2614,8 @@ async function nextSkillPracticeQuestion(){
   el("checkup-answer-input").disabled = true;
   el("btn-checkup-next").disabled = true;
   el("btn-checkup-reveal").classList.add("hidden");
+  el("checkup-peek-hint").classList.add("hidden");
+  el("checkup-peek-hint").textContent = "";
   el("btn-checkup-skip").classList.remove("hidden");
   el("checkup-explanation-box").classList.add("hidden");
   el("checkup-post-actions").classList.add("hidden");
@@ -2595,6 +2640,9 @@ async function nextSkillPracticeQuestion(){
         skillPracticeState.current = {type:"word", en, tr: null, direction: drill.direction, sentenceDrill: drill};
         el("checkup-word").textContent = drill.prompt;
         el("checkup-word").className = "tr-word sentence";
+        el("checkup-word").style.textDecoration = "none";
+        el("checkup-word").style.cursor = "default";
+        el("checkup-word").onclick = null;
         el("checkup-answer-input").placeholder = drill.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
         el("checkup-answer-input").disabled = false;
         el("btn-checkup-next").disabled = false;
@@ -2609,6 +2657,17 @@ async function nextSkillPracticeQuestion(){
     el("checkup-word").textContent = skillPracticeState.current.direction === "tr-en" ? skillPracticeState.current.tr : displayEnglishWord(en);
     el("checkup-word").className = "tr-word";
     skillPracticeState.current.hintRevealed = false;
+    skillPracticeState.current.peeked = false;
+    if(sense){
+      el("checkup-word").style.textDecoration = "underline";
+      el("checkup-word").style.textDecorationStyle = "dotted";
+      el("checkup-word").style.cursor = "pointer";
+      el("checkup-word").onclick = peekCheckupWord;
+    } else {
+      el("checkup-word").style.textDecoration = "none";
+      el("checkup-word").style.cursor = "default";
+      el("checkup-word").onclick = null;
+    }
     el("checkup-word-meta").textContent = wordMetaText(wordCefrOf(en), en, skillPracticeState.current.note);
     el("checkup-answer-input").placeholder = skillPracticeState.current.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
   } else {
@@ -2628,6 +2687,9 @@ async function nextSkillPracticeQuestion(){
       skillPracticeState.current = {type:"grammar", topic, drill};
       el("checkup-word").textContent = drill.prompt;
       el("checkup-word").className = "tr-word sentence";
+      el("checkup-word").style.textDecoration = "none";
+      el("checkup-word").style.cursor = "default";
+      el("checkup-word").onclick = null;
     }catch(e){
       el("checkup-word").textContent = "⚠️ Could not generate an exercise: " + e.message;
       el("btn-checkup-next").disabled = true;
@@ -2670,7 +2732,11 @@ async function submitSkillPracticeAnswer(){
         // vertaling niet blijvend onzichtbaar blijft.
         try{ const tr = await getOrFetchTranslation(cur.en); correctAnswerTxt = tr[0]; cur.tr = tr[0]; cur.senseTr = tr; }catch(e){ /* nog steeds niks -- feedback toont dan geen vertaling, het antwoord wordt wel gewoon beoordeeld */ }
       }
-      if(answer && normalize(answer) === normalize(correctAnswerTxt)){
+      if(cur.peeked){
+        // Dit woord is deze beurt al gepiept (zie peekCheckupWord) -- telt sowieso als fout, geen
+        // AI-call nodig om dat vast te stellen.
+        correct = false;
+      } else if(answer && normalize(answer) === normalize(correctAnswerTxt)){
         correct = true;
       } else if(answer){
         try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; deviation = v.afwijking || ""; }catch(e){ correct = false; }
@@ -4829,8 +4895,24 @@ async function renderPractice(){
   wordEl.textContent = isSuffix ? currentItem.prompt : ((isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || baseEnOf(currentItem.en)));
   currentItem.hintRevealed = false;
   wordEl.className = "tr-word" + ((isSentence||isQuestion) ? " sentence" : "");
+  el("word-peek-hint").classList.add("hidden");
+  el("word-peek-hint").textContent = "";
 
   if(isWord){
+    // Alleen onderstreept/klikbaar als de vertaling lokaal (zonder AI) bekend is -- tr-en-woorden komen
+    // altijd uit de eigen gecureerde TR_WORDS_DATA (dus altijd bekend); en-tr-woorden alleen als er al
+    // een curatedTr/override-vertaling voor bestaat.
+    const known = currentItem.wordSource === "tr" ? true : !!(cachedTranslation(currentItem.en) && cachedTranslation(currentItem.en).length);
+    if(known && !revealedWords.has(currentItem.progressKey || currentItem.en)){
+      wordEl.style.textDecoration = "underline";
+      wordEl.style.textDecorationStyle = "dotted";
+      wordEl.style.cursor = "pointer";
+      wordEl.onclick = peekCurrentWord;
+    } else {
+      wordEl.style.textDecoration = "none";
+      wordEl.style.cursor = "default";
+      wordEl.onclick = null;
+    }
     if(currentItem.wordSource === "tr"){
       // tr-en-item: gebruik het EIGEN pos/cefr van de tr-en-entry, niet de (mogelijk afwijkende)
       // en-tr-gegevens van hetzelfde Engelse trefwoord.
@@ -4843,8 +4925,16 @@ async function renderPractice(){
     }
   } else if(isSuffix){
     el("word-meta").textContent = "conjugate this verb using a grammar pattern you've already mastered";
+    wordEl.style.textDecoration = "none";
+    wordEl.style.cursor = "default";
+    wordEl.onclick = null;
   } else {
     el("word-meta").textContent = "";
+    // sentences/questions gebruiken hun EIGEN klikbare-woord-chips-mechanisme (renderWordChips) i.p.v.
+    // het hele blok klikbaar te maken -- dus hier altijd resetten.
+    wordEl.style.textDecoration = "none";
+    wordEl.style.cursor = "default";
+    wordEl.onclick = null;
   }
 
   el("answer-input").placeholder = isQuestion
@@ -4924,6 +5014,25 @@ function correctEnglishDisplayFor(item){
   return displayEnglishWord(item.en);
 }
 
+// Klik op het woord zelf (alleen actief als onderstreept, d.w.z. de vertaling lokaal/zonder AI bekend
+// is): toont de betekenis meteen inline, ZONDER de oefening te beëindigen of het antwoordveld te
+// blokkeren -- dat gebeurt pas zodra je daadwerkelijk op Check drukt (zie handleCheck hieronder), net
+// als bij het klikbare-woord-chips-mechanisme binnen zinnen/vragen. Dit peeken markeert het woord wél
+// meteen als "opgezocht", zodat het bij die latere Check-actie linea recta als fout wordt geteld --
+// een SRS-terugval, ongeacht wat je daarna nog typt.
+function peekCurrentWord(){
+  if(!currentItem || currentItem.type !== "word" || currentAnswered) return;
+  const key = currentItem.progressKey || currentItem.en;
+  if(revealedWords.has(key)) return; // al gepiept, niets te doen
+  revealedWords.add(key);
+  const meaning = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
+  el("word-peek-hint").textContent = "💡 " + meaning + " (counts as wrong)";
+  el("word-peek-hint").classList.remove("hidden");
+  el("tr-word").style.cursor = "default";
+  el("tr-word").style.textDecoration = "none";
+  el("tr-word").onclick = null;
+}
+
 async function handleCheck(){
   if(!currentItem || currentAnswered) return;
   const answer = el("answer-input").value.trim();
@@ -4946,6 +5055,16 @@ async function handleCheck(){
   }
   if(currentItem.type === "suffix"){
     await handleCheckSuffix(answer);
+    return;
+  }
+
+  const pgKey = currentItem.progressKey || currentItem.en;
+  if(revealedWords.has(pgKey)){
+    // Dit woord is deze beurt al gepiept (zie peekCurrentWord) -- telt sowieso als fout, geen AI-call
+    // nodig om dat vast te stellen.
+    const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
+    setExplanation("You peeked at the meaning, so this was counted as wrong." + (correctAnswer ? ` Correct answer: ${correctAnswer}.` : ""));
+    finalizeAnswer(false, "👁️<br>" + answerCompareLine(answer, correctAnswer, false));
     return;
   }
 
