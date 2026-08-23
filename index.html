@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.14</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.15</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.14</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.15</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -399,7 +399,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.14</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.15</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -2482,9 +2482,11 @@ async function submitCheckupAnswer(){
         try{ const tr = await getOrFetchTranslation(cur.en); correctAnswerTxt = tr[0]; cur.tr = tr[0]; cur.senseTr = tr; }catch(e){ /* nog steeds niks -- feedback toont dan geen vertaling, het antwoord wordt wel gewoon beoordeeld */ }
       }
       if(cur.peeked){
-        // Dit woord is deze beurt al gepiept (zie peekCheckupWord) -- telt sowieso als fout, geen
-        // AI-call nodig om dat vast te stellen.
-        correct = false;
+        // Dit woord is deze beurt al gepiept (zie peekCheckupWord) -- telt sowieso als fout voor de
+        // score/het niveau-oordeel (zie scoreCorrect hieronder), maar de WEERGAVE mag gewoon "Correct!"
+        // tonen als het getypte antwoord toch letterlijk klopt (bv. met behulp van de hint-letters) --
+        // i.p.v. het verwarrende "Not quite / Correct answer: X" terwijl X exact is wat je typte.
+        correct = !!(answer && normalize(answer) === normalize(correctAnswerTxt));
       } else if(answer && normalize(answer) === normalize(correctAnswerTxt)){
         correct = true;
       } else if(answer){
@@ -2495,8 +2497,9 @@ async function submitCheckupAnswer(){
         }catch(e){ correct = false; }
       }
     }
-    recordResult(cur.progressKey || cur.en, correct); // telt gewoon mee voor je normale voortgang op dat woord
-    checkupState.vocabLevelResults.push(correct);
+    const scoreCorrect = cur.peeked ? false : correct;
+    recordResult(cur.progressKey || cur.en, scoreCorrect); // telt gewoon mee voor je normale voortgang op dat woord
+    checkupState.vocabLevelResults.push(scoreCorrect);
   } else {
     correctAnswerTxt = cur.drill.correct;
     if(answer && normalize(answer) === normalize(correctAnswerTxt)){
@@ -2518,7 +2521,7 @@ async function submitCheckupAnswer(){
     ? (cur.sentenceDrill ? cur.sentenceDrill.prompt : (cur.direction === "tr-en" ? cur.tr : displayEnglishWord(cur.en)))
     : cur.drill.prompt;
   el("checkup-result-text").innerHTML = `<div class="muted" style="margin-bottom:6px;">${escapeHtml(promptShown)}</div>` +
-    (correct ? "✅ Correct!" : (answer ? "❌ Not quite.<br>" : "") + `Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`);
+    (correct ? "✅ Correct!" + (cur.peeked ? " <span class='muted'>(still counted as a miss since you used a hint)</span>" : "") : (answer ? "❌ Not quite.<br>" : "") + `Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`);
 
   advanceCheckupStaircase();
   persistCheckupState();
@@ -2785,16 +2788,18 @@ async function submitSkillPracticeAnswer(){
         try{ const tr = await getOrFetchTranslation(cur.en); correctAnswerTxt = tr[0]; cur.tr = tr[0]; cur.senseTr = tr; }catch(e){ /* nog steeds niks -- feedback toont dan geen vertaling, het antwoord wordt wel gewoon beoordeeld */ }
       }
       if(cur.peeked){
-        // Dit woord is deze beurt al gepiept (zie peekCheckupWord) -- telt sowieso als fout, geen
-        // AI-call nodig om dat vast te stellen.
-        correct = false;
+        // Dit woord is deze beurt al gepiept (zie peekCheckupWord) -- telt sowieso als fout voor de
+        // score (zie scoreCorrect hieronder), maar de WEERGAVE mag gewoon "Correct!" tonen als het
+        // getypte antwoord toch letterlijk klopt (bv. met behulp van de hint-letters).
+        correct = !!(answer && normalize(answer) === normalize(correctAnswerTxt));
       } else if(answer && normalize(answer) === normalize(correctAnswerTxt)){
         correct = true;
       } else if(answer){
         try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; deviation = v.afwijking || ""; }catch(e){ correct = false; }
       }
     }
-    recordResult(cur.progressKey || cur.en, correct);
+    const scoreCorrect = cur.peeked ? false : correct;
+    recordResult(cur.progressKey || cur.en, scoreCorrect);
     chatItem = {type:"word", en:cur.en, tr:cur.tr || correctAnswerTxt, direction:cur.direction};
   } else {
     correctAnswerTxt = cur.drill.correct;
@@ -2806,7 +2811,8 @@ async function submitSkillPracticeAnswer(){
     recordGrammarResult(cur.topic.key, correct);
     chatItem = {type:"word", tr:cur.drill.correct, en:cur.drill.prompt, direction:cur.drill.direction};
   }
-  skillPracticeState.roundResults.push(correct);
+  const scoreCorrect = cur.type === "word" && !cur.sentenceDrill ? (cur.peeked ? false : correct) : correct;
+  skillPracticeState.roundResults.push(scoreCorrect);
   skillPracticeState.lastAnswer = {answer, correctAnswerTxt};
 
   // de opgave-tekst die getoond werd, zodat je 'm terugziet in de feedback (niet alleen je eigen antwoord)
@@ -2838,7 +2844,7 @@ async function submitSkillPracticeAnswer(){
   }
   skillPracticeState.roundJustCompleted = roundJustCompleted;
   el("checkup-result-text").innerHTML = `<div class="muted" style="margin-bottom:6px;">${escapeHtml(promptShown)}</div>` +
-    (correct ? "✅ Correct!" : (answer ? "❌ Not quite.<br>" : "") + `Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
+    (correct ? "✅ Correct!" + (cur.peeked ? " <span class='muted'>(still counted as a miss since you used a hint)</span>" : "") : (answer ? "❌ Not quite.<br>" : "") + `Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
   el("btn-checkup-close").textContent = roundJustCompleted ? "OK" : "Continue";
   el("checkup-answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken, net als het hoofdscherm
   if(hasLikelyPhysicalKeyboard()) el("checkup-answer-input").focus(); // alleen auto-focus bij laptop/desktop, niet bij touch
@@ -5194,6 +5200,31 @@ function enterWordRetry(message){
   if(hasLikelyPhysicalKeyboard()) el("answer-input").focus();
 }
 
+// Toont "Correct!" (de gebruiker typte het antwoord zelf, ook al kwam dat met hulp van een hint), maar
+// registreert er ACHTER DE SCHERMEN toch een fout mee (de SRS-terugval voor het gebruikte hint blijft
+// gewoon staan) -- i.p.v. het verwarrende "Wrong answer: X / Correct answer: X" van voorheen, en zonder
+// nog een aparte herkansing te forceren: de gebruiker heeft het antwoord net al 1x zelf goed getypt.
+function finalizeCorrectDisplayButScoredWrong(message){
+  currentCorrect = false;
+  recordHistory("word");
+  recordResult(currentItem.progressKey || currentItem.en, false);
+  const lessonNote = advanceLessonSession();
+  const adaptiveNote = recordAdaptiveResult(false);
+  showFeedback("correct", message + lessonNote + adaptiveNote);
+  el("post-actions").classList.remove("hidden");
+  el("btn-dispute").classList.add("hidden");
+  el("btn-reveal-word").classList.add("hidden");
+  el("btn-skip").disabled = true;
+  const p = getProgress(currentItem.progressKey || currentItem.en);
+  el("level-fill").style.width = (p.level*10) + "%";
+  el("level-label").textContent = fmtLevel(p);
+  currentAnswered = true;
+  el("btn-check").textContent = "Next ▶";
+  el("btn-check").disabled = false;
+  el("answer-input").disabled = false;
+  if(hasLikelyPhysicalKeyboard()) el("answer-input").focus();
+}
+
 async function handleCheck(){
   if(!currentItem || currentAnswered) return;
   const answer = el("answer-input").value.trim();
@@ -5246,9 +5277,15 @@ async function handleCheck(){
 
   const pgKey = currentItem.progressKey || currentItem.en;
   if(revealedWords.has(pgKey)){
-    // Dit woord is deze beurt al gepiept (zie peekCurrentWord) -- telt sowieso als fout, geen AI-call
-    // nodig om dat vast te stellen.
+    // Dit woord is deze beurt al gepiept (zie peekCurrentWord) -- telt sowieso als fout voor de SRS.
+    // Maar als het GETYPTE antwoord toch al klopt (bv. met behulp van de hint-letters), hoeft er geen
+    // aparte herkansing geforceerd te worden -- dat antwoord is dan al 1x zelf getypt.
     const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
+    if(checkStaticMatch(currentItem, answer)){
+      setExplanation("You used a hint, so this round is still counted as a miss for your review schedule.");
+      finalizeCorrectDisplayButScoredWrong("✅ Correct! (still counted as a miss since you used a hint)");
+      return;
+    }
     setExplanation("You peeked at the meaning, so this round is counted as a miss. Type the answer to continue.");
     enterWordRetry("👁️<br>" + answerCompareLine(answer, correctAnswer, false));
     return;
