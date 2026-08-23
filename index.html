@@ -25,7 +25,7 @@
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.96</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v2.97</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -48,7 +48,10 @@
       <div id="tr-word" class="tr-word">…</div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="word-meta" style="font-size:.78rem;margin-top:2px;"></div>
-        <button class="btn-ghost btn-small hidden" id="btn-edit-flashcard" style="margin-top:0;padding:2px 8px;font-size:.75rem;" title="Correct this word if it's wrong">✏️ Fix</button>
+        <div class="row" style="gap:4px;">
+          <button class="btn-ghost btn-small hidden" id="btn-reveal-word" style="margin-top:0;padding:2px 8px;font-size:.75rem;" title="Show the translation — counts this word as wrong">👁️ Reveal</button>
+          <button class="btn-ghost btn-small hidden" id="btn-edit-flashcard" style="margin-top:0;padding:2px 8px;font-size:.75rem;" title="Correct this word if it's wrong">✏️ Fix</button>
+        </div>
       </div>
       <div class="level-bar"><div class="level-bar-fill" id="level-fill" style="width:0%"></div></div>
       <div class="muted" id="level-label" style="margin-top:4px;">level 0 / 10</div>
@@ -69,7 +72,6 @@
         <button class="btn-ghost btn-small hidden" id="btn-show-explanation">💬 Explanation</button>
         <button class="btn-ghost btn-small" id="btn-ask-ai">🤖 Ask AI</button>
         <button class="btn-ghost btn-small" id="btn-dispute">⚖️ I disagree</button>
-        <button class="btn-primary btn-small hidden" id="btn-next" style="flex:1;">Next ▶</button>
       </div>
     </div>
 
@@ -373,7 +375,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v2.96</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v2.97</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -391,7 +393,7 @@
 </div>
 
 <!-- ===================== MODALS ===================== -->
-<div class="modal-bg hidden" id="modal-ai">
+<div class="modal-bg hidden" id="modal-ai" style="z-index:9999;">
   <div class="modal">
     <h3>Ask AI about "<span id="modal-ai-word"></span>"</h3>
     <div id="chat-log"></div>
@@ -455,6 +457,7 @@
       <div class="tr-word" id="checkup-word">…</div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="checkup-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
+        <button class="btn-ghost btn-small hidden" id="btn-checkup-reveal" style="margin-top:0;padding:2px 8px;font-size:.75rem;" title="Show the answer — counts this as wrong">👁️ Reveal</button>
       </div>
       <input type="text" id="checkup-answer-input" placeholder="Type your answer…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-top:10px;">
       <div class="row" style="margin-top:10px;">
@@ -1505,6 +1508,7 @@ RIGHT (always do this): have the student translate a concrete, real, complete wo
 - en-tr: give an English phrase that requires the skill to translate correctly — e.g. "on the table", "from home", "next to him" (a full phrase, never just "on"/"from"/"next to" alone) — and ask for the correct Turkish form.
 - tr-en: give a real, already correctly inflected/derived Turkish word or phrase (e.g. "okula", or "masanın üstünde"), and ask for the English meaning.
 IMPORTANT FOR TOPICS WITH "RELATIONAL NOUNS" (preposition-like constructions using üst/alt/ön/arka/yan etc.): occasionally also test the bare building-block word itself as plain vocabulary (e.g. "üst" -> top, "yan" -> side, with no further inflection) — that's just as important as the suffix mechanics itself, and may simply be asked as a word translation.
+CRITICAL — DO NOT LET THE ENGLISH PROMPT ACCIDENTALLY TEST A DIFFERENT, NEIGHBOURING CONSTRUCTION: this topic is specifically "${topic.label}" (${topic.hint}), NOT any other tense/aspect/modality that a bare English phrase could also plausibly map to. Turkish has several near-neighbour pairs that collapse into the SAME plain English phrasing unless you add an explicit disambiguating word — most notably: present/general ABILITY "-EBİLİR" ("can you swim?") vs. FUTURE ability "-EBİLECEK" ("will you be able to swim?") -- these are NOT interchangeable, so if the topic is the future-ability pattern, the English prompt MUST make the future/eventual framing explicit (e.g. "will you be able to come tomorrow?", not the bare present "can you come?"), and vice versa for present ability; PRESENT CONTINUOUS "-İYOR" ("is doing, right now") vs. AOR IST/habitual "-İR/-ER" ("does, in general") -- add "right now"/"at this moment" for the former, "usually"/"in general" for the latter; WITNESSED past "-Dİ" vs. REPORTED/inferred past "-Mİş" -- make explicit whether the speaker saw it happen themselves or is reporting/inferring it. Before finalizing your answer, check: could this exact English "prompt" just as naturally be answered using the NEIGHBOURING pattern instead of "${topic.label}"? If yes, rewrite the prompt to remove that ambiguity.
 STRICT REQUIREMENT: the base word MUST come literally from the list given to you for this call, no other word whatsoever. Pick whichever one best fits the topic (a verb for verb conjugation topics, a noun for case topics, etc.) — do not invent a different word yourself, even if you think you could come up with a "better" example.
 NOTE — THE ENGLISH GLOSS IN PARENTHESES IS ONLY A MEMORY AID, NOT AN INSTRUCTION TO RE-TRANSLATE IT YOURSELF: each item in the list is formatted as "TURKISH_WORD (english meaning)" — use the GIVEN Turkish word literally as written. Do NOT re-translate the English gloss yourself, because English words are often ambiguous (e.g. "like" can mean either "to like" (beğenmek) or "similar to" (gibi)) — if the list contains "gibi (like)", the intended word is ALWAYS "gibi", never a self-invented translation of "like" such as "beğenmek".
 Write everything in English and Turkish ONLY — never any other language.
@@ -1963,7 +1967,8 @@ Patroonomschrijving: ${topic.hint}
 Geef een kort, ondubbelzinnig Engels zinnetje dat PRECIES deze ene vervoegde vorm oproept (bv. "he will run", "I couldn't come", "if you read", "while eating") -- geen volledige zin met andere woorden erbij, puur de vervoeging van dit ene werkwoord in dit patroon.
 KRITIEK: sommige Turkse tijden/patronen klinken in kaal Engels bijna identiek aan een ANDER Turks patroon, met name de present continuous (-iyor) versus de aorist/brede tegenwoordige tijd (-ir/-er, gewoonte/algemeen). "Do you drink?" is bijvoorbeeld ECHT dubbelzinnig: het is de natuurlijke Engelse vertaling van zowel "İçer misin?" (aorist, aanbod/gewoonte) als "İçiyor musun?" (present continuous, dit moment) -- zoiets NOOIT als prompt gebruiken. Als het patroon dat je moet oproepen present continuous is, voeg dan ALTIJD een expliciete tijdsaanduiding toe die dat ondubbelzinnig maakt ("right now", "at this moment", "currently", bv. "Are you drinking right now?"). Als het patroon aorist/gewoonte is, voeg dan juist een gewoonte-aanduiding toe ("usually", "in general", "as a rule", bv. "Do you usually drink coffee?"). Pas dezelfde voorzichtigheid toe op elk ander tijden-paar dat in kaal Engels door elkaar zou kunnen lopen (bv. -di vs -miş verleden tijd: voeg toe of het zelf gezien is dan wel gehoord/afgeleid).
 Geef de correcte Turkse vervoeging (normaal gesproken één woord; alleen als het patroon dat grammaticaal vereist -- bv. bij "değil" of een hulpwerkwoord-constructie -- een vaste, korte woordgroep).
-Geef ook een STAP-VOOR-STAP MORFEEM-OPBOUW ("breakdown"): een array van de KALE werkwoordstam (zonder -mek/-mak, bv. "gel" niet "gelmek") tot en met de volledige vervoegde vorm, waarbij ELKE volgende stap EXACT ÉÉN achtervoegsel/morfeem meer bevat dan de vorige. Elke stap krijgt "form" (de Turkse vorm tot en met dat achtervoegsel) en "meaning" (de Engelse betekenis van de vorm OP DIE STAP, zodat de betekenisverandering door dat ene toegevoegde achtervoegsel duidelijk wordt). De eerste stap is altijd de kale stam met zijn kale betekenis (bv. "gel" -> "come"); de laatste stap is EXACT gelijk aan "correct". Gebruik zoveel stappen als het patroon daadwerkelijk vereist (meestal 2-4) -- verzin geen kunstmatige tussenstap die geen echte taalkundige eenheid is.
+Geef ook een STAP-VOOR-STAP MORFEEM-OPBOUW ("breakdown"): een array van de KALE werkwoordstam (zonder -mek/-mak, bv. "gel" niet "gelmek") tot en met de volledige vervoegde vorm, waarbij ELKE volgende stap EXACT ÉÉN achtervoegsel/morfeem meer bevat dan de vorige. Elke stap krijgt "form" (de Turkse vorm tot en met dat achtervoegsel) en "meaning" (de Engelse betekenis van de vorm OP DIE STAP, zodat de betekenisverandering door dat ene toegevoegde achtervoegsel duidelijk wordt). De eerste stap is altijd de kale stam, maar toon in "form" ERACHTER tussen haakjes het infinitiefachtervoegsel voor de volledigheid (bv. "oyna(mak)", "gel(mek)") -- dat achtervoegsel telt niet mee als een aparte opbouwstap, het is puur ter herkenning van het woordenboek-lemma; "meaning" van die eerste stap is de kale/infinitiefbetekenis (bv. "play"/"to play"). De laatste stap is EXACT gelijk aan "correct" (zonder haakjes-toevoeging). Gebruik zoveel stappen als het patroon daadwerkelijk vereist (meestal 2-4) -- verzin geen kunstmatige tussenstap die geen echte taalkundige eenheid is.
+KRITIEK VOOR DE "meaning" VAN ELKE TIJD/ASPECT-STAP: een Turks tijd-achtervoegsel (met name -dı/-di/-tı/-ti "getuige/zekere verleden tijd" en -mış/-miş "gehoorde/afgeleide verleden tijd", maar ook -ır/-er aorist, -ecek/-acak toekomst, -iyor present continuous) drukt ZELF alleen tijd/aspect uit, NOOIT een grammaticaal persoon -- de persoonsuitgang (ik/jij/hij-zij-het/wij/jullie/zij) is in het Turks een APART, los achtervoegsel dat er eventueel PAS DAARNA bovenop komt (en bij de 3e persoon enkelvoud vaak zelfs helemaal ontbreekt, "onmarked"). Schrijf de "meaning" van een stap die zo'n tijd/aspect-achtervoegsel toevoegt dus NOOIT alsof dat achtervoegsel zelf een persoon aanduidt (fout voorbeeld: "oynadı" -> "he/she played", wat suggereert dat -dı "hij/zij" betekent) -- benoem in plaats daarvan expliciet de tijd/het aspect, bv. "oynadı" -> "played (witnessed past; no personal suffix yet, so this reads as 3rd person by default)". Pas als een LATERE stap er daadwerkelijk een eigen persoonsachtervoegsel aan toevoegt, benoem dat er dan expliciet bij, bv. "oynadım" -> "I played (witnessed past + 1st person singular -m)".
 Antwoord in JSON.`;
   const schema = {
     name: "suffix_oefening",
@@ -1975,12 +1980,12 @@ Antwoord in JSON.`;
         correct: {type:"string", description:"De correcte Turkse vervoegde vorm."},
         breakdown: {
           type: "array",
-          description: "Stap-voor-stap morfeem-opbouw: van de kale werkwoordstam tot de volledige vorm, elke stap precies 1 achtervoegsel meer dan de vorige. Laatste stap = 'correct'.",
+          description: "Stap-voor-stap morfeem-opbouw: van de kale werkwoordstam (met infinitief-achtervoegsel tussen haakjes, bv. 'oyna(mak)') tot de volledige vorm, elke stap precies 1 achtervoegsel meer dan de vorige. Laatste stap = 'correct'. Een tijd/aspect-achtervoegsel (-dı/-miş/-ır/-ecek/-iyor) is GEEN persoonsuitgang -- benoem in 'meaning' expliciet de tijd/het aspect, nooit een persoon, tenzij er ook daadwerkelijk een eigen persoonsachtervoegsel is toegevoegd.",
           items: {
             type: "object",
             properties: {
-              form: {type:"string", description:"De Turkse vorm tot en met dit achtervoegsel."},
-              meaning: {type:"string", description:"De Engelse betekenis van de vorm op deze stap."},
+              form: {type:"string", description:"De Turkse vorm tot en met dit achtervoegsel (eerste stap: kale stam + infinitief tussen haakjes, bv. 'oyna(mak)')."},
+              meaning: {type:"string", description:"De Engelse betekenis van de vorm op deze stap. Bij een tijd/aspect-achtervoegsel: noem expliciet de tijd/het aspect (bv. 'played (witnessed past)'), NOOIT alsof het achtervoegsel zelf een persoon aanduidt. Bij een persoonsachtervoegsel: benoem dat expliciet (bv. 'I played (witnessed past + 1st person singular -m)')."},
             },
             required: ["form","meaning"],
           },
@@ -2146,6 +2151,7 @@ async function nextCheckupQuestion(){
   el("checkup-answer-input").value = "";
   el("checkup-answer-input").disabled = true;
   el("btn-checkup-next").disabled = true;
+  el("btn-checkup-reveal").classList.add("hidden");
 
   if(checkupState.phase === "vocab"){
     el("checkup-modal-title").textContent = "📋 Knowledge Check — Vocabulary";
@@ -2171,6 +2177,7 @@ async function nextCheckupQuestion(){
         persistCheckupState();
         el("checkup-answer-input").disabled = false;
         el("btn-checkup-next").disabled = false;
+        el("btn-checkup-reveal").classList.remove("hidden");
         el("checkup-answer-input").focus();
         return;
       }catch(e){ /* generatie mislukt: val terug op de gewone, kale woordoefening hieronder (die zelf ook beveiligd is, zie try/catch eronder) */ }
@@ -2240,6 +2247,7 @@ async function nextCheckupQuestion(){
   persistCheckupState();
   el("checkup-answer-input").disabled = false;
   el("btn-checkup-next").disabled = false;
+  el("btn-checkup-reveal").classList.remove("hidden");
   el("checkup-answer-input").focus();
 }
 
@@ -2247,6 +2255,7 @@ async function submitCheckupAnswer(){
   const answer = el("checkup-answer-input").value.trim();
   el("btn-checkup-next").disabled = true;
   el("checkup-answer-input").disabled = true;
+  el("btn-checkup-reveal").classList.add("hidden");
   const cur = checkupState.current;
   let correct = false;
   let correctAnswerTxt = "";
@@ -2298,7 +2307,7 @@ async function submitCheckupAnswer(){
     ? (cur.sentenceDrill ? cur.sentenceDrill.prompt : (cur.direction === "tr-en" ? cur.tr : displayEnglishWord(cur.en)))
     : cur.drill.prompt;
   el("checkup-result-text").innerHTML = `<div class="muted" style="margin-bottom:6px;">${escapeHtml(promptShown)}</div>` +
-    (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`);
+    (correct ? "✅ Correct!" : (answer ? "❌ Not quite.<br>" : "") + `Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`);
 
   advanceCheckupStaircase();
   persistCheckupState();
@@ -2436,6 +2445,7 @@ async function nextSkillPracticeQuestion(){
   el("checkup-answer-input").value = "";
   el("checkup-answer-input").disabled = true;
   el("btn-checkup-next").disabled = true;
+  el("btn-checkup-reveal").classList.add("hidden");
   el("btn-checkup-skip").classList.remove("hidden");
   el("checkup-explanation-box").classList.add("hidden");
   el("checkup-post-actions").classList.add("hidden");
@@ -2463,6 +2473,7 @@ async function nextSkillPracticeQuestion(){
         el("checkup-answer-input").placeholder = drill.direction === "tr-en" ? "Type the English translation…" : "Type the Turkish translation…";
         el("checkup-answer-input").disabled = false;
         el("btn-checkup-next").disabled = false;
+        el("btn-checkup-reveal").classList.remove("hidden");
         el("checkup-answer-input").focus();
         return;
       }catch(e){ /* generatie mislukt: val terug op de gewone, kale woordoefening hieronder */ }
@@ -2501,6 +2512,7 @@ async function nextSkillPracticeQuestion(){
   }
   el("checkup-answer-input").disabled = false;
   el("btn-checkup-next").disabled = false;
+  el("btn-checkup-reveal").classList.remove("hidden");
   el("checkup-answer-input").focus();
 }
 
@@ -2508,6 +2520,7 @@ async function submitSkillPracticeAnswer(){
   const answer = el("checkup-answer-input").value.trim();
   el("btn-checkup-next").disabled = true;
   el("checkup-answer-input").disabled = true;
+  el("btn-checkup-reveal").classList.add("hidden");
   el("btn-checkup-skip").classList.add("hidden");
   const cur = skillPracticeState.current;
   let correct = false;
@@ -2582,7 +2595,7 @@ async function submitSkillPracticeAnswer(){
   }
   skillPracticeState.roundJustCompleted = roundJustCompleted;
   el("checkup-result-text").innerHTML = `<div class="muted" style="margin-bottom:6px;">${escapeHtml(promptShown)}</div>` +
-    (correct ? "✅ Correct!" : `❌ Not quite.<br>Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
+    (correct ? "✅ Correct!" : (answer ? "❌ Not quite.<br>" : "") + `Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`) + extra;
   el("btn-checkup-close").textContent = roundJustCompleted ? "OK" : "Continue";
   el("checkup-answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken, net als het hoofdscherm
   if(hasLikelyPhysicalKeyboard()) el("checkup-answer-input").focus(); // alleen auto-focus bij laptop/desktop, niet bij touch
@@ -4467,7 +4480,7 @@ async function renderPractice(){
   el("feedback-box").innerHTML = "";
   el("post-actions").classList.add("hidden");
   el("btn-dispute").disabled = false;
-  el("btn-next").classList.add("hidden");
+  el("btn-check").textContent = "Check";
   el("answer-input").value = "";
   el("answer-input").disabled = true;
   el("btn-check").disabled = true;
@@ -4542,6 +4555,7 @@ async function renderPractice(){
   el("badge-type").textContent = isSuffix ? "suffix" : (isQuestion ? "question" : (isSentence ? "sentence" : (isTrEn ? "TR → EN" : "EN → TR")));
   el("badge-type").className = "badge " + (isQuestion ? "badge-question" : (isSentence ? "badge-sentence" : "badge-word"));
   el("btn-edit-flashcard").classList.toggle("hidden", !isWord);
+  el("btn-reveal-word").classList.toggle("hidden", !isWord);
   const wordEl = el("tr-word");
   wordEl.textContent = isSuffix ? currentItem.prompt : ((isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || baseEnOf(currentItem.en)));
   currentItem.hintRevealed = false;
@@ -4685,7 +4699,7 @@ async function handleCheck(){
       addBtn.id = "btn-add-answer";
       addBtn.textContent = "➕ Add permanently to list";
       addBtn.onclick = ()=> { promptAddTranslation(currentItem, answer); addBtn.textContent = "✅ Added"; addBtn.disabled = true; };
-      el("post-actions").insertBefore(addBtn, el("btn-next"));
+      el("post-actions").appendChild(addBtn);
     }
   }catch(e){
     finalizeAnswer(false, "⚠️ Could not reach the AI: " + e.message + ". Answer counted as incorrect for now — you can dispute this.");
@@ -4754,7 +4768,8 @@ async function handleCheckSentence(answer){
       "<br><br><b>Word scores:</b><br>" + wordLines + lessonNote + adaptiveNote);
 
     el("post-actions").classList.remove("hidden");
-    el("btn-next").classList.remove("hidden");
+    el("btn-check").textContent = "Next ▶";
+    el("btn-check").disabled = false;
     el("btn-dispute").classList.remove("hidden"); // bij zinnen altijd tonen, ook per-woord kan afwijken
     el("answer-input").disabled = false; // opnieuw inschakelen zodat Enter (-> volgende) blijft werken
     if(hasLikelyPhysicalKeyboard()) el("answer-input").focus(); // alleen auto-focus bij laptop/desktop, niet bij touch (voorkomt oppoppend schermtoetsenbord)
@@ -4805,7 +4820,8 @@ async function handleCheckQuestion(answer){
       adaptiveNote);
 
     el("post-actions").classList.remove("hidden");
-    el("btn-next").classList.remove("hidden");
+    el("btn-check").textContent = "Next ▶";
+    el("btn-check").disabled = false;
     el("btn-dispute").classList.remove("hidden");
     el("answer-input").disabled = false;
     if(hasLikelyPhysicalKeyboard()) el("answer-input").focus(); // alleen auto-focus bij laptop/desktop, niet bij touch
@@ -4814,6 +4830,26 @@ async function handleCheckQuestion(answer){
     el("btn-check").disabled = false;
     el("answer-input").disabled = false;
   }
+}
+
+// Klik op "👁️ Reveal" bij een losse-woord-oefening: toont de vertaling direct (geen AI nodig, want
+// die staat al lokaal in de woordenlijst/curatedTr) en telt dit woord meteen als fout, net als bij een
+// leeg ingediend antwoord -- consistent met hoe een opgezocht woord binnen een zin/vraag ook altijd
+// als fout telt (zie revealWord/revealedWords hierboven).
+function revealWordHint(){
+  if(!currentItem || currentItem.type !== "word" || currentAnswered) return;
+  const correctAnswer = currentItem.direction === "tr-en" ? displayEnglishWord(currentItem.en) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
+  el("answer-input").disabled = true;
+  setExplanation("You revealed the translation, so this was counted as wrong." + (correctAnswer ? ` Correct answer: ${correctAnswer}.` : ""));
+  finalizeAnswer(false, "👁️<br>" + answerCompareLine("", correctAnswer, false));
+}
+
+// "👁️ Reveal"-knop in de kennischeck/les-oefeningen-modal: functioneel identiek aan met een LEEG
+// veld op "Check" klikken (dat telt daar al als fout zonder AI-call, zie submitCheckupAnswer/
+// submitSkillPracticeAnswer hierboven), maar dan als expliciete, ontdekbare actie op het woord zelf.
+function revealCheckupHint(){
+  el("checkup-answer-input").value = "";
+  if(skillPracticeState) submitSkillPracticeAnswer(); else submitCheckupAnswer();
 }
 
 function finalizeAnswer(correct, message){
@@ -4825,8 +4861,10 @@ function finalizeAnswer(correct, message){
   const adaptiveNote = recordAdaptiveResult(correct);
   showFeedback(correct ? "correct" : "wrong", message + lessonNote + adaptiveNote);
   el("post-actions").classList.remove("hidden");
-  el("btn-next").classList.remove("hidden");
+  el("btn-check").textContent = "Next ▶";
+  el("btn-check").disabled = false;
   el("btn-dispute").classList.toggle("hidden", !!correct);
+  el("btn-reveal-word").classList.add("hidden");
   const p = getProgress(currentItem.en);
   el("level-fill").style.width = (p.level*10) + "%";
   el("level-label").textContent = fmtLevel(p);
@@ -4914,7 +4952,8 @@ async function renderSuffixPractice(){
 // antwoord, en de morfeem-opbouw tonen.
 function finalizeSuffixAnswer(correct, diffText){
   suffixAnswered = true;
-  el("suf-feedback-box").innerHTML = `<div class="feedback ${correct ? "correct" : "wrong"}">${correct ? "✅ Correct!" : "❌ Not quite."}</div>`;
+  const wasBlank = !correct && /^You left this blank/.test(diffText || "");
+  el("suf-feedback-box").innerHTML = `<div class="feedback ${correct ? "correct" : "wrong"}">${correct ? "✅ Correct!" : (wasBlank ? "" : "❌ Not quite.")}</div>`;
   // diffText wordt nu ook bij een GOED antwoord getoond (bv. de accentfoutjes-melding hierboven) --
   // niet meer alleen bij fout.
   if(diffText){
@@ -5472,14 +5511,21 @@ function renderWeakWordsList(){
     return;
   }
   const rows = words.map(w=>{
-    const trans = cachedTranslation(w.en);
-    const transTxt = trans ? trans.join(", ") : "(not yet translated)";
+    // pickWordSense geeft de SPECIFIEKE, primaire betekenis (incl. gloss om te disambigueren bij een
+    // woord met meerdere losstaande betekenissen) i.p.v. cachedTranslation's platgeslagen lijst van ALLE
+    // betekenissen door elkaar -- zo is meteen duidelijk welke vertaling bij dit specifieke woord (en,
+    // bij meerdere zelfstandige "en"-entries voor hetzelfde basiswoord, welke betekenis) precies zwak is.
+    const sense = pickWordSense(w.en, "en-tr");
+    const cached = cachedTranslation(w.en);
+    const transTxt = (sense && sense.tr && sense.tr.length) ? sense.tr.join(", ") : (cached ? cached.join(", ") : "(not yet translated)");
+    const glossTxt = (sense && sense.gloss) ? ` <span class="muted" style="font-size:.68rem;">(${escapeHtml(sense.gloss)})</span>` : "";
     const color = w.level<=3 ? "#e0333f" : w.level<=6 ? "#e0a733" : "#2fae6a";
     const displayEn = overrides[w.en]?.en || baseEnOf(w.en);
+    const pos = wordCategoryOf(w.en);
     return `<div class="word-row">
       <div>
-        <div class="word-row-tr">${escapeHtml(displayEn)}</div>
-        <div class="word-row-trans">${escapeHtml(transTxt)}</div>
+        <div class="word-row-tr">${escapeHtml(displayEn)}${pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${pos}</span>` : ""}</div>
+        <div class="word-row-trans">${escapeHtml(transTxt)}${glossTxt}</div>
       </div>
       <div style="text-align:right;">
         <div class="word-row-score" style="color:${color};">${w.level}/10</div>
@@ -6247,7 +6293,9 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   document.querySelectorAll(".tab-btn").forEach(b=>{
     b.addEventListener("click", ()=> switchTab(b.dataset.tab));
   });
-  el("btn-check").addEventListener("click", handleCheck);
+  el("btn-check").addEventListener("click", ()=>{
+    if(!currentAnswered) handleCheck(); else renderPractice();
+  });
   el("mix-new-words-toggle").addEventListener("change", ()=>{
     settings.mixNewWords = el("mix-new-words-toggle").checked;
     saveJSON(LS_SETTINGS, settings);
@@ -6281,16 +6329,16 @@ document.addEventListener("DOMContentLoaded", async ()=>{
       currentAnswered = true;
       showFeedback("wrong", "⏭️ Skipped." + lessonNote + adaptiveNote);
       el("post-actions").classList.remove("hidden");
-      el("btn-next").classList.remove("hidden");
+      el("btn-check").textContent = "Next ▶";
+      el("btn-check").disabled = false;
       el("btn-dispute").classList.add("hidden");
-      el("btn-check").disabled = true;
       el("answer-input").disabled = true;
       return;
     }
     renderPractice();
   });
-  el("btn-next").addEventListener("click", renderPractice);
   el("btn-dispute").addEventListener("click", disputeAnswer);
+  el("btn-reveal-word").addEventListener("click", revealWordHint);
   el("btn-show-explanation").addEventListener("click", toggleExplanation);
 
   // Eén knop voor Check ÉN Continue: kijkt bij elke klik naar suffixAnswered om te bepalen welke van
@@ -6450,6 +6498,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   });
   el("btn-show-weak-words").addEventListener("click", toggleWeakWordsList);
   el("btn-checkup-next").addEventListener("click", ()=> skillPracticeState ? submitSkillPracticeAnswer() : submitCheckupAnswer());
+  el("btn-checkup-reveal").addEventListener("click", revealCheckupHint);
   el("checkup-answer-input").addEventListener("keydown", e=>{
     if(e.key === "Enter"){
       e.preventDefault();
