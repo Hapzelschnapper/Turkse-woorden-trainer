@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.18</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.19</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.18</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.19</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -399,7 +399,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.18</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.19</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -3952,7 +3952,11 @@ function pickNextItem(){
   // omdat ze op niveau 0 staan en dus als "zwakst" gelden). Zie wordSourceHistory verderop voor hoe de
   // verhouding over een venster van 5 gestuurd wordt.
   const newInRange = neverShown;
-  const reviewInRange = wordsInRange.filter(w => getProgress(w.key).reps > 0);
+  // BUGFIX: dit was voorheen "alle ooit-geoefende woorden binnen bereik" (reps>0), ongeacht of ze
+  // daadwerkelijk due waren -- daardoor kon een niet-due woord met een laag niveau alsnog als
+  // "herhaling" gekozen worden (pickWeakestSoonest sorteert op zwakste niveau, niet op due-status).
+  // reviewInRange moet identiek zijn aan de al hierboven berekende dueNow (echt due woorden).
+  const reviewInRange = dueNow;
   let dueWords;
   if(!wordsInRange.length){
     dueWords = allUnlocked; // bestaande fallback: niets binnen bereik -> toch iets tonen
@@ -3970,7 +3974,9 @@ function pickNextItem(){
     // beter een nieuw woord tonen dan de oefening volledig laten vastlopen.
     dueWords = reviewInRange.length ? reviewInRange : newInRange;
   } else if(!newInRange.length || !reviewInRange.length){
-    dueWords = wordsInRange; // niets te mixen: alles is al nieuw, of alles is al geïntroduceerd
+    // niets te mixen: geen nieuwe woorden meer binnen bereik (reviewInRange is hier altijd gevuld,
+    // want dueNow.length>0 staat al vast door de eerdere else-if-tak hierboven) -> gewoon due-woorden.
+    dueWords = reviewInRange;
   } else {
     // Exacte kwotering i.p.v. een schattend gemiddelde: van elke opeenvolgende 5 woordoefeningen zijn
     // de eerste newWordsPer5 "nieuw" en de rest "herhaling", gebaseerd op een simpele oplopende teller
