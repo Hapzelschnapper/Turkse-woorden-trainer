@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.16</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.17</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.16</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.17</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -107,13 +107,13 @@
        met het eigen antwoord. -->
   <section id="screen-suffixes" class="hidden">
     <div class="card">
-      <div class="muted" style="margin-bottom:10px;">Conjugate mastered verbs with mastered grammar patterns, practised on their own. No score — just right or wrong, with a breakdown of the suffixes used.</div>
+      <div class="muted" style="margin-bottom:10px;">Apply mastered grammar patterns to mastered verbs and nouns, practised on their own. No score — just right or wrong, with a breakdown of the suffixes used.</div>
     </div>
     <div class="card" id="suffix-card">
       <div class="row space-between">
         <span class="badge badge-word">suffix</span>
       </div>
-      <div class="muted hidden" id="suf-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ Not enough mastered content yet — you need at least one verb AND one verb-grammar topic at a good level before suffix drills can be generated. Keep practicing on the Practice tab first.</div>
+      <div class="muted hidden" id="suf-empty-notice" style="color:#c0392b;font-size:.8rem;margin-top:4px;">⚠️ Not enough mastered content yet — you need at least one verb AND one verb-grammar topic, OR one noun AND one noun-grammar topic, at a good level before suffix drills can be generated. Keep practicing on the Practice tab first.</div>
       <div class="muted" id="suf-verb-label" style="font-size:.85rem;margin-bottom:2px;"></div>
       <div id="suf-word" class="tr-word">…</div>
       <div class="muted" id="suf-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
@@ -193,8 +193,8 @@
           <option value="alpha">Alphabetical (A-Z)</option>
         </select>
         <select id="words-filter" class="select-input" style="flex:1 1 160px;min-width:0;">
+          <option value="all" selected>All words</option>
           <option value="introduced">Already introduced</option>
-          <option value="all">All words</option>
         </select>
       </div>
       <div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap;">
@@ -208,9 +208,9 @@
           <option value="C2">C2 and below</option>
         </select>
         <select id="words-direction-filter" class="select-input" style="flex:1 1 160px;min-width:0;">
+          <option value="all" selected>Both lists</option>
           <option value="en-tr">EN → TR list</option>
           <option value="tr-en">TR → EN list</option>
-          <option value="all">Both lists</option>
         </select>
       </div>
     </div>
@@ -399,7 +399,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-23 v3.16</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.17</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -2072,6 +2072,13 @@ function masteredVerbsForSuffixDrill(){
   const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
   return EN_WORDS_DATA.filter(w => w.pos === "verb" && vocabCefrBand(w.cefr) <= hi && getProgress(w.en).reps >= 1);
 }
+// Zelfde opzet als masteredVerbsForSuffixDrill hierboven, maar dan voor zelfst. naamwoorden -- de
+// suffixtrainer versuffixte voorheen ALLEEN werkwoorden; dit maakt naamwoord-achtervoegsels (meervoud,
+// bezit, naamval, verkleinwoord, copula, ...) even goed oefenbaar.
+function masteredNounsForSuffixDrill(){
+  const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
+  return EN_WORDS_DATA.filter(w => w.pos === "noun" && vocabCefrBand(w.cefr) <= hi && getProgress(w.en).reps >= 1);
+}
 // Kiest, binnen de pool van al-tegengekomen werkwoorden, bij VOORKEUR een al goed BEHEERST exemplaar
 // (level >= SUFFIX_DRILL_PREFERRED_VERB_LEVEL) -- dat geeft een prettigere oefening (je hoeft niet ook
 // nog aan het werkwoord zelf te twijfelen, alleen aan het grammaticapatroon). Is er nog geen enkel zo
@@ -2079,6 +2086,14 @@ function masteredVerbsForSuffixDrill(){
 const SUFFIX_DRILL_PREFERRED_VERB_LEVEL = 7;
 function pickSuffixDrillVerb(){
   const pool = masteredVerbsForSuffixDrill();
+  if(!pool.length) return null;
+  const wellKnown = pool.filter(w => getProgress(w.en).level >= SUFFIX_DRILL_PREFERRED_VERB_LEVEL);
+  const source = wellKnown.length ? wellKnown : pool;
+  return source[Math.floor(Math.random()*source.length)];
+}
+// Naamwoord-tegenhanger van pickSuffixDrillVerb() hierboven.
+function pickSuffixDrillNoun(){
+  const pool = masteredNounsForSuffixDrill();
   if(!pool.length) return null;
   const wellKnown = pool.filter(w => getProgress(w.en).level >= SUFFIX_DRILL_PREFERRED_VERB_LEVEL);
   const source = wellKnown.length ? wellKnown : pool;
@@ -2092,18 +2107,43 @@ function pickSuffixDrillVerb(){
 // werkwoord heeft geen meervoud/naamval). Onderwerpen zonder framework-vermelding (de "rest"-categorie
 // onderaan GRAMMAR_TOPIC_FRAMEWORK) worden voorzichtigheidshalve ook uitgesloten.
 const SUFFIX_DRILL_VERB_FRAMEWORKS = new Set(["verb", "verb2"]);
-function masteredTopicsForSuffixDrill(){
+function masteredTopicsForSuffixDrillVerb(){
   const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
   return GRAMMAR_TOPICS.filter(t => SUFFIX_DRILL_VERB_FRAMEWORKS.has(GRAMMAR_TOPIC_FRAMEWORK[t.key])
     && vocabCefrBand(t.minCefr) <= hi
     && getTopicProgress(t).reps >= 1);
 }
-function canOfferSuffixDrill(){
-  return masteredVerbsForSuffixDrill().length > 0 && masteredTopicsForSuffixDrill().length > 0;
+// Naamwoord-tegenhanger: alleen onderwerpen die daadwerkelijk op een LOS naamwoord landen (framework
+// "noun" -- meervoud, bezit, naamval, verkleinwoord, copula, var/yok, ...), net zoals hierboven alleen
+// "verb"/"verb2" meetelt voor werkwoorden.
+const SUFFIX_DRILL_NOUN_FRAMEWORKS = new Set(["noun"]);
+function masteredTopicsForSuffixDrillNoun(){
+  const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
+  return GRAMMAR_TOPICS.filter(t => SUFFIX_DRILL_NOUN_FRAMEWORKS.has(GRAMMAR_TOPIC_FRAMEWORK[t.key])
+    && vocabCefrBand(t.minCefr) <= hi
+    && getTopicProgress(t).reps >= 1);
 }
+function canOfferVerbSuffixDrill(){
+  return masteredVerbsForSuffixDrill().length > 0 && masteredTopicsForSuffixDrillVerb().length > 0;
+}
+function canOfferNounSuffixDrill(){
+  return masteredNounsForSuffixDrill().length > 0 && masteredTopicsForSuffixDrillNoun().length > 0;
+}
+function canOfferSuffixDrill(){
+  return canOfferVerbSuffixDrill() || canOfferNounSuffixDrill();
+}
+// Kiest willekeurig tussen een werkwoord- en een naamwoord-suffixoefening -- alleen uit de soort(en)
+// die daadwerkelijk beschikbaar zijn (zie canOfferVerbSuffixDrill/canOfferNounSuffixDrill).
 async function generateSuffixDrill(){
+  const verbOk = canOfferVerbSuffixDrill();
+  const nounOk = canOfferNounSuffixDrill();
+  if(!verbOk && !nounOk) throw new Error("No exposed word + exposed matching grammar topic combination available yet.");
+  const useNoun = verbOk && nounOk ? Math.random() < 0.5 : nounOk;
+  return useNoun ? generateNounSuffixDrill() : generateVerbSuffixDrill();
+}
+async function generateVerbSuffixDrill(){
   const verbs = masteredVerbsForSuffixDrill();
-  const topics = masteredTopicsForSuffixDrill();
+  const topics = masteredTopicsForSuffixDrillVerb();
   if(!verbs.length || !topics.length) throw new Error("No exposed verb + exposed verb-grammar topic combination available yet.");
   const verb = pickSuffixDrillVerb();
   const topic = topics[Math.floor(Math.random()*topics.length)];
@@ -2192,7 +2232,93 @@ Antwoord in JSON.`;
   const direction = Math.random() < 0.5 ? "tr-en" : "en-tr";
   const prompt = direction === "tr-en" ? turkishForm : englishCue;
   const correct = direction === "tr-en" ? englishCue : turkishForm;
-  return {type:"suffix", en: `suffix:${verb.en}:${topic.key}`, direction, prompt, correct, englishCue, turkishForm, verbEn: verb.en, verbTr, topicKey: topic.key, breakdown};
+  return {type:"suffix", pos:"verb", en: `suffix:${verb.en}:${topic.key}`, direction, prompt, correct, englishCue, turkishForm, verbEn: verb.en, verbTr, topicKey: topic.key, breakdown};
+}
+
+// Naamwoord-tegenhanger van generateVerbSuffixDrill hierboven. Belangrijk verschil: veel naamwoord-
+// patronen (m.n. de copula-groep: var/yok, copula_basic, isaret_zamirleri, ...) kunnen NIET als kaal,
+// op zichzelf staand woord getoond worden -- die hebben een minimale zin/context nodig om natuurlijk te
+// zijn (bv. "Kitap var." i.p.v. een geïsoleerd woord). Daarom vraagt dit een OPTIONELE korte
+// contextzin aan de AI, met het te beoordelen doelwoord expliciet apart benoemd (targetWord +
+// targetMeaning), zodat de gebruiker ALLEEN dat ene woord hoeft te vertalen/produceren -- niet de hele
+// zin -- en dat woord in de UI onderstreept kan worden (zie renderSuffixPractice).
+async function generateNounSuffixDrill(){
+  const nouns = masteredNounsForSuffixDrill();
+  const topics = masteredTopicsForSuffixDrillNoun();
+  if(!nouns.length || !topics.length) throw new Error("No exposed noun + exposed noun-grammar topic combination available yet.");
+  const noun = pickSuffixDrillNoun();
+  const topic = topics[Math.floor(Math.random()*topics.length)];
+  const nounTr = (await getOrFetchTranslation(noun.en))[0];
+  const nounBaseEn = baseEnOf(noun.en);
+
+  const sys = `Je maakt een "suffix"-oefening: de gebruiker moet ÉÉN Turks woord vormen door het zelfstandig naamwoord "${nounTr}" (Engels: "${nounBaseEn}") toe te passen op het grammaticale patroon "${topic.label}".
+Patroonomschrijving: ${topic.hint}
+Geef een kort, ondubbelzinnig Engels zinnetje dat PRECIES deze ene gevormde woordvorm oproept (bv. "my book", "the apples", "to the house", "a little dog") -- puur de vorming van dit ene naamwoord in dit patroon, geen extra's.
+Geef de correcte Turkse vorm ("targetWord"): meestal is dit het KALE, op zichzelf staande gevormde naamwoord (zonder verdere zin eromheen), bv. "kitabım", "elmalar", "eve", "köpekçik".
+SOMMIGE patronen (met name copula/var-yok/aanwijs-achtige constructies) kunnen NIET als een kaal, geïsoleerd woord natuurlijk klinken -- die hebben een minimale zin nodig (bv. "Kitap var.", "Ev büyüktür.", "Bu bir araba."). ALLEEN in dat geval: vul ook "contextSentence" in met een kort, natuurlijk Turks zinnetje (2-4 woorden) waar "targetWord" letterlijk (exact dezelfde spelling) in voorkomt. Als een kaal woord wél volstaat, laat "contextSentence" dan leeg/weg.
+Geef ook een STAP-VOOR-STAP MORFEEM-OPBOUW ("breakdown"): een array van de KALE naamwoordstam tot en met "targetWord", waarbij ELKE volgende stap EXACT ÉÉN achtervoegsel/morfeem meer bevat dan de vorige. Elke stap krijgt "form" (de Turkse vorm tot en met dat achtervoegsel) en "meaning" (de Engelse betekenis op die stap). De eerste stap is de kale naamwoordstam (bv. "kitap" -> "book"). De laatste stap is EXACT gelijk aan "targetWord". Gebruik zoveel stappen als het patroon vereist (meestal 1-3).
+Antwoord in JSON.`;
+  const schema = {
+    name: "suffix_oefening_naamwoord",
+    description: "Eén woordvormingsoefening op basis van een beheerst zelfstandig naamwoord en een beheerst grammaticapatroon, met stap-voor-stap morfeem-opbouw.",
+    input_schema: {
+      type: "object",
+      properties: {
+        prompt: {type:"string", description:"Kort, ondubbelzinnig Engels zinnetje dat precies deze ene gevormde woordvorm oproept."},
+        targetWord: {type:"string", description:"De correcte, KALE Turkse gevormde vorm van het naamwoord (zonder omringende zin)."},
+        contextSentence: {type:"string", description:"ALLEEN invullen als 'targetWord' onmogelijk als geïsoleerd woord kan staan (copula/var-yok/aanwijs-constructies): een kort natuurlijk Turks zinnetje waar 'targetWord' letterlijk in voorkomt. Anders leeg laten."},
+        breakdown: {
+          type: "array",
+          description: "Stap-voor-stap morfeem-opbouw van de kale naamwoordstam tot 'targetWord', elke stap precies 1 achtervoegsel meer dan de vorige.",
+          items: {
+            type: "object",
+            properties: {
+              form: {type:"string", description:"De Turkse vorm tot en met dit achtervoegsel."},
+              meaning: {type:"string", description:"De Engelse betekenis van de vorm op deze stap."},
+            },
+            required: ["form","meaning"],
+          },
+        },
+      },
+      required: ["prompt","targetWord","breakdown"]
+    }
+  };
+  const raw = await callAI("sentence", sys, `Naamwoord: ${nounBaseEn} (${nounTr}) | Patroon: ${topic.label}`, 700, 0.5, schema);
+  let parsed = parseAIJson(raw);
+  if(!parsed.prompt || !parsed.targetWord) throw new Error("AI did not return a valid suffix drill.");
+  // Zelfde lek-detectie als bij de werkwoordvariant: het Engelse aanwijs-zinnetje mag de Turkse
+  // doelvorm niet verklappen.
+  function promptLeaksAnswer(prompt, correct){
+    const p = prompt.toLowerCase();
+    const c = correct.trim().toLowerCase();
+    if(c.length >= 3 && p.includes(c)) return true;
+    if(prompt.length > 70) return true;
+    return false;
+  }
+  if(promptLeaksAnswer(parsed.prompt, parsed.targetWord)){
+    const retryUser = `Naamwoord: ${nounBaseEn} (${nounTr}) | Patroon: ${topic.label}\n\nNOTE: your previous attempt gave as "prompt": "${parsed.prompt}" -- this leaks the answer (contains the Turkish form itself) and/or is too long. "prompt" must be ONLY the short English cue sentence itself. Only then repeat.`;
+    const raw2 = await callAI("sentence", sys, retryUser, 700, 0.5, schema);
+    const parsed2 = parseAIJson(raw2);
+    if(parsed2.prompt && parsed2.targetWord && !promptLeaksAnswer(parsed2.prompt, parsed2.targetWord)) parsed = parsed2;
+  }
+  // Als er een contextSentence is opgegeven maar targetWord er (letterlijk) niet in voorkomt, kunnen we
+  // 'm niet betrouwbaar onderstrepen -- val dan veilig terug op het kale woord zonder context.
+  let contextSentence = (parsed.contextSentence || "").trim();
+  if(contextSentence && !contextSentence.includes(parsed.targetWord)) contextSentence = "";
+  const breakdown = (Array.isArray(parsed.breakdown) && parsed.breakdown.length)
+    ? parsed.breakdown.filter(s => s && s.form && s.meaning)
+    : [{form: parsed.targetWord, meaning: parsed.prompt}];
+
+  const englishCue = parsed.prompt;
+  const turkishForm = parsed.targetWord;
+  const direction = Math.random() < 0.5 ? "tr-en" : "en-tr";
+  // en-tr: gewoon het kale doelwoord produceren (net als bij werkwoorden), geen context nodig.
+  // tr-en: als er een contextSentence is, die tonen (met targetWord onderstreept -- zie
+  // renderSuffixPractice) zodat duidelijk is welk woord vertaald moet worden; het te vertalen antwoord
+  // blijft wel ALLEEN de betekenis van targetWord zelf, niet van de hele zin.
+  const prompt = direction === "tr-en" ? (contextSentence || turkishForm) : englishCue;
+  const correct = direction === "tr-en" ? englishCue : turkishForm;
+  return {type:"suffix", pos:"noun", en: `suffix:${noun.en}:${topic.key}`, direction, prompt, correct, englishCue, turkishForm, contextSentence, targetWordTr: turkishForm, nounEn: noun.en, nounTr, topicKey: topic.key, breakdown};
 }
 
 // Beoordeelt een suffix-antwoord: alleen goed/fout, GEEN algemene uitleg -- bij een fout antwoord
@@ -2203,11 +2329,17 @@ Antwoord in JSON.`;
 // beoordeeld of de vertaling het juiste tijd/aspect/persoon van díe specifieke vorm correct weergeeft,
 // niet of het exact dezelfde bewoording is als de oorspronkelijke Engelse aanwijzing.
 async function gradeSuffixDrillAnswer(drill, answer){
+  const isNoun = drill.pos === "noun";
+  // Bij een naamwoord-oefening met contextSentence toont "drill.prompt" de HELE zin (voor onderstreping
+  // in de UI), maar de gebruiker hoeft alleen het doelwoord "targetWordTr"/"turkishForm" te vertalen --
+  // die specifieke vorm (niet de hele zin) hoort dus in de beoordelingsprompt, niet drill.prompt zelf.
+  const turkishFormForGrading = isNoun ? (drill.targetWordTr || drill.turkishForm) : drill.prompt;
+  const wordLabel = isNoun ? `het zelfstandig naamwoord "${drill.nounTr}"` : `het werkwoord "${drill.verbTr}"`;
   const sys = drill.direction === "tr-en"
-    ? `Je beoordeelt of de Engelse vertaling van een gebruiker de betekenis correct weergeeft van de Turkse vorm "${drill.prompt}" (het werkwoord "${drill.verbTr}" vervoegd met het patroon "${drill.topicKey}"). Een voorbeeldvertaling is "${drill.correct}", maar andere bewoordingen die hetzelfde tijd/aspect/persoon correct weergeven zijn OOK goed (bv. "he will come" en "he's going to come" zijn beide correct voor een toekomstige tijd).
+    ? `Je beoordeelt of de Engelse vertaling van een gebruiker de betekenis correct weergeeft van de Turkse vorm "${turkishFormForGrading}" (${wordLabel} gevormd met het patroon "${drill.topicKey}"). Een voorbeeldvertaling is "${drill.correct}", maar andere bewoordingen die hetzelfde correct weergeven zijn OOK goed (bv. "he will come" en "he's going to come" zijn beide correct voor een toekomstige tijd).
 BELANGRIJK: het voorbeeld "${drill.correct}" kan een expliciet verduidelijkend woordje bevatten zoals "usually"/"right now"/"in general" -- dat woordje stond er destijds ALLEEN bij om de Engelse aanwijzing zelf ondubbelzinnig te maken (zodat die niet zowel als present continuous als aorist gelezen kon worden). Bij het beoordelen van de vertaling van de gebruiker is zo'n woordje NOOIT verplicht: een kale eenvoudige tegenwoordige tijd ("I hear") is een volledig correcte vertaling van een aorist-vorm, een kale "is/are + -ing" is een volledig correcte vertaling van -iyor, enzovoort. Reken een antwoord dus NOOIT fout omdat het woordje als "usually" of "right now" ontbreekt, zolang de gekozen Engelse tijdsvorm zelf (simple present vs. present continuous vs. simple future, etc.) bij de Turkse vorm past.
 Reken het antwoord alleen FOUT als het daadwerkelijk een ANDERE tijd/aspect/persoon weergeeft dan de Turkse vorm uitdrukt (bv. tegenwoordige tijd i.p.v. toekomstige tijd, of de verkeerde persoon) -- niet om ontbrekende nuance-woordjes of stilistische verschillen.
-Als het antwoord daadwerkelijk FOUT is: leg in het Engels (max 2 zinnen, geen tegenstrijdige redenering), rechtstreeks tegen de gebruiker gericht ("you"), BEKNOPT uit wat er mis is met hun vertaling "${answer}" t.o.v. wat "${drill.prompt}" daadwerkelijk betekent. Als het antwoord GOED is, laat "diff" leeg.
+Als het antwoord daadwerkelijk FOUT is: leg in het Engels (max 2 zinnen, geen tegenstrijdige redenering), rechtstreeks tegen de gebruiker gericht ("you"), BEKNOPT uit wat er mis is met hun vertaling "${answer}" t.o.v. wat "${turkishFormForGrading}" daadwerkelijk betekent. Als het antwoord GOED is, laat "diff" leeg.
 Antwoord in JSON.`
     : `Je beoordeelt of het Turkse antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (gebruiker moest deze Engelse frase naar de correct vervoegde Turkse vorm vertalen). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat het antwoord fout wordt. Reken dit soort verschil dus NOOIT fout. NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en reken kleine tikfouten met een ondubbelzinnige bedoeling goed.
 LET OP OP EEN MOGELIJK DUBBELZINNIGE PROMPT: als het Engelse zinnetje "${drill.prompt}" zelf, in kaal Engels, EIGENLIJK op meer dan één Turkse tijd/patroon zou kunnen slaan (het klassieke geval: een Engelse zin zonder expliciete tijdsaanduiding kan zowel de present continuous ALS de aorist/gewoonte-lezing dekken, bv. "Do you drink?" kan zowel "İçer misin?" als "İçiyor musun?" betekenen) -- en het antwoord van de gebruiker is een grammaticaal correcte vervoeging van HETZELFDE werkwoord die bij die ANDERE, even legitieme lezing hoort, reken dat dan GOED, ook al wijkt het af van "${drill.correct}". Dit is de dubbelzinnigheid van de prompt, niet een fout van de gebruiker.
@@ -3058,6 +3190,23 @@ async function githubApiError(res){
   return new Error(res.status + ": " + msg);
 }
 
+// BUGFIX: GitHub's Gist API TRUNCATES a file's "content" field once it passes a size threshold
+// (well under 1MB) -- the response still says res.ok, but file.content is then cut off mid-string,
+// so JSON.parse() blows up with an "Unterminated string"/"Unexpected end of JSON input" error. This
+// silently broke pulling as soon as the synced progress payload (progress+custom+overrides+newWords+
+// grammar+cost, for ~4932 words) grew past that threshold: the pull failed, the OLD local progress
+// stayed in place, and a subsequent push then re-uploaded that stale local data as if it were fresh
+// (hence "sync successful" while devices still visibly differ). Fix: GitHub flags this via
+// file.truncated===true and provides file.raw_url with the FULL, untruncated content -- fetch that
+// instead whenever truncation is signalled.
+async function fetchFullGistFileContent(file){
+  if(!file.truncated) return file.content;
+  const rawRes = await fetch(file.raw_url, {
+    headers: { "Authorization": "Bearer " + settings.syncApiKey }
+  });
+  if(!rawRes.ok) throw new Error("Failed to fetch full (untruncated) gist content: " + rawRes.status);
+  return await rawRes.text();
+}
 async function fetchRemoteGistData(){
   const res = await fetch(`https://api.github.com/gists/${settings.syncBinId}`, {
     headers: {
@@ -3069,7 +3218,7 @@ async function fetchRemoteGistData(){
   const data = await res.json();
   const file = data.files && data.files[GIST_FILENAME];
   if(!file) return null;
-  return JSON.parse(file.content);
+  return JSON.parse(await fetchFullGistFileContent(file));
 }
 
 async function syncPushNow(){
@@ -3132,7 +3281,7 @@ async function syncPullNow(showAlertOnEmpty){
       if(showAlertOnEmpty) setSyncStatus("⚠️ Gist found, but does not contain " + GIST_FILENAME + " bestand.");
       return;
     }
-    const remote = JSON.parse(file.content);
+    const remote = JSON.parse(await fetchFullGistFileContent(file));
     if(remote && remote.updatedAt){
       progress = remote.progress || {};
       custom = remote.custom || {};
@@ -5581,13 +5730,31 @@ async function renderSuffixPractice(){
   // Onderstreept (naast vetgedrukt) zodat het te vervoegen werkwoord in één oogopslag duidelijk is,
   // ongeacht de richting van de oefening.
   const isTrEn = currentSuffixItem.direction === "tr-en";
-  el("suf-verb-label").innerHTML = `Verb: <u><b>${escapeHtml(currentSuffixItem.verbTr)}</b></u> (<u>${escapeHtml(displayEnglishWord(currentSuffixItem.verbEn))}</u>)`;
-  el("suf-word").textContent = currentSuffixItem.prompt;
+  const isNoun = currentSuffixItem.pos === "noun";
+  if(isNoun){
+    el("suf-verb-label").innerHTML = `Noun: <u><b>${escapeHtml(currentSuffixItem.nounTr)}</b></u> (<u>${escapeHtml(displayEnglishWord(currentSuffixItem.nounEn))}</u>)`;
+  } else {
+    el("suf-verb-label").innerHTML = `Verb: <u><b>${escapeHtml(currentSuffixItem.verbTr)}</b></u> (<u>${escapeHtml(displayEnglishWord(currentSuffixItem.verbEn))}</u>)`;
+  }
+  // Naamwoord-oefeningen tonen soms een korte contextzin i.p.v. het kale doelwoord (zie
+  // generateNounSuffixDrill) -- alleen dan het doelwoord ONDERSTREPEN binnen die zin, zodat duidelijk
+  // is dat alléén dat ene woord vertaald/beoordeeld hoeft te worden, niet de hele zin.
+  const showsContext = isNoun && isTrEn && currentSuffixItem.contextSentence;
+  if(showsContext){
+    const sentence = currentSuffixItem.contextSentence;
+    const target = currentSuffixItem.targetWordTr;
+    const idx = sentence.indexOf(target);
+    el("suf-word").innerHTML = idx === -1
+      ? escapeHtml(sentence)
+      : escapeHtml(sentence.slice(0, idx)) + "<u><b>" + escapeHtml(target) + "</b></u>" + escapeHtml(sentence.slice(idx + target.length));
+  } else {
+    el("suf-word").textContent = currentSuffixItem.prompt;
+  }
   el("suf-word-meta").textContent = isTrEn
-    ? "translate the meaning of the Turkish form above into English"
-    : "conjugate the verb above using a grammar pattern you've already mastered";
-  el("suf-answer-instruction").textContent = isTrEn ? "✍️ Type the English translation" : "✍️ Type the correctly conjugated Turkish word";
-  el("suf-answer-input").placeholder = isTrEn ? "Type the English translation…" : "Type the conjugated form…";
+    ? (showsContext ? "translate ONLY the underlined word above into English" : "translate the meaning of the Turkish form above into English")
+    : `${isNoun ? "form" : "conjugate"} the ${isNoun ? "noun" : "verb"} above using a grammar pattern you've already mastered`;
+  el("suf-answer-instruction").textContent = isTrEn ? "✍️ Type the English translation" : "✍️ Type the correctly formed Turkish word";
+  el("suf-answer-input").placeholder = isTrEn ? "Type the English translation…" : "Type the formed word…";
   el("suf-answer-input").disabled = false;
   el("suf-btn-check").disabled = false;
   el("suf-btn-skip").disabled = false;
@@ -6256,8 +6423,16 @@ function renderWeakWordsList(){
   // getoond, maar niet in die sessie meegenomen. Ze komen vanzelf aan de beurt via de gewone Practice-
   // tab (met "Word direction" op TR→EN of Both), die WEL de tr-en-SRS gebruikt.
   const enOnly = words.filter(w => w.source === "en");
+  const trOnlyCount = words.length - enOnly.length;
+  // BUGFIX: deze knop toonde alleen enOnly.length (de sessie kan geen tr-en-woorden meenemen, zie
+  // toelichting hierboven) zonder te verklaren waarom dat aantal kon afwijken van de gekozen
+  // "N words"-selectie -- dat oogde als een telfout. Nu expliciet gemeld hoeveel TR→EN-woorden apart
+  // via de Practice-tab geoefend moeten worden, zodat het totaal weer klopt.
+  const trNote = trOnlyCount > 0
+    ? `<div class="muted" style="font-size:.72rem;margin-top:6px;">(${trOnlyCount} of the ${words.length} selected words are TR→EN and aren't included in this session — practise them via the Practice tab, "Word direction" set to TR→EN or Both.)</div>`
+    : "";
   const practiceBtn = enOnly.length
-    ? `<button id="btn-practice-weak-words" class="btn-primary" style="width:100%;margin-top:10px;">▶️ Practice these ${enOnly.length} EN→TR words</button>`
+    ? `<button id="btn-practice-weak-words" class="btn-primary" style="width:100%;margin-top:10px;">▶️ Practice these ${enOnly.length} EN→TR words</button>${trNote}`
     : `<div class="muted" style="font-size:.78rem;margin-top:10px;">These are TR→EN words — practise them via the Practice tab (set "Word direction" to TR→EN or Both).</div>`;
   el("weak-words-list").innerHTML = rows + practiceBtn;
   if(enOnly.length){
