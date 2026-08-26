@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.30</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.31</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.30</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.31</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -63,7 +63,10 @@
           <button class="btn-secondary btn-small" id="btn-expand-range-no" style="flex:1;">No</button>
         </div>
       </div>
-      <div id="tr-word" class="tr-word">…</div>
+      <div class="row" style="align-items:baseline;gap:6px;">
+        <div id="tr-word" class="tr-word">…</div>
+        <button class="btn-ghost btn-small hidden" id="btn-speak-word" style="margin-top:0;padding:2px 8px;font-size:.9rem;" title="Pronounce the Turkish word">🔊</button>
+      </div>
       <div class="hidden" id="word-peek-hint" style="font-size:1.4rem;font-weight:600;margin-top:4px;color:#2f7cae;"></div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="word-meta" style="font-size:.78rem;margin-top:2px;"></div>
@@ -401,7 +404,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.30</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.31</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -480,7 +483,10 @@
     <div id="checkup-progress" class="muted" style="margin-bottom:8px;"></div>
     <span id="checkup-badge" class="badge badge-word hidden" style="margin-bottom:8px;display:inline-block;">word</span>
     <div id="checkup-question-box">
-      <div class="tr-word" id="checkup-word">…</div>
+      <div class="row" style="align-items:baseline;gap:6px;">
+        <div class="tr-word" id="checkup-word">…</div>
+        <button class="btn-ghost btn-small hidden" id="btn-checkup-speak-word" style="margin-top:0;padding:2px 8px;font-size:.9rem;" title="Pronounce the Turkish word">🔊</button>
+      </div>
       <div class="hidden" id="checkup-peek-hint" style="font-size:1.4rem;font-weight:600;margin-top:4px;color:#2f7cae;"></div>
       <div class="row space-between" style="align-items:flex-start;">
         <div class="muted" id="checkup-word-meta" style="font-size:.78rem;margin-top:2px;"></div>
@@ -2464,6 +2470,7 @@ async function nextCheckupQuestion(){
   el("checkup-peek-hint").classList.add("hidden");
   el("checkup-peek-hint").textContent = "";
   el("checkup-peek-hint").onclick = null;
+  setCheckupSpeakableTr(null); // default: pas expliciet weer aanzetten zodra er echt een los Turks woord getoond wordt
 
   if(checkupState.phase === "vocab"){
     el("checkup-modal-title").textContent = "📋 Knowledge Check — Vocabulary";
@@ -2510,6 +2517,7 @@ async function nextCheckupQuestion(){
       const trData = direction === "tr-en" ? trWordDataOf(progressKey) : null;
       checkupState.current = {type:"word", en: word.en, cefr: word.cefr, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, note: sense ? sense.note : null, direction: sense ? direction : "en-tr", progressKey};
       el("checkup-word").textContent = checkupState.current.direction === "tr-en" ? checkupState.current.tr : displayEnglishWord(checkupState.current.en);
+      setCheckupSpeakableTr(checkupState.current.direction === "tr-en" ? checkupState.current.tr : null);
       el("checkup-word").className = "tr-word";
       checkupState.current.hintRevealed = false;
       checkupState.current.peeked = false;
@@ -2634,6 +2642,7 @@ async function submitCheckupAnswer(){
     }
     const scoreCorrect = cur.peeked ? false : correct;
     recordResult(cur.progressKey || cur.en, scoreCorrect); // telt gewoon mee voor je normale voortgang op dat woord
+    if(cur.direction === "en-tr" && cur.tr) setCheckupSpeakableTr(cur.tr);
     checkupState.vocabLevelResults.push(scoreCorrect);
   } else {
     correctAnswerTxt = cur.drill.correct;
@@ -2815,6 +2824,7 @@ async function nextSkillPracticeQuestion(){
   el("checkup-peek-hint").classList.add("hidden");
   el("checkup-peek-hint").textContent = "";
   el("checkup-peek-hint").onclick = null;
+  setCheckupSpeakableTr(null); // default: pas expliciet weer aanzetten zodra er echt een los Turks woord getoond wordt
   el("btn-checkup-skip").classList.remove("hidden");
   el("checkup-explanation-box").classList.add("hidden");
   el("checkup-post-actions").classList.add("hidden");
@@ -2836,6 +2846,7 @@ async function nextSkillPracticeQuestion(){
       const trData = entry.trData;
       skillPracticeState.current = {type:"word", wordSource:"tr", en: trData.en, tr: trData.tr, note: trData.note, trData, direction:"tr-en", progressKey: entry.key};
       el("checkup-word").textContent = trData.tr;
+      setCheckupSpeakableTr(trData.tr);
       el("checkup-word").className = "tr-word";
       // Net als op het hoofd-oefenscherm: tr-en-woorden komen altijd uit de eigen gecureerde
       // TR_WORDS_DATA (dus de Engelse vertaling is altijd bekend) -- peekCheckupWord ondersteunt de
@@ -2860,6 +2871,7 @@ async function nextSkillPracticeQuestion(){
       skillPracticeState.current = {type:"word", en, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, note: sense ? sense.note : null, direction: "en-tr", progressKey: en};
       el("checkup-word").textContent = displayEnglishWord(en);
       el("checkup-word").className = "tr-word";
+      setCheckupSpeakableTr(null); // en-tr: pas na het beoordelen bekend
       skillPracticeState.current.hintRevealed = false;
       skillPracticeState.current.peeked = false;
       if(sense){
@@ -2911,6 +2923,7 @@ async function nextSkillPracticeQuestion(){
     const trData = direction === "tr-en" ? trWordDataOf(progressKey) : null;
     skillPracticeState.current = {type:"word", en, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, note: sense ? sense.note : null, direction: sense ? direction : "en-tr", progressKey};
     el("checkup-word").textContent = skillPracticeState.current.direction === "tr-en" ? skillPracticeState.current.tr : displayEnglishWord(en);
+    setCheckupSpeakableTr(skillPracticeState.current.direction === "tr-en" ? skillPracticeState.current.tr : null);
     el("checkup-word").className = "tr-word";
     skillPracticeState.current.hintRevealed = false;
     skillPracticeState.current.peeked = false;
@@ -3019,6 +3032,7 @@ async function submitSkillPracticeAnswer(){
     }
     const scoreCorrect = cur.peeked ? false : correct;
     recordResult(cur.progressKey || cur.en, scoreCorrect);
+    if(cur.direction === "en-tr" && cur.tr) setCheckupSpeakableTr(cur.tr);
     chatItem = {type:"word", en:cur.en, tr:cur.tr || correctAnswerTxt, direction:cur.direction};
   } else {
     correctAnswerTxt = cur.drill.correct;
@@ -5323,6 +5337,7 @@ async function renderPractice(){
   el("btn-reveal-word").classList.toggle("hidden", !isWord);
   const wordEl = el("tr-word");
   wordEl.textContent = isSuffix ? currentItem.prompt : ((isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || baseEnOf(currentItem.en)));
+  setSpeakableTr(isTrEn ? currentItem.tr : null); // bij en-tr is de Turkse vertaling pas na het beoordelen bekend
   currentItem.hintRevealed = false;
   wordEl.className = "tr-word" + ((isSentence||isQuestion) ? " sentence" : "");
   el("word-peek-hint").classList.add("hidden");
@@ -5350,7 +5365,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.30 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.31 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -5465,6 +5480,37 @@ function playFeedbackSound(kind){
   }catch(e){ /* geluid is nooit kritiek voor de werking van de oefening -- gewoon negeren */ }
 }
 
+/* ===================== TURKSE UITSPRAAK (tekst-naar-spraak) =====================
+   Gebruikt de ingebouwde Web Speech API (SpeechSynthesis) van de browser -- GEEN AI, geen server-call,
+   geen audiobestand nodig. Kwaliteit/beschikbaarheid van een Turkse stem hangt af van het apparaat/de
+   browser van de gebruiker; is er geen "tr-TR"-stem beschikbaar, dan valt de browser meestal terug op
+   een andere stem of doet gewoon niets -- dat is buiten onze controle en niet iets om over te alarmeren. */
+function speakTurkish(text){
+  if(!text || !("speechSynthesis" in window)) return;
+  try{
+    window.speechSynthesis.cancel(); // een eventuele nog lopende uitspraak afbreken voor de nieuwe
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "tr-TR";
+    utter.rate = 0.9; // iets trager dan standaard, makkelijker te volgen tijdens het leren
+    window.speechSynthesis.speak(utter);
+  }catch(e){ /* uitspraak is nooit kritiek voor de werking van de oefening -- gewoon negeren */ }
+}
+// Houdt bij welk Turks woord op dit moment "spreekbaar" is voor de twee vaste 🔊-knoppen (hoofdscherm en
+// checkup-scherm). Bij tr-en is dat vanaf het tonen van de vraag al bekend; bij en-tr pas na het
+// beoordelen (dan is de Turkse vertaling immers pas bekend).
+let currentSpeakableTr = null;
+let currentCheckupSpeakableTr = null;
+function setSpeakableTr(text){
+  currentSpeakableTr = text || null;
+  const btn = el("btn-speak-word");
+  if(btn) btn.classList.toggle("hidden", !currentSpeakableTr);
+}
+function setCheckupSpeakableTr(text){
+  currentCheckupSpeakableTr = text || null;
+  const btn = el("btn-checkup-speak-word");
+  if(btn) btn.classList.toggle("hidden", !currentCheckupSpeakableTr);
+}
+
 function showFeedback(kind, html){
   const box = el("feedback-box");
   box.innerHTML = `<div class="feedback ${kind}">${html}</div>`;
@@ -5551,6 +5597,7 @@ function peekCurrentWord(){
 // verder kan. Zie de `retryPending`-tak bovenaan handleCheck() voor de herkansing zelf.
 function enterWordRetry(message){
   currentCorrect = false;
+  if(currentItem.direction === "en-tr" && currentItem.tr) setSpeakableTr(currentItem.tr); // nu bekend, ook bij een fout antwoord
   recordHistory("word");
   recordResult(currentItem.progressKey || currentItem.en, false);
   const lessonNote = advanceLessonSession();
@@ -5576,6 +5623,7 @@ function enterWordRetry(message){
 // nog een aparte herkansing te forceren: de gebruiker heeft het antwoord net al 1x zelf goed getypt.
 function finalizeCorrectDisplayButScoredWrong(message){
   currentCorrect = false;
+  if(currentItem.direction === "en-tr" && currentItem.tr) setSpeakableTr(currentItem.tr);
   recordHistory("word");
   recordResult(currentItem.progressKey || currentItem.en, false);
   const lessonNote = advanceLessonSession();
@@ -5946,6 +5994,7 @@ function revealCheckupHint(){
 
 function finalizeAnswer(correct, message){
   currentAnswered = true;
+  if(currentItem.direction === "en-tr" && currentItem.tr) setSpeakableTr(currentItem.tr);
   currentCorrect = correct;
   recordHistory("word");
   recordResult(currentItem.progressKey || currentItem.en, correct);
@@ -6635,9 +6684,12 @@ function renderWordsTab(){
     const fixBtn = w.source === "en"
       ? `<button class="btn-ghost btn-small edit-word-btn" data-en="${w.editEn.replace(/"/g,'&quot;')}" style="margin-top:4px;padding:1px 6px;font-size:.68rem;">✏️ Fix</button>`
       : "";
+    // Turks om uit te spreken: bij een tr-en-rij is dat het getoonde woord zelf, bij en-tr de vertaling.
+    const speakTxt = w.source === "tr" ? w.displayWord : w.displayTrans;
+    const speakBtn = speakTxt ? `<button class="btn-ghost btn-small speak-word-btn" data-tr="${escapeHtml(speakTxt)}" style="margin-top:0;padding:1px 6px;font-size:.85rem;" title="Pronounce">🔊</button>` : "";
     return `<div class="word-row">
       <div>
-        <div class="word-row-tr">${escapeHtml(w.displayWord)}${w.pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${w.pos}</span>` : ""}${w.hasOverride ? ` <span class="muted" style="font-size:.68rem;" title="Manually corrected">✏️</span>` : ""}${dirTag}</div>
+        <div class="word-row-tr">${escapeHtml(w.displayWord)}${w.pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${w.pos}</span>` : ""}${w.hasOverride ? ` <span class="muted" style="font-size:.68rem;" title="Manually corrected">✏️</span>` : ""}${dirTag} ${speakBtn}</div>
         <div class="word-row-trans">${escapeHtml(w.displayTrans)}</div>
       </div>
       <div style="text-align:right;">
@@ -6647,6 +6699,9 @@ function renderWordsTab(){
       </div>
     </div>`;
   }).join("") || `<div class="muted" style="padding:12px 0;">No words found.</div>`;
+  el("words-list").querySelectorAll(".speak-word-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=> speakTurkish(btn.dataset.tr));
+  });
   el("words-list").querySelectorAll(".edit-word-btn").forEach(btn=>{
     btn.addEventListener("click", ()=> openEditWordModal(btn.dataset.en));
   });
@@ -6707,9 +6762,10 @@ function renderWeakWordsList(){
     if(w.source === "tr"){
       const color = w.level<=3 ? "#e0333f" : w.level<=6 ? "#e0a733" : "#2fae6a";
       const dirTag = ` <span class="muted" style="font-size:.65rem;">TR→EN</span>`;
+      const speakBtn = `<button class="btn-ghost btn-small speak-word-btn" data-tr="${escapeHtml(w.trData.tr)}" style="margin-top:0;padding:1px 6px;font-size:.85rem;" title="Pronounce">🔊</button>`;
       return `<div class="word-row">
         <div>
-          <div class="word-row-tr">${escapeHtml(w.trData.tr)}${w.trData.pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${WORD_CATEGORY_ABBR[w.trData.pos] || w.trData.pos}</span>` : ""}${dirTag}</div>
+          <div class="word-row-tr">${escapeHtml(w.trData.tr)}${w.trData.pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${WORD_CATEGORY_ABBR[w.trData.pos] || w.trData.pos}</span>` : ""}${dirTag} ${speakBtn}</div>
           <div class="word-row-trans">${escapeHtml(displayTrEntryGloss(w.trData))}</div>
         </div>
         <div style="text-align:right;">
@@ -6730,9 +6786,10 @@ function renderWeakWordsList(){
     const displayEn = overrides[w.key]?.en || baseEnOf(w.key);
     const pos = wordCategoryOf(w.key);
     const dirTag = ` <span class="muted" style="font-size:.65rem;">EN→TR</span>`;
+    const speakBtn = transTxt && transTxt !== "(not yet translated)" ? `<button class="btn-ghost btn-small speak-word-btn" data-tr="${escapeHtml(transTxt)}" style="margin-top:0;padding:1px 6px;font-size:.85rem;" title="Pronounce">🔊</button>` : "";
     return `<div class="word-row">
       <div>
-        <div class="word-row-tr">${escapeHtml(displayEn)}${pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${pos}</span>` : ""}${dirTag}</div>
+        <div class="word-row-tr">${escapeHtml(displayEn)}${pos ? ` <span class="muted" style="font-size:.7rem;font-weight:400;">${pos}</span>` : ""}${dirTag} ${speakBtn}</div>
         <div class="word-row-trans">${escapeHtml(transTxt)}${glossTxt}</div>
       </div>
       <div style="text-align:right;">
@@ -6747,6 +6804,9 @@ function renderWeakWordsList(){
   // uitsluiten.
   const practiceBtn = `<button id="btn-practice-weak-words" class="btn-primary" style="width:100%;margin-top:10px;">▶️ Practice these ${words.length} words</button>`;
   el("weak-words-list").innerHTML = rows + practiceBtn;
+  el("weak-words-list").querySelectorAll(".speak-word-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=> speakTurkish(btn.dataset.tr));
+  });
   el("btn-practice-weak-words").addEventListener("click", ()=>{
     startSkillPractice({id:"weak-words-session", title:`${words.length} weakest words`, wordEntries: words});
   });
@@ -7595,6 +7655,8 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   el("words-direction-filter").addEventListener("change", renderWordsTab);
   el("words-search").addEventListener("input", renderWordsTab);
   el("btn-ask-ai").addEventListener("click", openAiModal);
+  el("btn-speak-word").addEventListener("click", ()=> speakTurkish(currentSpeakableTr));
+  el("btn-checkup-speak-word").addEventListener("click", ()=> speakTurkish(currentCheckupSpeakableTr));
   el("btn-edit-flashcard").addEventListener("click", ()=>{
     if(currentItem && currentItem.type === "word") openEditWordModal(currentItem.en);
   });
