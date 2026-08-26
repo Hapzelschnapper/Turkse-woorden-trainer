@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.25</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.26</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.25</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.26</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -394,7 +394,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.25</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.26</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -3929,19 +3929,30 @@ function pickNextItem(){
   // Bij "random" kan de 50/50-worp toevallig net de richting treffen die op DIT moment niets te bieden
   // heeft, terwijl de ANDERE richting wél volop due/nieuwe woorden heeft -- dat gaf ten onrechte "geen
   // woorden beschikbaar" te zien (bv. honderden nieuwe en-tr-woorden, maar de worp trof toevallig een
-  // tr-en-pool zonder nieuwe woorden). BUGFIX: deze check gebruikte voorheen altijd de "gewone" (niet-
-  // alwaysNew) definitie van "uitgeput" (dueNow===0 EN neverShown===0), ook als "Mix in new words" op
-  // 5/5 stond -- daardoor werd bij 5/5 een pool met wél due maar geen nieuwe woorden NOOIT als "uitgeput"
-  // herkend, en dus ook nooit naar de andere richting overgeschakeld, terwijl die richting in 5/5-stand
-  // sowieso als "niets te bieden" gold zodra er geen nieuwe woorden meer waren. Nu hergebruikt dit
-  // dezelfde poolExhausted()-definitie als de daadwerkelijke melding hieronder, dus ze kunnen niet meer
-  // uit elkaar lopen.
-  if((settings.wordDirection || "random") === "random" && poolExhausted(pool)){
+  // tr-en-pool zonder nieuwe woorden). BUGFIX (1): deze check gebruikte voorheen altijd de "gewone"
+  // (niet-alwaysNew) definitie van "uitgeput" (dueNow===0 EN neverShown===0), ook als "Mix in new
+  // words" op 5/5 stond -- daardoor werd bij 5/5 een pool met wél due maar geen nieuwe woorden NOOIT
+  // als "uitgeput" herkend. Nu hergebruikt dit dezelfde poolExhausted()-definitie als de daadwerkelijke
+  // melding hieronder.
+  // BUGFIX (2): zelfs met fix (1) werd er ALLEEN overgeschakeld als de gekozen richting volledig
+  // uitgeput was. Had die richting toevallig gewoon 0 due woorden (maar nog wél nieuwe, dus niet
+  // "uitgeput"), dan bleef de oefening voor altijd nieuwe woorden in DIE richting aanbieden, terwijl de
+  // ANDERE richting misschien tientallen due woorden had liggen te wachten -- precies het scenario waar
+  // de (over beide richtingen gesommeerde) "X to review"-teller wél een groot aantal liet zien, maar de
+  // daadwerkelijke oefening domweg nooit due-materiaal uit de andere richting aanbood en in plaats
+  // daarvan "no words are due in your selected range" meldde. Nu wordt er ook overgeschakeld wanneer de
+  // gekozen richting zelf geen due woorden heeft, maar de andere richting dat wél heeft.
+  if((settings.wordDirection || "random") === "random"){
     const otherDir = chosenDir === "en-tr" ? "tr-en" : "en-tr";
-    const otherPool = computePoolFor(otherDir);
-    if(!poolExhausted(otherPool)){
-      chosenDir = otherDir;
-      pool = otherPool;
+    const currentHasDue = !alwaysNew && pool.dueNow.length > 0;
+    if(!currentHasDue){
+      const otherPool = computePoolFor(otherDir);
+      const otherHasDue = !alwaysNew && otherPool.dueNow.length > 0;
+      const shouldSwitch = poolExhausted(pool) ? !poolExhausted(otherPool) : otherHasDue;
+      if(shouldSwitch){
+        chosenDir = otherDir;
+        pool = otherPool;
+      }
     }
   }
 
@@ -5243,7 +5254,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.25 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.26 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
