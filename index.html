@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.21</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.25</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.21</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.25</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -394,7 +394,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.21</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.25</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -3759,6 +3759,13 @@ async function getOrFetchTranslation(en){
 function countDueWords(){
   const now = Date.now();
   const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax)), hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
+  // BUGFIX: bij "Mix in new words" op 5/5 (alwaysNew, zie pickNextItem) biedt de daadwerkelijke
+  // oefening NOOIT due/review-woorden aan -- dan telt alleen "geen nieuwe woorden meer" als uitgeput,
+  // due woorden zijn in die stand irrelevant. Deze teller hield daar geen rekening mee en bleef due
+  // woorden meetellen die de gebruiker in die instelling nooit te zien krijgt, wat de indruk gaf dat er
+  // nog van alles te herhalen was terwijl de oefening zelf "niets te tonen" meldde.
+  const alwaysNew = settings.mixNewWords && (settings.newWordsPer5 ?? 2) >= 5;
+  if(alwaysNew) return 0;
   // Telt over de pool die het huidige settings.wordDirection ook daadwerkelijk gebruikt (en-tr, tr-en,
   // of -- bij "random" -- allebei; practiceWordEntries() sluit alleen uit bij een letterlijke "en-tr"/
   // "tr-en"-waarde, elke andere waarde levert dus al beide lijsten). Voorheen telde dit UITSLUITEND de
@@ -4969,19 +4976,45 @@ const RECENT_CHECKUP_VOCAB_WORDS_MAX = 8;
 
 const el = id => document.getElementById(id);
 
+let explanationLoader = null; // functie die, pas op verzoek (klik), een Promise<string> ophaalt
+
 function setExplanation(text){
   lastExplanation = (text || "").trim();
+  explanationLoader = null;
   el("explanation-box").classList.add("hidden");
   el("explanation-box").textContent = "";
   el("btn-show-explanation").classList.toggle("hidden", !lastExplanation);
 }
-function toggleExplanation(){
+// Toont de Explanation-knop meteen, maar stelt de daadwerkelijke (AI-)inhoud uit tot de gebruiker 'm
+// echt opent -- zo kost een simpel, meteen-goed antwoord GEEN automatische AI-call; alleen desgevraagd,
+// en dan met echte inhoud (nooit een kaal statusbericht als "no answer entered").
+function setExplanationLoader(loaderFn){
+  lastExplanation = "";
+  explanationLoader = loaderFn;
+  el("explanation-box").classList.add("hidden");
+  el("explanation-box").textContent = "";
+  el("btn-show-explanation").classList.remove("hidden");
+}
+async function toggleExplanation(){
   const box = el("explanation-box");
-  if(box.classList.contains("hidden")){
+  if(!box.classList.contains("hidden")){
+    box.classList.add("hidden");
+    return;
+  }
+  if(lastExplanation){
     box.textContent = lastExplanation;
     box.classList.remove("hidden");
-  } else {
-    box.classList.add("hidden");
+    return;
+  }
+  if(explanationLoader){
+    const loader = explanationLoader;
+    box.textContent = "🤖 Loading explanation…";
+    box.classList.remove("hidden");
+    const text = await loader();
+    if(explanationLoader !== loader) return; // ondertussen naar een ander woord/oefening gewisseld
+    lastExplanation = text || "(No explanation available.)";
+    explanationLoader = null;
+    box.textContent = lastExplanation;
   }
 }
 
@@ -5210,7 +5243,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.21 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.25 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -5406,6 +5439,84 @@ function finalizeCorrectDisplayButScoredWrong(message){
   if(hasLikelyPhysicalKeyboard()) el("answer-input").focus();
 }
 
+/* ===================== WOORD-UITLEG (los van correctheidsbeoordeling) =====================
+   De volledige AI-beoordeling (askDeepSeekJudge) genereert als bijproduct al een inhoudelijke
+   "uitleg" over het geteste woord. Maar bij een leeg antwoord, een al-gepiepte hint, of een direct
+   (lokaal, zonder AI) herkend goed antwoord wordt askDeepSeekJudge helemaal niet aangeroepen -- in
+   die gevallen liet het Explanation-paneel voorheen alleen een kaal statusbericht zien ("no answer
+   entered", "you used a hint", ...) i.p.v. daadwerkelijke inhoud over het Turkse/Engelse woord. Deze
+   functie dekt precies die gevallen: ALTIJD punt 1 (betekenis van het woord), en -- als er een
+   antwoord van de gebruiker is meegegeven -- ook het verschil daarmee. */
+async function explainWordContent(item, userAnswer){
+  if(!hasKeyFor("word")) return "";
+  const isTrEnDir = item.direction === "tr-en";
+  const given = (userAnswer || "").trim();
+  const tr = (item.senseTr && item.note) ? item.senseTr : (cachedTranslation(item.en) || (item.tr ? [item.tr] : []));
+  const sys = `Je bent een docent Turks voor Engelstalige gebruikers. Schrijf een inhoudelijke uitleg over ${isTrEnDir ? `het Turkse woord "${item.tr}"` : `het Engelse woord "${baseEnOf(item.en)}"`} voor een uitklapbaar "Explanation"-paneel. Schrijf ALTIJD rechtstreeks tegen de gebruiker (spreek "je" aan, NOOIT in de derde persoon), in het Engels, in aparte korte alinea's (gescheiden door een lege regel):
+1) De betekenis van dit woord -- ALTIJD invullen, ook als er verder niets bijzonders te melden is: een heldere, wat rijkere uitleg dan het kale vertaal-trefwoord, met relevante nuance of gebruikscontext.
+2) ALLEEN als het echt iets toevoegt: een korte, interessante etymologie, EN/OF -- als het woord meerdere losstaande betekenissen heeft -- die kort genoemd (mag overgeslagen worden als er niets noemenswaardigs is).
+${given ? `3) De gebruiker typte "${given}" (niet het verwachte antwoord). Leg uit wat dit door de gebruiker gegeven woord zelf betekent (als het een bestaand, betekenisvol woord is) en wat het verschil/de nuance precies is met de bedoelde betekenis van het geteste woord. Is "${given}" geen bestaand/betekenisvol woord, sla dit punt dan over.` : ""}
+Punt 1 mag NOOIT leeg blijven. Antwoord in JSON.`;
+  const user = isTrEnDir
+    ? `Turks woord: "${item.tr}"\nEngelse vertaling: "${baseEnOf(item.en)}"` + (given ? `\nAntwoord van gebruiker: "${given}"` : "")
+    : `Engels woord: "${baseEnOf(item.en)}"\nBekende Turkse vertaling(en): ${tr.join(", ") || "(geen)"}` + (given ? `\nAntwoord van gebruiker: "${given}"` : "");
+  const schema = {
+    name: "woord_uitleg",
+    description: "Inhoudelijke uitleg van het geteste woord voor het uitklapbare Explanation-paneel.",
+    input_schema: {
+      type: "object",
+      properties: {
+        uitleg: {type:"string", description:"Uitleg in het Engels, rechtstreeks tegen de gebruiker gericht. Punt 1 (betekenis van het woord) mag nooit leeg zijn."},
+      },
+      required: ["uitleg"]
+    }
+  };
+  try{
+    const raw = await callAI("word", sys, user, 1200, 0, schema);
+    const parsed = parseAIJson(raw);
+    return parsed.uitleg || "";
+  }catch(e){
+    return "";
+  }
+}
+// Registreert de uitleg als "op verzoek" (lazy): de knop is meteen zichtbaar, maar er gebeurt GEEN
+// automatische AI-call -- pas als de gebruiker de knop daadwerkelijk indrukt (zie toggleExplanation)
+// wordt explainWordContent() aangeroepen. Zo kost een simpel goed/leeg antwoord geen ongevraagde
+// AI-call, maar is er desgevraagd wél altijd echte inhoud beschikbaar (nooit een kaal statusbericht).
+// Korte, GOEDKOPE AI-lookup: alleen de betekenis van het door de gebruiker gegeven (foute) woord, voor
+// de automatische "Wrong: 'X' means Y" regel direct onder het antwoord. Los van explainWordContent()
+// (die blijft lazy/op-verzoek voor de volledige uitleg) -- dit is bewust minimaal, zodat een fout
+// antwoord altijd meteen deze korte duiding krijgt zonder te wachten op de zwaardere uitleg.
+async function lookupWrongAnswerMeaning(item, answer){
+  if(!answer || !hasKeyFor("word")) return "";
+  const isTrEnDir = item.direction === "tr-en";
+  const sys = `Je bent een vertaler ${isTrEnDir ? "Engels-Turks" : "Turks-Engels"}. De gebruiker gaf een fout antwoord op een vertaalvraag. Vertaal ALLEEN het door de gebruiker gegeven woord/de gegeven tekst naar ${isTrEnDir ? "het Engels" : "het Turks"}, als het een bestaand, betekenisvol woord is. Is het geen bestaand/betekenisvol woord (bv. een tikfout die nergens op lijkt, of onzin), geef dan een lege string terug. Kort en bondig, geen verdere uitleg. Antwoord in JSON.`;
+  const user = `Door de gebruiker gegeven (foute) antwoord: "${answer}"`;
+  const schema = {
+    name: "betekenis_antwoord",
+    description: "Korte betekenis/vertaling van het door de gebruiker gegeven foute woord.",
+    input_schema: {
+      type: "object",
+      properties: {
+        betekenis: {type:"string", description:"Vertaling van het gegeven woord naar de andere taal, of lege string als het geen bestaand/betekenisvol woord is."},
+      },
+      required: ["betekenis"]
+    }
+  };
+  try{
+    const raw = await callAI("word", sys, user, 150, 0, schema);
+    const parsed = parseAIJson(raw);
+    return parsed.betekenis || "";
+  }catch(e){
+    return "";
+  }
+}
+
+function registerWordExplanation(item, userAnswer){
+  if(!hasKeyFor("word")){ setExplanation(""); return; }
+  setExplanationLoader(() => explainWordContent(item, userAnswer));
+}
+
 async function handleCheck(){
   if(!currentItem || currentAnswered) return;
   const answer = el("answer-input").value.trim();
@@ -5463,23 +5574,25 @@ async function handleCheck(){
     // aparte herkansing geforceerd te worden -- dat antwoord is dan al 1x zelf getypt.
     const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
     if(checkStaticMatch(currentItem, answer)){
-      setExplanation("You used a hint, so this round is still counted as a miss for your review schedule.");
       finalizeCorrectDisplayButScoredWrong("✅ Correct! (still counted as a miss since you used a hint)");
+      registerWordExplanation(currentItem, null);
       return;
     }
-    setExplanation("You peeked at the meaning, so this round is counted as a miss. Type the answer to continue.");
-    enterWordRetry("👁️<br>" + answerCompareLine(answer, correctAnswer, false));
+    showFeedback("pending", "🤖 Checking your answer…");
+    const wrongMeaning = await lookupWrongAnswerMeaning(currentItem, answer);
+    enterWordRetry("👁️ You peeked at the meaning, so this round is counted as a miss.<br>" + answerCompareLine(answer, correctAnswer, false, wrongMeaning));
+    registerWordExplanation(currentItem, answer);
     return;
   }
 
   if(!answer){
     // leeg antwoord bij een los woord = "ik weet het niet", meteen als fout tellen, geen AI-call nodig
-    // -- hier kost niks-doen geen informatie, want de statische vertaling is toch al meteen beschikbaar.
-    // De uitleg-knop blijft hier ook zichtbaar (met de vertaling erin), zodat "check" indrukken zonder
-    // iets in te vullen niet stilzwijgend het uitleg-paneel laat verdwijnen.
+    // om de correctheid te bepalen -- de statische vertaling is toch al meteen beschikbaar. Het
+    // Explanation-paneel krijgt via registerWordExplanation() wél nog steeds inhoudelijke uitleg over
+    // het woord (dat kost apart wél een AI-call, maar levert nuttige content i.p.v. een kaal statusbericht).
     const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
-    setExplanation("No answer entered, so this round is counted as a miss. Type the answer to continue.");
-    enterWordRetry("❌<br>" + answerCompareLine("", correctAnswer, false));
+    enterWordRetry("❌ No answer entered, so this round is counted as a miss.<br>" + answerCompareLine("", correctAnswer, false));
+    registerWordExplanation(currentItem, null);
     return;
   }
 
@@ -5488,6 +5601,7 @@ async function handleCheck(){
   if(staticMatch){
     const regInfo = currentItem.direction === "en-tr" ? currentItem.registerInfo : null;
     finalizeAnswer(true, "✅" + (regInfo ? `<br><span class="muted">ℹ️ Heads up: this is a bit ${regInfo.register}${regInfo.note ? " — " + escapeHtml(regInfo.note) : ""}.</span>` : ""));
+    registerWordExplanation(currentItem, null);
     el("btn-skip").disabled = true;
     return;
   }
@@ -5820,9 +5934,41 @@ function foldTurkishDiacritics(s){
     .replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g")
     .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c");
 }
-// Standaard Levenshtein-afstand (aantal invoegingen/verwijderingen/vervangingen om van a naar b te
-// komen) -- iteratieve DP met één rij i.p.v. een volledige matrix, ruim voldoende voor de korte
-// woordvergelijkingen hier.
+// QWERTY-rijen (na het diakritische-tekens-plat-vouwen hierboven is alles al kale a-z, dus de Turkse
+// toetsen ç/ğ/ı/ö/ş/ü hoeven hier niet apart in te staan). Gebruikt om te bepalen of twee letters
+// fysiek naast elkaar liggen op een standaard toetsenbord (bv. "i" en "o").
+const QWERTY_ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+const ADJACENT_KEY_COST = 0.5; // i.p.v. de volle 1 voor een willekeurige, niet-naastgelegen vervanging
+const _qwertyNeighborCache = new Map();
+function qwertyNeighbors(ch){
+  if(_qwertyNeighborCache.has(ch)) return _qwertyNeighborCache.get(ch);
+  const neighbors = new Set();
+  for(let r = 0; r < QWERTY_ROWS.length; r++){
+    const idx = QWERTY_ROWS[r].indexOf(ch);
+    if(idx === -1) continue;
+    // buren op dezelfde rij (links/rechts)...
+    if(idx > 0) neighbors.add(QWERTY_ROWS[r][idx-1]);
+    if(idx < QWERTY_ROWS[r].length - 1) neighbors.add(QWERTY_ROWS[r][idx+1]);
+    // ...en, bij benadering, dezelfde kolom op de rij erboven/eronder (QWERTY-rijen liggen een halve
+    // toets verschoven, dus zowel dezelfde index als één ernaast tellen als "fysiek dichtbij").
+    [r-1, r+1].forEach(nr=>{
+      const nrow = QWERTY_ROWS[nr];
+      if(!nrow) return;
+      [idx-1, idx, idx+1].forEach(ni=>{ if(nrow[ni]) neighbors.add(nrow[ni]); });
+    });
+    break;
+  }
+  _qwertyNeighborCache.set(ch, neighbors);
+  return neighbors;
+}
+function substitutionCost(a, b){
+  if(a === b) return 0;
+  return qwertyNeighbors(a).has(b) ? ADJACENT_KEY_COST : 1;
+}
+// Standaard Levenshtein-opzet (invoegingen/verwijderingen kosten 1), maar de vervangingskost is nu
+// toetsenbord-gewogen i.p.v. altijd 1 -- een verwisseling tussen fysiek naastgelegen toetsen (zoals
+// "i"/"o") weegt maar half zo zwaar als een willekeurige, niet-naastgelegen vervanging. Zo'n tikfout
+// valt daardoor eerder binnen de typoTolerance-drempel dan een echt ander/fout woord.
 function levenshteinDistance(a, b){
   if(a === b) return 0;
   if(!a.length) return b.length;
@@ -5831,7 +5977,7 @@ function levenshteinDistance(a, b){
   for(let i = 1; i <= a.length; i++){
     const cur = [i];
     for(let j = 1; j <= b.length; j++){
-      const cost = a[i-1] === b[j-1] ? 0 : 1;
+      const cost = substitutionCost(a[i-1], b[j-1]);
       cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + cost);
     }
     prev = cur;
