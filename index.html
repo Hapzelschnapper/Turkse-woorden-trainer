@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.26</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.27</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.26</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.27</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -394,7 +394,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.26</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.27</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -4897,10 +4897,12 @@ BELANGRIJK OVER TYPEFOUTEN: reken een antwoord GOED als het een tikfout bevat va
 ALS HET ANTWOORD GOED IS MAAR NIET EXACT DE MEEST GANGBARE VORM: vul dan "afwijking" in met een korte, concrete Engelse zin die zegt WAT er afwijkt -- een tikfout (en wat het verschil is), een minder gebruikelijk/formeel synoniem, een andere (maar correcte) vervoeging/vorm, of iets dergelijks. Dit is de tekst die de gebruiker DIRECT bij het resultaat te zien krijgt (niet pas in het uitklapbare uitleg-paneel), dus hou het kort (één zin volstaat meestal). Was het antwoord exact de standaard/meest gangbare vorm, of is het antwoord fout, laat "afwijking" dan leeg ("").
 ALS HET ANTWOORD FOUT IS: geef in "betekenis_antwoord" aan wat het door de gebruiker ingevoerde woord ZELF betekent, VERTAALD NAAR ${isTrEn ? "het Turks" : "het Engels"} (dus NIET in dezelfde taal als het antwoord zelf — dat zou zinloos zijn, bv. nooit "great means great"), mits het een bestaand, betekenisvol woord is — dit helpt de gebruiker begrijpen welk ander woord hij in gedachten had. Is het antwoord geen bestaand woord, laat "betekenis_antwoord" dan leeg (""). Bij een GOED antwoord laat je "betekenis_antwoord" ook leeg.
 "uitleg" is de tekst voor een apart, uitklapbaar "Explanation"-paneel dat de gebruiker vrijwillig opent -- hier mag en moet je ruim de tijd/ruimte voor nemen, dit hoeft GEEN korte tekst te zijn. Schrijf hem ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"), in het Engels, en behandel in aparte, korte alinea's (gescheiden door een lege regel):
-1) De betekenis van het geteste woord zelf (${isTrEn ? `het Turkse woord "${item.tr}"` : `het Engelse woord "${baseEnOf(item.en)}"`}) -- een heldere, wat rijkere uitleg dan alleen het kale vertaal-trefwoord, met relevante nuance of gebruikscontext.
-2) ALLEEN als het echt iets toevoegt: een korte, interessante etymologie van het woord, EN/OF -- als het woord meerdere losstaande betekenissen heeft -- die andere betekenissen kort genoemd (dit mag je overslaan of leeg laten als er niets noemenswaardigs is, forceer het niet).
-3) Bij een FOUT antwoord: wat het door de gebruiker gegeven woord zelf betekent (mag beknopt hetzelfde zeggen als "betekenis_antwoord", dat is geen probleem). Lag die betekenis dicht bij de bedoelde betekenis (bv. een verwant begrip, een deel-synoniem, een andere vorm/vervoeging, of een betekenis die overlapt maar net niet past)? Benoem dat dan expliciet en maak scherp wat het verschil/de nuance precies is, zodat de gebruiker leert wanneer je het ene woord gebruikt en wanneer het andere. Was het antwoord gewoon een heel ander/onverwant woord, dan hoeft dit punt niet uitgebreid; een enkele zin volstaat.
-Bij een GOED antwoord vervalt punt 3 vanzelf (er is dan geen "fout" antwoord om te bespreken) -- dan bestaat "uitleg" dus uit punt 1 en eventueel punt 2.
+1) De betekenis van het TURKSE woord (${isTrEn ? `"${item.tr}"` : `"${tr[0] || baseEnOf(item.en)}"`}) zelf -- ALTIJD focussen op het Turkse woord, NOOIT op het Engelse woord op zich (de gebruiker spreekt al vloeiend Engels en heeft daar geen uitleg bij nodig -- leg dus bijvoorbeeld nooit uit wat een "pencil" is of waarvoor je 'm gebruikt, behandel alleen de Turkse kant): een heldere uitleg met relevante nuance of gebruikscontext.
+2) ALLEEN als het Turkse woord duidelijk uit meerdere herkenbare delen bestaat (een samenstelling van twee woorden, zoals "kurşun kalem" = "kurşun" (lood) + "kalem" (pen/schrijfstok), of een duidelijke stam+achtervoegsel-opbouw): benoem die delen en wat elk deel apart betekent, en hoe ze samen tot de uiteindelijke betekenis komen. Geen duidelijke, betekenisvolle opsplitsing mogelijk? Sla dit punt dan gewoon over.
+3) ALLEEN als het echt relevant is: het (nuance)verschil met aangrenzende/verwante Turkse begrippen waar dit woord makkelijk mee te verwarren is, EN/OF -- indien relevant voor de Turkse woordkeuze -- het nuanceverschil met een aangrenzend Engels begrip (bv. "pencil" vs "pen"). Sla dit punt over als er niets noemenswaardigs is.
+4) ALLEEN als het echt iets toevoegt: een korte, interessante etymologie van het woord, EN/OF -- als het woord meerdere losstaande betekenissen heeft -- die andere betekenissen kort genoemd (dit mag je overslaan of leeg laten als er niets noemenswaardigs is, forceer het niet).
+5) Bij een FOUT antwoord: wat het door de gebruiker gegeven woord zelf betekent (mag beknopt hetzelfde zeggen als "betekenis_antwoord", dat is geen probleem). Lag die betekenis dicht bij de bedoelde betekenis (bv. een verwant begrip, een deel-synoniem, een andere vorm/vervoeging, of een betekenis die overlapt maar net niet past)? Benoem dat dan expliciet en maak scherp wat het verschil/de nuance precies is, zodat de gebruiker leert wanneer je het ene woord gebruikt en wanneer het andere. Was het antwoord gewoon een heel ander/onverwant woord, dan hoeft dit punt niet uitgebreid; een enkele zin volstaat.
+Bij een GOED antwoord vervalt punt 5 vanzelf (er is dan geen "fout" antwoord om te bespreken).
 ${isRecheck ? "De gebruiker is het NIET eens met een eerder 'onjuist'-oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord toch (gedeeltelijk) correct kan zijn, bijvoorbeeld als minder gangbaar synoniem of alternatieve vorm." : ""}
 Antwoord in JSON.`;
   const user = (isTrEn
@@ -5254,7 +5256,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.26 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.27 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -5463,11 +5465,16 @@ async function explainWordContent(item, userAnswer){
   const isTrEnDir = item.direction === "tr-en";
   const given = (userAnswer || "").trim();
   const tr = (item.senseTr && item.note) ? item.senseTr : (cachedTranslation(item.en) || (item.tr ? [item.tr] : []));
-  const sys = `Je bent een docent Turks voor Engelstalige gebruikers. Schrijf een inhoudelijke uitleg over ${isTrEnDir ? `het Turkse woord "${item.tr}"` : `het Engelse woord "${baseEnOf(item.en)}"`} voor een uitklapbaar "Explanation"-paneel. Schrijf ALTIJD rechtstreeks tegen de gebruiker (spreek "je" aan, NOOIT in de derde persoon), in het Engels, in aparte korte alinea's (gescheiden door een lege regel):
-1) De betekenis van dit woord -- ALTIJD invullen, ook als er verder niets bijzonders te melden is: een heldere, wat rijkere uitleg dan het kale vertaal-trefwoord, met relevante nuance of gebruikscontext.
-2) ALLEEN als het echt iets toevoegt: een korte, interessante etymologie, EN/OF -- als het woord meerdere losstaande betekenissen heeft -- die kort genoemd (mag overgeslagen worden als er niets noemenswaardigs is).
-${given ? `3) De gebruiker typte "${given}" (niet het verwachte antwoord). Leg uit wat dit door de gebruiker gegeven woord zelf betekent (als het een bestaand, betekenisvol woord is) en wat het verschil/de nuance precies is met de bedoelde betekenis van het geteste woord. Is "${given}" geen bestaand/betekenisvol woord, sla dit punt dan over.` : ""}
-Punt 1 mag NOOIT leeg blijven. Antwoord in JSON.`;
+  // Het Turkse woord dat uitgelegd moet worden -- bij tr-en is dat het getoonde woord zelf, bij en-tr
+  // de (eerste) bekende Turkse vertaling van het getoonde Engelse woord.
+  const trWord = isTrEnDir ? item.tr : (tr[0] || "");
+  const sys = `Je bent een docent Turks voor Engelstalige gebruikers. Schrijf een inhoudelijke uitleg over het Turkse woord "${trWord}" (Engelse betekenis: "${baseEnOf(item.en)}") voor een uitklapbaar "Explanation"-paneel. Schrijf ALTIJD rechtstreeks tegen de gebruiker (spreek "je" aan, NOOIT in de derde persoon), in het Engels, in aparte korte alinea's (gescheiden door een lege regel):
+1) De betekenis van het TURKSE woord "${trWord}" zelf -- ALTIJD invullen, ook als er verder niets bijzonders te melden is. Focus op het Turkse woord, NIET op het Engelse woord op zich (de gebruiker spreekt al vloeiend Engels en heeft daar geen uitleg bij nodig -- leg dus nooit uit wat een "pencil" is of waar het voor gebruikt wordt, behandel alleen de Turkse kant).
+2) ALLEEN als het Turkse woord duidelijk uit meerdere herkenbare delen bestaat (een samenstelling van twee woorden, zoals "kurşun kalem" = "kurşun" (lood) + "kalem" (pen/schrijfstok), of een duidelijke stam+achtervoegsel-opbouw): benoem die delen en wat elk deel apart betekent, en hoe ze samen tot de uiteindelijke betekenis komen. Is er geen duidelijke, betekenisvolle opsplitsing mogelijk, sla dit punt dan gewoon over (forceer het niet).
+3) ALLEEN als het echt relevant is: het (nuance)verschil met aangrenzende/verwante Turkse begrippen waar de gebruiker dit woord makkelijk mee kan verwarren, EN/OF -- indien relevant voor de Turkse woordkeuze -- het nuanceverschil met een aangrenzend Engels begrip (bv. "pencil" vs "pen"). Sla dit punt over als er niets noemenswaardigs is.
+4) ALLEEN als het echt iets toevoegt: een korte, interessante etymologie, EN/OF -- als het woord meerdere losstaande betekenissen heeft -- die kort genoemd (mag overgeslagen worden als er niets noemenswaardigs is).
+${given ? `5) De gebruiker typte "${given}" (niet het verwachte antwoord). Leg uit wat dit door de gebruiker gegeven woord zelf betekent (als het een bestaand, betekenisvol woord is) en wat het verschil/de nuance precies is met de bedoelde betekenis van het geteste woord. Is "${given}" geen bestaand/betekenisvol woord, sla dit punt dan over.` : ""}
+Punt 1 mag NOOIT leeg blijven; punten 2-4 mogen overgeslagen worden als ze niets toevoegen. Antwoord in JSON.`;
   const user = isTrEnDir
     ? `Turks woord: "${item.tr}"\nEngelse vertaling: "${baseEnOf(item.en)}"` + (given ? `\nAntwoord van gebruiker: "${given}"` : "")
     : `Engels woord: "${baseEnOf(item.en)}"\nBekende Turkse vertaling(en): ${tr.join(", ") || "(geen)"}` + (given ? `\nAntwoord van gebruiker: "${given}"` : "");
