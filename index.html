@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.20</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.21</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.20</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.21</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -182,7 +182,6 @@
     <div class="card">
       <div class="row space-between" style="margin-bottom:10px;">
         <span class="muted" style="font-weight:700;">Vocabulary</span>
-        <span class="muted" id="words-count">0 words</span>
       </div>
       <input type="text" id="words-search" placeholder="Search Turkish or translation…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-bottom:8px;">
       <div class="row" style="gap:6px;flex-wrap:wrap;">
@@ -225,9 +224,7 @@
       <div class="kpi">
         <div class="box"><div class="num" id="kpi-total">0</div><div class="lbl">total words</div></div>
         <div class="box"><div class="num" id="kpi-never">0</div><div class="lbl">not shown yet</div></div>
-        <div class="box"><div class="num" id="kpi-mastered">0</div><div class="lbl">level 10 (mastered)</div></div>
         <div class="box" title="Number of PREVIOUSLY shown words whose spaced-repetition review time has passed — i.e. 'due again'. Never-shown words (level 0) are not included here."><div class="num" id="kpi-due">0</div><div class="lbl">ready to practise now</div></div>
-        <div class="box"><div class="num" id="kpi-avg">0</div><div class="lbl">average level (1-10)</div></div>
       </div>
       <div class="muted">Vocabulary mastery per CEFR sub-level (as %)</div>
       <div id="cefr-progress-vocab" style="margin-top:10px;"></div>
@@ -236,9 +233,7 @@
       <h3 style="margin-top:0;">🔤 Grammar Progress</h3>
       <div class="kpi">
         <div class="box"><div class="num" id="kpi-gram-total">0</div><div class="lbl">total topics</div></div>
-        <div class="box"><div class="num" id="kpi-gram-mastered">0</div><div class="lbl">level 10 (mastered)</div></div>
         <div class="box" title="Number of previously practised topics whose spaced-repetition review time has passed."><div class="num" id="kpi-gram-due">0</div><div class="lbl">ready to practise now</div></div>
-        <div class="box"><div class="num" id="kpi-gram-avg">0</div><div class="lbl">average level (1-10)</div></div>
       </div>
       <div class="muted">Grammar mastery per CEFR sub-level (as %)</div>
       <div id="cefr-progress-grammar" style="margin-top:10px;"></div>
@@ -399,7 +394,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.20</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.21</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -5214,7 +5209,14 @@ async function renderPractice(){
       // en-tr-gegevens van hetzelfde Engelse trefwoord.
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
-      el("word-meta").textContent = [cefrTxt, posAbbr || null].filter(Boolean).join(" · ");
+      // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
+      // v3.21 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
+      // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
+      // dat al voor de en-tr-richting doet.
+      const note = currentItem.trData && currentItem.trData.note;
+      const noteTxt = note ? (/^\(.*\)$/.test(note.trim()) ? note.trim() : `(${note.trim()})`) : null;
+      el("word-meta").textContent = [cefrTxt, noteTxt || (posAbbr || null)].filter(Boolean).join(" · ");
     } else {
       const cefr18 = wordCefrOf(currentItem.en);
       el("word-meta").textContent = wordMetaText(cefr18, currentItem.en, currentItem.note);
@@ -6164,43 +6166,37 @@ function renderCefrProgress(containerId, getPct){
 
 function renderStats(){
   const words = allWords();
-  let total=0, mastered=0, due=0, neverShown=0;
-  let shownTotal=0, shownLevelSum=0; // voor het gemiddelde: alléén al-getoonde woorden, niveau 0 telt niet mee
+  let total=0, due=0, neverShown=0;
   const now = Date.now();
   for(const it of words){
     const p = getProgress(it.en);
-    const level = displayWordLevel(it.en); // inclusief eventuele les-cijfer-override
     total++;
-    if(level === 10) mastered++;
-    if(p.level === 0 && level === 0){
+    // BUGFIX: dit gebruikte voorheen p.level>0 (resp. p.level===0) i.p.v. p.reps>0 (resp. ===0) -- de
+    // taaltoets (skipLessonsToLevel) zet bij duizenden woorden alvast een niveau (7) zonder ze ooit
+    // echt te tonen (reps blijft 0, due blijft op het moment van aanmaken staan). Daardoor telden die
+    // woorden hier al als "getoond" én als "due" (want hun stokoude due-tijdstip lag allang in het
+    // verleden), terwijl de daadwerkelijke oefenwachtrij (die wél reps>0 vereist) ze terecht negeert --
+    // vandaar het grote verschil tussen deze teller en het echte aantal "words to review".
+    if(p.reps === 0){
       neverShown++;
-    } else {
-      shownTotal++;
-      shownLevelSum += level;
+    } else if(p.due <= now){
+      due++;
     }
-    if(p.due <= now && p.level > 0) due++; // nog niet getoonde woorden tellen niet mee als "klaar om te oefenen" in deze teller
   }
   el("kpi-total").textContent = total;
-  el("kpi-mastered").textContent = mastered;
   el("kpi-due").textContent = due;
-  el("kpi-avg").textContent = shownTotal ? (shownLevelSum/shownTotal).toFixed(1) : "—";
   const neverEl = el("kpi-never");
   if(neverEl) neverEl.textContent = neverShown;
 
   // Grammatica-KPI's: zelfde soort tellingen, maar dan voor de 46 grammatica-onderwerpen
-  let gTotal=0, gMastered=0, gDue=0, gShownTotal=0, gShownLevelSum=0;
+  let gTotal=0, gDue=0;
   for(const t of GRAMMAR_TOPICS){
     const p = getTopicProgress(t);
-    const level = displayTopicLevel(t); // inclusief eventuele les-cijfer-override
     gTotal++;
-    if(level === 10) gMastered++;
-    if(p.reps > 0 || level > 0){ gShownTotal++; gShownLevelSum += level; }
     if(p.due <= now && p.reps > 0) gDue++;
   }
   el("kpi-gram-total").textContent = gTotal;
-  el("kpi-gram-mastered").textContent = gMastered;
   el("kpi-gram-due").textContent = gDue;
-  el("kpi-gram-avg").textContent = gShownTotal ? (gShownLevelSum/gShownTotal).toFixed(1) : "—";
 
   renderCefrProgress("cefr-progress-vocab", cefrWordProgress);
   renderCefrProgress("cefr-progress-grammar", cefrGrammarProgress);
@@ -6321,8 +6317,6 @@ function renderWordsTab(){
   // beschouwt, omdat het intervallen na foute antwoorden telkens weer laat inkrimpen.
   else if(sort === "ease-asc") words.sort((a,b)=> a.ease - b.ease || a.sortKey.localeCompare(b.sortKey));
   else words.sort((a,b)=> a.sortKey.localeCompare(b.sortKey));
-
-  el("words-count").textContent = words.length + " word" + (words.length===1?"":"s");
 
   el("words-list").innerHTML = words.map(w=>{
     const color = w.reps===0 ? "#4a5568" : (w.level<=3 ? "#e0333f" : w.level<=6 ? "#e0a733" : "#2fae6a");
