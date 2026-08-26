@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.29</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.30</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.29</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.30</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -305,6 +305,13 @@
       <select id="sent-complexity-max-select" style="width:100%;margin-top:6px;"></select>
     </div>
     <div class="card">
+      <h3 style="margin-top:0;">🔊 Sound effects</h3>
+      <div class="row space-between">
+        <span>Play a sound on correct/wrong answers</span>
+        <input type="checkbox" id="sound-effects-toggle" style="width:20px;height:20px;">
+      </div>
+    </div>
+    <div class="card">
       <h3 style="margin-top:0;">📊 Adaptive difficulty</h3>
       <div class="muted" style="margin-bottom:10px;">Nudges the level above up or down based on your last 10 regular-practice exercises (not lessons or knowledge checks), with a buffer zone so it doesn't flip back and forth at the edge.</div>
       <div class="row space-between" style="margin-bottom:10px;">
@@ -394,7 +401,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.29</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.30</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -660,6 +667,7 @@ if(settings.adaptiveEnabled === undefined) settings.adaptiveEnabled = false;
 // "zwakst" en komen dus als eerste aan de beurt) totdat ze allemaal een keer gezien waren; met deze
 // instelling kan de gebruiker dat temperen. Standaard aan, met een gematigde verhouding.
 if(settings.mixNewWords === undefined) settings.mixNewWords = true;
+if(settings.soundEffects === undefined) settings.soundEffects = true;
 if(settings.newWordsPer5 === undefined) settings.newWordsPer5 = 2;
 // Welke woordenlijst de losse-woord-oefeningen op het hoofdscherm gebruikt: "en-tr" (alleen de en-tr-
 // lijst), "tr-en" (alleen de onafhankelijk gecureerde tr-en-lijst), of "random" (elke beurt 50/50 geloot
@@ -2644,6 +2652,7 @@ async function submitCheckupAnswer(){
   el("checkup-question-box").classList.add("hidden");
   el("checkup-result-box").classList.remove("hidden");
   el("checkup-result-text").className = "feedback " + (correct ? "correct" : "wrong");
+  playFeedbackSound(correct ? "correct" : "wrong");
   const promptShown = cur.type === "word"
     ? (cur.sentenceDrill ? cur.sentenceDrill.prompt : (cur.direction === "tr-en" ? cur.tr : displayEnglishWord(cur.en)))
     : cur.drill.prompt;
@@ -3033,6 +3042,7 @@ async function submitSkillPracticeAnswer(){
   el("checkup-question-box").classList.add("hidden");
   el("checkup-result-box").classList.remove("hidden");
   el("checkup-result-text").className = "feedback " + (correct ? "correct" : "wrong");
+  playFeedbackSound(correct ? "correct" : "wrong");
 
   let extra = "";
   let roundJustCompleted = false;
@@ -3113,6 +3123,7 @@ async function disputeSkillPracticeAnswer(){
       if(correct) recordGrammarResult(cur.topic.key, true);
     }
     el("checkup-result-text").className = "feedback " + (correct ? "correct" : "wrong");
+  playFeedbackSound(correct ? "correct" : "wrong");
     el("checkup-result-text").innerHTML = correct
       ? "🔁 ✅<br>Score restored."
       : `🔁 ❌<br>Still incorrect. Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`;
@@ -5339,7 +5350,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.29 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.30 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -5406,9 +5417,58 @@ async function renderPractice(){
   setTimeout(()=> el("answer-input").focus(), 50);
 }
 
+/* ===================== GELUIDSEFFECTEN (correct/fout) =====================
+   Gesynthetiseerd via de Web Audio API i.p.v. een los geluidsbestand -- geen extra download, werkt ook
+   offline in de PWA. AudioContext wordt pas bij de EERSTE aanroep aangemaakt (en zo nodig resumed),
+   want browsers staan geen audio toe voordat er een user-gesture is geweest; een klik op "Check" is
+   zo'n gesture, dus dat komt vanzelf goed. Nooit kritiek voor de werking van de app -- elke fout
+   (geen Web Audio-ondersteuning, autoplay-blokkade, etc.) wordt stilzwijgend genegeerd. */
+let _feedbackAudioCtx = null;
+function getFeedbackAudioCtx(){
+  if(!_feedbackAudioCtx){
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if(!Ctor) return null;
+    try{ _feedbackAudioCtx = new Ctor(); }catch(e){ return null; }
+  }
+  if(_feedbackAudioCtx.state === "suspended") _feedbackAudioCtx.resume().catch(()=>{});
+  return _feedbackAudioCtx;
+}
+function playFeedbackTone(ctx, freq, startTime, duration, type, peakGain){
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, startTime);
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.linearRampToValueAtTime(peakGain, startTime + 0.008); // korte fade-in, voorkomt een tikje/klik
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(startTime);
+  osc.stop(startTime + duration + 0.02);
+}
+// kind: "correct" -> vrolijke oplopende pling (2 tonen, samen ~310ms); "wrong" -> korte, schurende
+// buzzer (2 net-niet-samenvallende lage tonen tegelijk, ~400ms). Beide ruim binnen de 500ms-grens.
+function playFeedbackSound(kind){
+  if(!settings.soundEffects) return;
+  if(kind !== "correct" && kind !== "wrong") return; // "pending" en overige kinds blijven stil
+  const ctx = getFeedbackAudioCtx();
+  if(!ctx) return;
+  try{
+    const now = ctx.currentTime;
+    if(kind === "correct"){
+      playFeedbackTone(ctx, 880.0, now, 0.16, "sine", 0.18);
+      playFeedbackTone(ctx, 1318.5, now + 0.09, 0.22, "sine", 0.16);
+    } else {
+      playFeedbackTone(ctx, 165, now, 0.4, "sawtooth", 0.12);
+      playFeedbackTone(ctx, 155, now, 0.4, "sawtooth", 0.10);
+    }
+  }catch(e){ /* geluid is nooit kritiek voor de werking van de oefening -- gewoon negeren */ }
+}
+
 function showFeedback(kind, html){
   const box = el("feedback-box");
   box.innerHTML = `<div class="feedback ${kind}">${html}</div>`;
+  playFeedbackSound(kind);
 }
 
 // Short, clearly coloured line: "wrong answer: X" (red) and/or "correct answer: Y" (green)
@@ -6003,6 +6063,7 @@ async function renderSuffixPractice(){
 // antwoord, en de morfeem-opbouw tonen.
 function finalizeSuffixAnswer(correct, diffText){
   suffixAnswered = true;
+  playFeedbackSound(correct ? "correct" : "wrong");
   const wasBlank = !correct && /^You left this blank/.test(diffText || "");
   el("suf-feedback-box").innerHTML = `<div class="feedback ${correct ? "correct" : "wrong"}">${correct ? "✅ Correct!" : (wasBlank ? "" : "❌ Not quite.")}</div>`;
   // diffText wordt nu ook bij een GOED antwoord getoond (bv. de accentfoutjes-melding hierboven) --
@@ -7393,6 +7454,7 @@ function initSettingsUI(){
   initCefrRangeDisplay("sent-complexity", "sentenceComplexityMin", "sentenceComplexityMax", 17);
   updateCefrUnlockedInfo();
   el("adaptive-enabled").checked = !!settings.adaptiveEnabled;
+  el("sound-effects-toggle").checked = !!settings.soundEffects;
   el("adaptive-threshold").value = settings.adaptiveThreshold ?? 60;
   updateAdaptiveLabels();
   el("key-status").textContent = settings.apiKey ? "✅ Key is set." : "No key set yet.";
@@ -7609,6 +7671,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   wireCefrRangeControl("sent-complexity", "sentenceComplexityMin", "sentenceComplexityMax");
   el("adaptive-enabled").addEventListener("change", ()=>{
     settings.adaptiveEnabled = el("adaptive-enabled").checked;
+    settings.soundEffects = el("sound-effects-toggle").checked;
     saveJSON(LS_SETTINGS, settings);
     updateAdaptiveLabels();
   });
