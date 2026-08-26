@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.27</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.29</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.27</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.29</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -394,7 +394,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.27</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.29</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -2780,6 +2780,22 @@ function pickSkillPracticeWord(words){
   return [...words].sort((a,b)=>getProgress(a).due - getProgress(b).due)[0];
 }
 
+/* Zelfde spaced-repetition-keuzelogica als pickSkillPracticeWord hierboven, maar dan op volledige
+   entry-objecten ({key, source, trData?, ...} zoals getWeakestWords() teruggeeft) i.p.v. kale Engelse
+   woorden -- nodig omdat een tr-en-item zijn EIGEN "trword:"-progress-sleutel heeft, niet een Engelse. */
+function pickSkillPracticeEntry(entries){
+  const now = Date.now();
+  const untested = entries.filter(w => getProgress(w.key).reps === 0);
+  if(untested.length) return untested[Math.floor(Math.random()*untested.length)];
+  const due = entries.filter(w => getProgress(w.key).due <= now);
+  if(due.length){
+    const minLevel = Math.min(...due.map(w=>getProgress(w.key).level));
+    const lowest = due.filter(w=>getProgress(w.key).level === minLevel);
+    return lowest[Math.floor(Math.random()*lowest.length)];
+  }
+  return [...entries].sort((a,b)=>getProgress(a.key).due - getProgress(b.key).due)[0];
+}
+
 async function nextSkillPracticeQuestion(){
   el("checkup-question-box").classList.remove("hidden");
   el("checkup-result-box").classList.add("hidden");
@@ -2801,6 +2817,61 @@ async function nextSkillPracticeQuestion(){
   el("checkup-word-meta").textContent = "";
   const badgeEl = el("checkup-badge");
   badgeEl.classList.remove("hidden");
+
+  if(lesson.wordEntries && lesson.wordEntries.length){
+    const entry = pickSkillPracticeEntry(lesson.wordEntries);
+    badgeEl.textContent = "word"; badgeEl.className = "badge badge-word";
+    if(entry.source === "tr"){
+      // Rechtstreeks tr-en-item (EIGEN "trword:"-sleutel, onafhankelijke SRS-score) -- geen omweg via
+      // een Engelse sleutel of REVERSE_TR_INDEX-flip nodig, we hebben de trData al compleet.
+      const trData = entry.trData;
+      skillPracticeState.current = {type:"word", wordSource:"tr", en: trData.en, tr: trData.tr, note: trData.note, trData, direction:"tr-en", progressKey: entry.key};
+      el("checkup-word").textContent = trData.tr;
+      el("checkup-word").className = "tr-word";
+      // Net als op het hoofd-oefenscherm: tr-en-woorden komen altijd uit de eigen gecureerde
+      // TR_WORDS_DATA (dus de Engelse vertaling is altijd bekend) -- peekCheckupWord ondersteunt de
+      // tr-en-richting al generiek (via cur.direction/baseEnOf(cur.en)), dus gewoon aansluiten.
+      el("checkup-word").style.textDecoration = "underline";
+      el("checkup-word").style.textDecorationStyle = "dotted";
+      el("checkup-word").style.cursor = "pointer";
+      el("checkup-word").onclick = peekCheckupWord;
+      skillPracticeState.current.hintRevealed = false;
+      skillPracticeState.current.peeked = false;
+      const posAbbr = WORD_CATEGORY_ABBR[trData.pos] || trData.pos || "";
+      const cefrTxt = typeof trData.cefr === "number" ? cefrLabel(trData.cefr) : null;
+      const noteTxt = trData.note ? (/^\(.*\)$/.test(trData.note.trim()) ? trData.note.trim() : `(${trData.note.trim()})`) : null;
+      el("checkup-word-meta").textContent = [cefrTxt, noteTxt || (posAbbr || null)].filter(Boolean).join(" · ");
+      el("checkup-answer-input").placeholder = "Type the English translation…";
+    } else {
+      // Gewoon een en-tr-item -- zelfde afhandeling als de reguliere lesson.words-tak hieronder, alleen
+      // met de vaste richting "en-tr" (dit is expliciet de en-tr-helft van de zwakste-woorden-lijst;
+      // resolveCheckupWordDirection zou 'm alsnog naar tr-en kunnen omflippen, wat hier niet de bedoeling is).
+      const en = entry.key;
+      const sense = await resolveWordSense(en, "en-tr");
+      skillPracticeState.current = {type:"word", en, tr: sense ? sense.tr[0] : null, senseTr: sense ? sense.tr : null, gloss: sense ? sense.gloss : null, note: sense ? sense.note : null, direction: "en-tr", progressKey: en};
+      el("checkup-word").textContent = displayEnglishWord(en);
+      el("checkup-word").className = "tr-word";
+      skillPracticeState.current.hintRevealed = false;
+      skillPracticeState.current.peeked = false;
+      if(sense){
+        el("checkup-word").style.textDecoration = "underline";
+        el("checkup-word").style.textDecorationStyle = "dotted";
+        el("checkup-word").style.cursor = "pointer";
+        el("checkup-word").onclick = peekCheckupWord;
+      } else {
+        el("checkup-word").style.textDecoration = "none";
+        el("checkup-word").style.cursor = "default";
+        el("checkup-word").onclick = null;
+      }
+      el("checkup-word-meta").textContent = wordMetaText(wordCefrOf(en), en, skillPracticeState.current.note);
+      el("checkup-answer-input").placeholder = "Type the Turkish translation…";
+    }
+    el("checkup-answer-input").disabled = false;
+    el("btn-checkup-next").disabled = false;
+    el("btn-checkup-reveal").classList.remove("hidden");
+    el("checkup-answer-input").focus();
+    return;
+  }
 
   if(lesson.words && lesson.words.length){
     const en = pickSkillPracticeWord(lesson.words);
@@ -2904,6 +2975,18 @@ async function submitSkillPracticeAnswer(){
         correct = true;
       } else if(answer){
         try{ const v = await gradeGrammarDrillAnswer(cur.sentenceDrill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }catch(e){ correct = false; }
+      }
+    } else if(cur.wordSource === "tr"){
+      // Rechtstreeks tr-en-item (uit de gemengde weak-words-pool) -- zelfde beoordelingslogica als het
+      // hoofd-oefenscherm (checkStaticMatch/askDeepSeekJudge), NIET de en-tr-specifieke tak hieronder
+      // (die neemt cur.en als brontaal aan, terwijl hier cur.tr de brontaal is).
+      correctAnswerTxt = correctEnglishDisplayFor(cur);
+      if(cur.peeked){
+        correct = !!(answer && normalize(answer) === normalize(correctAnswerTxt));
+      } else if(answer && checkStaticMatch(cur, answer)){
+        correct = true;
+      } else if(answer){
+        try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:"tr-en"}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; deviation = v.afwijking || ""; }catch(e){ correct = false; }
       }
     } else {
       correctAnswerTxt = cur.direction === "tr-en" ? baseEnOf(cur.en) : (cur.tr || (cachedTranslation(cur.en)||[]).join(", "));
@@ -5256,7 +5339,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.27 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.29 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -6597,28 +6680,15 @@ function renderWeakWordsList(){
       </div>
     </div>`;
   }).join("");
-  // De "Practice"-sessieknop hieronder gebruikt de bestaande skill-practice-modal, die (net als lessen
-  // en de kennischeck) alleen de en-tr-lijst kent -- tr-en-woorden in deze lijst worden daarom wél
-  // getoond, maar niet in die sessie meegenomen. Ze komen vanzelf aan de beurt via de gewone Practice-
-  // tab (met "Word direction" op TR→EN of Both), die WEL de tr-en-SRS gebruikt.
-  const enOnly = words.filter(w => w.source === "en");
-  const trOnlyCount = words.length - enOnly.length;
-  // BUGFIX: deze knop toonde alleen enOnly.length (de sessie kan geen tr-en-woorden meenemen, zie
-  // toelichting hierboven) zonder te verklaren waarom dat aantal kon afwijken van de gekozen
-  // "N words"-selectie -- dat oogde als een telfout. Nu expliciet gemeld hoeveel TR→EN-woorden apart
-  // via de Practice-tab geoefend moeten worden, zodat het totaal weer klopt.
-  const trNote = trOnlyCount > 0
-    ? `<div class="muted" style="font-size:.72rem;margin-top:6px;">(${trOnlyCount} of the ${words.length} selected words are TR→EN and aren't included in this session — practise them via the Practice tab, "Word direction" set to TR→EN or Both.)</div>`
-    : "";
-  const practiceBtn = enOnly.length
-    ? `<button id="btn-practice-weak-words" class="btn-primary" style="width:100%;margin-top:10px;">▶️ Practice these ${enOnly.length} EN→TR words</button>${trNote}`
-    : `<div class="muted" style="font-size:.78rem;margin-top:10px;">These are TR→EN words — practise them via the Practice tab (set "Word direction" to TR→EN or Both).</div>`;
+  // De "Practice"-sessieknop ondersteunt nu (net als het hoofd-oefenscherm) zowel en-tr- als
+  // tr-en-items in dezelfde sessie -- via lesson.wordEntries (zie nextSkillPracticeQuestion), i.p.v.
+  // de vroegere lesson.words die alleen kale Engelse sleutels kon verwerken en tr-en-woorden dus moest
+  // uitsluiten.
+  const practiceBtn = `<button id="btn-practice-weak-words" class="btn-primary" style="width:100%;margin-top:10px;">▶️ Practice these ${words.length} words</button>`;
   el("weak-words-list").innerHTML = rows + practiceBtn;
-  if(enOnly.length){
-    el("btn-practice-weak-words").addEventListener("click", ()=>{
-      startSkillPractice({id:"weak-words-session", title:`${enOnly.length} weakest words`, words: enOnly.map(w=>w.key)});
-    });
-  }
+  el("btn-practice-weak-words").addEventListener("click", ()=>{
+    startSkillPractice({id:"weak-words-session", title:`${words.length} weakest words`, wordEntries: words});
+  });
 }
 
 // Toont/verbergt de zwakste-woordenlijst met dezelfde knop -- "Show list" <-> "Hide list".
