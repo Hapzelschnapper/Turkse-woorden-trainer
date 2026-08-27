@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.46</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.47</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.46</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.47</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -263,7 +263,7 @@
         <div class="box"><div class="num" id="kpi-total">0</div><div class="lbl">total words</div></div>
         <div class="box"><div class="num" id="kpi-never">0</div><div class="lbl">not shown yet</div></div>
         <div class="box" title="Number of PREVIOUSLY shown words whose spaced-repetition review time has passed — i.e. 'due again'. Never-shown words (level 0) are not included here."><div class="num" id="kpi-due">0</div><div class="lbl">ready to practise now</div></div>
-        <div class="box" title="Approximate number of distinct words known at level 8+: (en-tr level-8+ count + tr-en level-8+ count) / 2, since the two lists are separately curated/scored and simply adding them would double-count a word mastered in both directions."><div class="num" id="kpi-mastered8">0</div><div class="lbl">level 8+ (mastered)</div></div>
+        <div class="box" title="Number of distinct words known at level 8+ in AT LEAST ONE direction (en-tr or tr-en) — deduplicated on the underlying word, so a word mastered in both directions is only counted once."><div class="num" id="kpi-mastered8">0</div><div class="lbl">level 8+ (mastered)</div></div>
       </div>
       <div class="muted">Vocabulary mastery per CEFR sub-level (as %)</div>
       <div id="cefr-progress-vocab" style="margin-top:10px;"></div>
@@ -442,7 +442,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.46</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.47</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -694,7 +694,7 @@ settings.cefrMax = Math.min(settings.cefrMax, MAX_VOCAB_CEFR_IDX);
 // aan elkaar en aan de woord-oefenslider -- nu onafhankelijk instelbaar.
 if(settings.sentenceComplexityMin === undefined) settings.sentenceComplexityMin = settings.cefrMin;
 if(settings.sentenceComplexityMax === undefined) settings.sentenceComplexityMax = settings.cefrMax;
-// Sentence complexity heeft sinds v3.46 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
+// Sentence complexity heeft sinds v3.47 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
 // bereik van vóór die wijziging hier eenmalig samenvouwen tot 1 vaste waarde (het midden, afgerond).
 if(settings.sentenceComplexityMin !== settings.sentenceComplexityMax){
   const mid = Math.round((settings.sentenceComplexityMin + settings.sentenceComplexityMax) / 2);
@@ -5533,7 +5533,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.46 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.47 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -6966,7 +6966,7 @@ function renderCefrProgress(containerId, getPct){
 
 function renderStats(){
   const words = allWords();
-  let total=0, due=0, neverShown=0, mastered8=0;
+  let total=0, due=0, neverShown=0;
   const now = Date.now();
   for(const it of words){
     const p = getProgress(it.en);
@@ -6982,25 +6982,27 @@ function renderStats(){
     } else if(p.due <= now){
       due++;
     }
-    if(p.level >= 8) mastered8++; // zelfde pool als pickMasteredWordForDictation/pickKnownVocabSample(.., 8) gebruiken
   }
   // en-tr en tr-en zijn twee APART gecureerde lijsten met elk hun eigen score voor hetzelfde onderliggende
-  // Turkse vocabulaire (zie [[oxford5000-wordlist]]) -- ze gewoon optellen zou dubbeltellen (een woord dat
-  // in beide richtingen beheerst wordt telt dan 2x), maar los tonen (zoals eerder bij het totale
-  // woordenaantal wél bewust gedaan is, om inflatie te voorkomen) onderschat juist als een woord wél in de
-  // ene richting maar nog niet in de andere op niveau 8 staat. Het GEMIDDELDE van beide tellingen ligt daar
-  // tussenin en benadert het werkelijke aantal beheerste woorden nauwkeuriger dan elke richting apart.
-  let mastered8Tr = 0;
-  for(const w of TR_WORDS_DATA){
-    if(getProgress(w.key).level >= 8) mastered8Tr++;
+  // Turkse vocabulaire (zie [[oxford5000-wordlist]]) -- een simpel gemiddelde van twee losse tellingen
+  // (het vorige idee) is geen betekenisvolle maat: die loopt uiteen zodra de twee richtingen ongelijk ver
+  // staan (heel plausibel, tr-en is later toegevoegd dan en-tr). In plaats daarvan: de ECHTE unie op het
+  // onderliggende Engelse woord (via baseEnOf) -- elk woord dat in MINSTENS ÉÉN richting niveau 8+ heeft,
+  // telt precies 1x mee, ongeacht of het ook (of alleen) in de andere richting beheerst wordt.
+  const mastered8Words = new Set();
+  for(const it of words){
+    if(getProgress(it.en).level >= 8) mastered8Words.add(baseEnOf(it.en));
   }
-  const mastered8Avg = Math.round((mastered8 + mastered8Tr) / 2);
+  for(const w of TR_WORDS_DATA){
+    if(getProgress(w.key).level >= 8) mastered8Words.add(baseEnOf(w.en));
+  }
+  const mastered8Union = mastered8Words.size;
   el("kpi-total").textContent = total;
   el("kpi-due").textContent = due;
   const neverEl = el("kpi-never");
   if(neverEl) neverEl.textContent = neverShown;
   const mastered8El = el("kpi-mastered8");
-  if(mastered8El) mastered8El.textContent = mastered8Avg;
+  if(mastered8El) mastered8El.textContent = mastered8Union;
 
   // Grammatica-KPI's: zelfde soort tellingen, maar dan voor de 46 grammatica-onderwerpen
   let gTotal=0, gDue=0;
