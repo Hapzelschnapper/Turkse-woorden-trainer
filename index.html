@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.35</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.36</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.35</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.36</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -404,7 +404,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.35</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.36</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -4098,12 +4098,19 @@ function pickNextItem(){
   // newWordsPer5, i.p.v. altijd de volledige pool te gebruiken (waarin nieuwe woorden vanzelf domineren
   // omdat ze op niveau 0 staan en dus als "zwakst" gelden). Zie wordSourceHistory verderop voor hoe de
   // verhouding over een venster van 5 gestuurd wordt.
-  const newInRange = neverShown;
-  // BUGFIX: dit was voorheen "alle ooit-geoefende woorden binnen bereik" (reps>0), ongeacht of ze
-  // daadwerkelijk due waren -- daardoor kon een niet-due woord met een laag niveau alsnog als
-  // "herhaling" gekozen worden (pickWeakestSoonest sorteert op zwakste niveau, niet op due-status).
-  // reviewInRange moet identiek zijn aan de al hierboven berekende dueNow (echt due woorden).
-  const reviewInRange = dueNow;
+  // BUGFIX: newInRange/reviewInRange gebruikten voorheen altijd de pool van chosenDir -- bij "random"
+  // is dat de richting die DEZE beurt toevallig de coin-flip/cooldown-afweging "won" (zie hierboven),
+  // niet per se de richting waar het meeste te mixen valt. Had die gewonnen richting toevallig geen
+  // nieuwe woorden meer (bv. en-tr al bijna volledig geïntroduceerd), dan viel de mix hieronder altijd
+  // terug op "!newInRange.length -> dueWords = reviewInRange" -- 100% herhaling, VOLLEDIG ongeacht de
+  // dial-stand, terwijl de andere richting (tr-en) misschien nog volop nieuwe woorden had liggen. Gebruik
+  // daarom voor de mix-verhouding zelf altijd de VOLLEDIG gecombineerde pool zodra de richting op
+  // "random" staat (pickWeakestSoonest kan toch al met een gemengde en-tr/tr-en-lijst overweg, elk item
+  // draagt zijn eigen richting) -- alleen bij een VASTE richting-instelling blijft dit de pool van
+  // chosenDir (inclusief een eventuele due-gestuurde auto-omschakeling hierboven).
+  const mixPool = (settings.wordDirection || "random") === "random" ? computePoolFor("random") : pool;
+  const newInRange = mixPool.neverShown;
+  const reviewInRange = mixPool.dueNow;
   let dueWords;
   if(!wordsInRange.length){
     dueWords = allUnlocked; // bestaande fallback: niets binnen bereik -> toch iets tonen
@@ -5427,7 +5434,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.35 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.36 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
