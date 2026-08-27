@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.40</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.42</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.40</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.42</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -399,7 +399,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.40</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.42</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -651,7 +651,7 @@ settings.cefrMax = Math.min(settings.cefrMax, MAX_VOCAB_CEFR_IDX);
 // aan elkaar en aan de woord-oefenslider -- nu onafhankelijk instelbaar.
 if(settings.sentenceComplexityMin === undefined) settings.sentenceComplexityMin = settings.cefrMin;
 if(settings.sentenceComplexityMax === undefined) settings.sentenceComplexityMax = settings.cefrMax;
-// Sentence complexity heeft sinds v3.40 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
+// Sentence complexity heeft sinds v3.42 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
 // bereik van vóór die wijziging hier eenmalig samenvouwen tot 1 vaste waarde (het midden, afgerond).
 if(settings.sentenceComplexityMin !== settings.sentenceComplexityMax){
   const mid = Math.round((settings.sentenceComplexityMin + settings.sentenceComplexityMax) / 2);
@@ -4166,7 +4166,13 @@ function pickNextItem(){
     sentence: (sentPct/totalPct) - recentSentenceShare,
     question: (questPct/totalPct) - recentQuestionShare,
   } : {word:1, sentence:0, question:0};
-  const ranked = Object.entries(deficits).sort((a,b)=>b[1]-a[1]);
+  const targetShare = {word: wordsPct/(totalPct||1), sentence: sentPct/(totalPct||1), question: questPct/(totalPct||1)};
+  // BUGFIX: een type met 0% streefaandeel (bv. questionPercent op 0, of geen AI-key beschikbaar) had
+  // toch nog deficit 0 zodra het recent ook 0 keer voorkwam ("0 - 0 = 0") -- dat kon de NEGATIEVE
+  // deficits van andere, wél gewenste types (die toevallig al iets boven hun streefaandeel zaten)
+  // gewoon verslaan, waardoor een op 0% gezet type soms toch verscheen. Zulke types eerst volledig
+  // uitsluiten, voordat er een "beste" gekozen wordt.
+  const ranked = Object.entries(deficits).filter(([type])=>targetShare[type] > 0).sort((a,b)=>b[1]-a[1]);
   // Voorkom twee keer ACHTER ELKAAR hetzelfde type: bij een klein streefaandeel (bv. 15% zinnen = 1,5 op
   // een venster van 10) blijft dat type na precies 1 voorkomen nog altijd een positief deficit houden
   // (1 < 1,5), waardoor het pure deficit-algoritme het gewoon meteen weer kiest -- geen toeval, een
@@ -4174,7 +4180,7 @@ function pickNextItem(){
   // een niet te veel lager deficit (binnen 0,15), kies die in plaats daarvan; is het verschil groot (bv.
   // woorden staan écht ver achter), dan mag het type alsnog een keer herhalen -- dat is dan terecht.
   const lastType = history.length ? history[history.length-1] : null;
-  let bestType = ranked[0][0];
+  let bestType = ranked.length ? ranked[0][0] : "word";
   if(bestType === lastType && ranked.length > 1 && (ranked[0][1] - ranked[1][1]) < 0.15){
     bestType = ranked[1][0];
   }
@@ -4397,7 +4403,17 @@ function filterWordsActuallyInSentence(sentenceTr, words){
   const filtered = words.filter(w => w.tr && turkishWordLikelyInSentence(normSentence, w.tr));
   // Vangnet: mocht dit alsnog te streng blijken voor een specifieke zin, dan liever een spookwoord
   // laten staan dan per ongeluk de hele woordenlijst leegvegen.
-  return filtered.length ? filtered : words;
+  const result = filtered.length ? filtered : words;
+  // BUGFIX: de AI gaf soms hetzelfde woord twee keer terug in "words" (bv. omdat het twee keer in de
+  // zin voorkomt, of gewoon een AI-inconsistentie) -- dat toonde dan een dubbel chip'je onder de zin.
+  // Dedupliceren op de kale, diakritisch-platgevouwen basisvorm (net als de typo-tolerantie elders).
+  const seen = new Set();
+  return result.filter(w=>{
+    const key = foldTurkishDiacritics(normalize(w.tr || ""));
+    if(!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 async function generateSentenceCandidate(targetWord, grammarTopic, _levelOverride, _correctionNote, _vocabLevelOverride){
@@ -4420,7 +4436,7 @@ Als een grammaticaal onderwerp is opgegeven: bouw de zin zodanig dat die daar du
 Varieer ook actief in zinsstructuur over aanroepen heen: wissel af tussen bevestigende zinnen, ontkennende zinnen, vragen (waar dat past bij het onderwerp), en verschillende werkwoorden/situaties — vermijd een vast sjabloon dat je telkens herhaalt.
 BELANGRIJK: zinscomplexiteit (zinsbouw, lengte, aantal bijzinnen) en woordmoeilijkheid (welke woorden je gebruikt) zijn TWEE APARTE dingen die je per aanroep los te horen krijgt. Een complexe zinsbouw kan en moet met simpele woorden gebouwd worden als het opgegeven woordniveau laag is — een lang, formeel, ambtelijk-klinkend of literair register is dan GEEN excuus om toch moeilijke woorden te gebruiken. Bouw liever een langere zin met alleen eenvoudige woorden en veel herhaling/omschrijving dan een kortere zin met één moeilijk woord.
 Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde woordniveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de zin buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven WOORDNIVEAU (niet het zinscomplexiteitsniveau — die twee kunnen ver uit elkaar liggen). Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger woordniveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken of beter bij het formele register past -- eenvoud van woordkeuze weegt hier zwaarder dan een verfraaiing.
-Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin.
+Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin. Controleer deze lijst zelf nog eens tegen de zin voordat je antwoordt: ELK betekenisvol woord uit de zin moet er precies ÉÉN keer in staan — geen enkele overslaan, en geen woord dubbel opnemen ook al komt het meerdere keren in de zin voor.
 Antwoord in JSON.`;
   const user = `Zinscomplexiteit: ${cefrLabel(level)}. ${cefrGuidance(level)}
 Woordniveau-plafond (apart van de complexiteit hierboven): ${cefrLabel(vocabLevel)} — ELK woord in de zin (behalve het doelwoord en simpele functiewoorden) moet op of onder dit niveau liggen, ongeacht hoe complex de zinsbouw zelf moet zijn.
@@ -4647,7 +4663,7 @@ Verzin TWEE korte, natuurlijke Turkse zinnen over eenzelfde soort situatie, gela
 Bouw daaromheen, in het Turks, een vraag die vraagt welke van de twee (A of B) de constructie gebruikt — bijvoorbeeld in de trant van: "A: [zin A] B: [zin B] Hangi cümlede [korte Turkse omschrijving van de constructie] var, A mı B mi?"
 KRITIEK: het resultaat MOET eindigen op een vraagteken.
 Probeer het doelwoord er waar natuurlijk in te verwerken, maar dit is ONDERGESCHIKT aan het duidelijk demonstreren van de constructie in precies één van de twee zinnen.
-Geef ook een lijst van alle betekenisvolle woorden uit BEIDE voorbeeldzinnen samen (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — geen losse achtervoegsels), in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling en een schatting van het CEFR-niveau (0-17).
+Geef ook een lijst van alle betekenisvolle woorden uit BEIDE voorbeeldzinnen samen (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — geen losse achtervoegsels), in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling en een schatting van het CEFR-niveau (0-17). Controleer deze lijst zelf nog eens tegen de zinnen voordat je antwoordt: ELK betekenisvol woord moet er precies ÉÉN keer in staan — geen enkele overslaan, en geen woord dubbel opnemen ook al komt het in beide zinnen of meerdere keren voor.
 Antwoord in JSON.` : `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
 Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv. rekenen, geografie, een feit uit de zin zelf), ofwel een PERSOONLIJKE/OPEN vraag waarop elk contextueel passend Turks antwoord goed is (bv. "Bugün ne yaptın?").
 KRITIEK: het resultaat MOET een echte vraag zijn, GEEN mededelende stelling. Eindig ALTIJD met een vraagteken, en gebruik een vraagwoord (ne, nasıl, kim, nerede, kaç, hangi, neden, niçin, ...) of het vraagpartikel (mi/mı/mu/mü). Een zin als "Hava soğuktu ama dışarı çıktık." is FOUT (dat is een stelling); "Hava soğuk olmasına rağmen neden dışarı çıktınız?" is GOED (dat is een echte vraag).
@@ -4657,7 +4673,7 @@ Let op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak v
 Let ook op bezittelijkheid-consistentie: gebruik je een bezittelijk voornaamwoord (benim/senin/onun/bizim/sizin/onların) vóór een zelfstandig naamwoord, dan moet dat naamwoord ALTIJD ook zijn eigen bezittelijke uitgang dragen (bv. "benim evim", nooit kaal "benim ev") — het voornaamwoord alleen is in het Turks nooit voldoende.
 BELANGRIJK: zinscomplexiteit (zinsbouw, lengte, aantal bijzinnen) en woordmoeilijkheid (welke woorden je gebruikt) zijn TWEE APARTE dingen die je per aanroep los te horen krijgt. Een complexe zinsbouw kan en moet met simpele woorden gebouwd worden als het opgegeven woordniveau laag is — een lang, formeel of literair register is dan GEEN excuus om toch moeilijke woorden te gebruiken.
 Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde woordniveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de vraag buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven WOORDNIVEAU (niet het zinscomplexiteitsniveau). Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger woordniveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken -- eenvoud van woordkeuze weegt hier zwaarder dan een verfraaiing.
-Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag.
+Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag. Controleer deze lijst zelf nog eens tegen de vraag voordat je antwoordt: ELK betekenisvol woord moet er precies ÉÉN keer in staan — geen enkele overslaan, en geen woord dubbel opnemen ook al komt het meerdere keren in de vraag voor.
 Antwoord in JSON.`;
   const user = isRecognition ? `Zinscomplexiteit: ${cefrLabel(level)}. ${cefrGuidance(level)}
 Woordniveau-plafond: ${cefrLabel(vocabLevel)} — elk woord in beide voorbeeldzinnen (behalve het doelwoord en simpele functiewoorden) moet op of onder dit niveau liggen.
@@ -5469,7 +5485,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.40 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.42 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -6022,33 +6038,40 @@ async function handleCheckSuffix(answer){
 
 /* ===================== ZIN-UITLEG (taalkundige toelichting, los van de correctheidsbeoordeling) =====================
    gradeSentenceTranslation/gradeQuestionAnswer leveren als bijproduct al een KORTE, puur op correctheid
-   gerichte "uitleg" (max 2 zinnen: wat klopte niet). Dat is waardevol maar iets heel anders dan wat een
-   student na afloop echt verder helpt: een taalkundige duiding van de zin zelf -- welke constructie(s)
-   worden gebruikt, is er iets idiomatisch, wat is er verder opvallend/leerzaam. Deze functie levert
-   precies dat, als aanvulling (niet vervanging) op de korte correctheids-uitleg. */
+   gerichte "uitleg" (max 2 zinnen: wat klopte niet). Deze functie levert iets heel anders: een compacte
+   duiding van de zin zelf. BEWUST kort en gericht op precies 3 dingen (zie prompt) i.p.v. een brede,
+   altijd-verplichte grammatica-uitleg -- en grammaticale constructies die de gebruiker al beheerst
+   (blijkend uit zijn eigen cursus-voortgang op dat exacte onderwerp) worden niet meer herhaald. */
 async function explainSentenceContent(item){
   if(!hasKeyFor("sentence")) return "";
-  const wordContext = item.words.map(w=>`${w.tr} (${baseEnOf(w.en)})`).join(", ");
   const gTopic = item.grammarTopic ? grammarTopicByKey(item.grammarTopic) : null;
-  const sys = `Je bent een taaldocent Turks. Schrijf een inhoudelijke, taalkundige toelichting bij de Turkse ${item.type === "question" ? "oefenvraag" : "zin"} "${item.tr}" voor een uitklapbaar "Explanation"-paneel, gericht op een Engelstalige leerder. Schrijf ALTIJD rechtstreeks tegen de gebruiker (spreek "you" aan, NOOIT in de derde persoon), in het Engels, in aparte korte alinea's (gescheiden door een lege regel):
-1) Bespreek de opvallende grammaticale constructie(s) in deze ${item.type === "question" ? "vraag" : "zin"} (bv. een specifieke werkwoordstijd/aspect, naamvalgebruik, bezittelijke constructie, woordvolgorde, postpositie, ...) -- leg uit HOE die constructie werkt en waarom die hier zo gebruikt is. ALTIJD invullen, ook als er verder niets bijzonders te melden is.
-2) ALLEEN als relevant: is er iets idiomatisch, een vaste uitdrukking, of een niet-letterlijke betekenis? Benoem dat en leg het verschil tussen de letterlijke en de figuurlijke betekenis uit. Sla dit punt over als er niets van dien aard is.
-3) ALLEEN als het echt iets toevoegt: iets anders opvallends/leerzaams (bv. een lastige valse vriend, een culturele context, een uitspraakbijzonderheid). Sla dit punt over als er niets noemenswaardigs is.
-Focus op wat een leerder ECHT vooruit helpt -- dit is GEEN herhaling van de correctheidsbeoordeling (die heeft de gebruiker al apart gezien), dus ga niet in op of het antwoord van de gebruiker goed of fout was. Punt 1 mag nooit leeg blijven. Antwoord in JSON.`;
-  const user = `Turkse ${item.type === "question" ? "vraag" : "zin"}: "${item.tr}"\nBetekenisvolle woorden (basisvorm): ${wordContext}` + (gTopic ? `\nBewust gebouwd rond het grammaticale onderwerp: "${gTopic.label}" (${gTopic.hint})` : "");
+  let masteryNote = "";
+  if(gTopic){
+    const level = getTopicProgress(gTopic).level;
+    masteryNote = level >= 7
+      ? `\nDeze zin is gebouwd rond het grammaticale onderwerp "${gTopic.label}", maar de gebruiker beheerst dat al (niveau ${level}/10) -- leg dat onderwerp dus NIET (opnieuw) uit.`
+      : `\nDeze zin is gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}), dat de gebruiker nog aan het leren is (niveau ${level}/10) -- dit mag je wél kort noemen als het relevant is voor punt 3.`;
+  }
+  const sys = `Je bent een taaldocent Turks. Schrijf een KORTE, compacte toelichting bij de Turkse ${item.type === "question" ? "oefenvraag" : "zin"} "${item.tr}" voor een uitklapbaar "Explanation"-paneel, gericht op een Engelstalige leerder die al een tijd Turks leert. Schrijf ALTIJD rechtstreeks tegen de gebruiker (spreek "you" aan, NOOIT in de derde persoon), in het Engels. Behandel PRECIES deze 3 punten, elk in hooguit 1-2 korte zinnen (geen lange alinea's, geen opsomming van losse woordbetekenissen die de gebruiker al kent uit de woordenlijst):
+1) Wat betekent de zin/vraag, kort en natuurlijk geparafraseerd (geen woord-voor-woord vertaling, dat heeft de gebruiker al gezien).
+2) Klinkt dit als natuurlijk, gebruikelijk Turks zoals een moedertaalspreker het daadwerkelijk zou zeggen -- of is het (in deze specifieke, gegenereerde vorm) wat gekunsteld/schools/ongebruikelijk? Wees eerlijk als het laatste het geval is, en zeg dan kort hoe een moedertaalspreker het WEL zou zeggen.
+3) Wordt er idioom, een vaste uitdrukking, of een niet-letterlijke betekenis gebruikt? Zo ja, leg kort het verschil tussen de letterlijke en figuurlijke betekenis uit. Zo nee, zeg gewoon kort dat er geen idioom in zit -- verzin er niets bij.
+BELANGRIJK: leg GEEN grammaticale constructie/regel uit die niet expliciet in punt 3 relevant is, en zeker niet als de gebruiker die al beheerst (zie hieronder) -- dit is geen grammaticales, de gebruiker kent de basis al vanuit zijn cursus.${masteryNote}
+Dit is GEEN herhaling van de correctheidsbeoordeling (die heeft de gebruiker al apart gezien) -- ga niet in op of het antwoord van de gebruiker goed of fout was. Antwoord in JSON.`;
+  const user = `Turkse ${item.type === "question" ? "vraag" : "zin"}: "${item.tr}"`;
   const schema = {
     name: "zin_uitleg",
-    description: "Taalkundige toelichting bij de geoefende Turkse zin/vraag voor het uitklapbare Explanation-paneel.",
+    description: "Compacte toelichting (betekenis, natuurlijkheid, idioom) bij de geoefende Turkse zin/vraag voor het uitklapbare Explanation-paneel.",
     input_schema: {
       type: "object",
       properties: {
-        uitleg: {type:"string", description:"Toelichting in het Engels, rechtstreeks tegen de gebruiker gericht. Punt 1 (constructie(s)) mag nooit leeg zijn."},
+        uitleg: {type:"string", description:"Korte toelichting in het Engels (max 3 korte punten/zinnen), rechtstreeks tegen de gebruiker gericht."},
       },
       required: ["uitleg"]
     }
   };
   try{
-    const raw = await callAI("sentence", sys, user, 1200, 0, schema);
+    const raw = await callAI("sentence", sys, user, 500, 0, schema);
     return parseAIJson(raw).uitleg || "";
   }catch(e){
     return "";
