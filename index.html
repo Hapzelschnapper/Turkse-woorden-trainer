@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.48</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.49</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.48</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.49</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -442,7 +442,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.48</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.49</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -696,7 +696,7 @@ settings.cefrMax = Math.min(settings.cefrMax, MAX_VOCAB_CEFR_IDX);
 // aan elkaar en aan de woord-oefenslider -- nu onafhankelijk instelbaar.
 if(settings.sentenceComplexityMin === undefined) settings.sentenceComplexityMin = settings.cefrMin;
 if(settings.sentenceComplexityMax === undefined) settings.sentenceComplexityMax = settings.cefrMax;
-// Sentence complexity heeft sinds v3.48 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
+// Sentence complexity heeft sinds v3.49 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
 // bereik van vóór die wijziging hier eenmalig samenvouwen tot 1 vaste waarde (het midden, afgerond).
 if(settings.sentenceComplexityMin !== settings.sentenceComplexityMax){
   const mid = Math.round((settings.sentenceComplexityMin + settings.sentenceComplexityMax) / 2);
@@ -5540,7 +5540,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.48 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.49 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -6662,7 +6662,7 @@ async function renderDictationPractice(){
 async function gradeDictationAnswer(item, answer){
   if(normalize(answer) === normalize(item.en)) return {correct:true};
   if(!hasKeyFor("sentence")) return {correct:false, noKey:true};
-  const sys = `Je beoordeelt of de Engelse vertaling van een gebruiker de betekenis correct weergeeft van het Turkse ${item.wordCount===1?"woord":"zinnetje"} "${item.tr}". De referentievertaling is "${item.en}", maar andere bewoordingen die hetzelfde correct weergeven zijn OOK goed (parafrasering, synoniemen, een andere maar even correcte woordvolgorde). Kleine tikfouten met een ondubbelzinnige bedoeling reken je gewoon goed. Antwoord in JSON.`;
+  const sys = `Je beoordeelt of de Engelse vertaling van een gebruiker de betekenis correct weergeeft van het Turkse ${item.wordCount===1?"woord":"zinnetje"} "${item.tr}". De referentievertaling is "${item.en}", maar andere bewoordingen die hetzelfde correct weergeven zijn OOK goed (parafrasering, synoniemen, een andere maar even correcte woordvolgorde). Kleine tikfouten met een ondubbelzinnige bedoeling reken je gewoon goed.${item.wordCount===1 ? ` LET OP: dit is een LOS woord zonder context -- Turkse woorden zijn vaak op zichzelf al ambigu (bv. "sonra" = zowel "then" als "after"). Is het antwoord van de gebruiker een ANDERE, ECHT BESTAANDE Engelse betekenis van "${item.tr}" dan de gekozen referentie "${item.en}", reken dat dan OOK gewoon goed -- niet alleen parafraseringen van de referentie zelf.` : ""} Antwoord in JSON.`;
   const schema = {
     name: "beoordeel_dictee",
     description: "Of de Engelse vertaling van de gebruiker een acceptabele weergave van de Turkse zin is.",
@@ -6689,6 +6689,16 @@ function finalizeDictationAnswer(correct, extraNote){
   el("dict-answer-input").disabled = false;
 }
 
+function dictationAnswerMatchesAlternateMeaning(item, answer){
+  if(item.wordCount !== 1) return false; // dit soort ambiguïteit is alleen zinvol te checken bij één los woord, niet bij een hele zin
+  const norm = normalize(answer);
+  const shownTr = normalize(item.tr);
+  const answerWordData = EN_WORDS_DATA.find(w => normalize(baseEnOf(w.en)) === norm);
+  if(!answerWordData) return false;
+  const trans = cachedTranslation(answerWordData.en) || [];
+  return trans.some(t => normalize(stripTrClarifier(t)) === shownTr);
+}
+
 async function handleCheckDictation(){
   if(!currentDictationItem || dictationAnswered) return;
   const answer = el("dict-answer-input").value.trim();
@@ -6699,6 +6709,10 @@ async function handleCheckDictation(){
     return;
   }
   if(normalize(answer) === normalize(currentDictationItem.en)){
+    finalizeDictationAnswer(true);
+    return;
+  }
+  if(dictationAnswerMatchesAlternateMeaning(currentDictationItem, answer)){
     finalizeDictationAnswer(true);
     return;
   }
