@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.42</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.43</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.42</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.43</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -399,7 +399,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.42</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.43</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -651,7 +651,7 @@ settings.cefrMax = Math.min(settings.cefrMax, MAX_VOCAB_CEFR_IDX);
 // aan elkaar en aan de woord-oefenslider -- nu onafhankelijk instelbaar.
 if(settings.sentenceComplexityMin === undefined) settings.sentenceComplexityMin = settings.cefrMin;
 if(settings.sentenceComplexityMax === undefined) settings.sentenceComplexityMax = settings.cefrMax;
-// Sentence complexity heeft sinds v3.42 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
+// Sentence complexity heeft sinds v3.43 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
 // bereik van vóór die wijziging hier eenmalig samenvouwen tot 1 vaste waarde (het midden, afgerond).
 if(settings.sentenceComplexityMin !== settings.sentenceComplexityMax){
   const mid = Math.round((settings.sentenceComplexityMin + settings.sentenceComplexityMax) / 2);
@@ -5385,6 +5385,8 @@ async function renderPractice(){
     el("badge-type").className = "badge " + (isSuffix ? "badge-word" : (isQ ? "badge-question" : "badge-sentence"));
     el("tr-word").textContent = isSuffix ? "🤖 …" : (isQ ? "🤖 AI is coming up with a question…" : "🤖 AI is generating a sentence…");
     el("tr-word").className = "tr-word" + (isSuffix ? "" : " sentence");
+    el("word-meta").textContent = ""; // anders blijft de ondertitel (bv. CEFR-niveau/pos) van het VORIGE woord zichtbaar tijdens het genereren
+    setSpeakableTr(null); // idem voor de 🔊-knop, die anders ook naar het vorige woord bleef wijzen
     el("level-fill").style.width = "0%";
     el("level-label").textContent = "please wait…";
     el("answer-instruction").querySelector("span").textContent = "";
@@ -5485,7 +5487,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.42 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.43 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
