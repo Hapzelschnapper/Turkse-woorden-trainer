@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.39</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.40</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.39</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.40</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -399,7 +399,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.39</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.40</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -651,7 +651,7 @@ settings.cefrMax = Math.min(settings.cefrMax, MAX_VOCAB_CEFR_IDX);
 // aan elkaar en aan de woord-oefenslider -- nu onafhankelijk instelbaar.
 if(settings.sentenceComplexityMin === undefined) settings.sentenceComplexityMin = settings.cefrMin;
 if(settings.sentenceComplexityMax === undefined) settings.sentenceComplexityMax = settings.cefrMax;
-// Sentence complexity heeft sinds v3.39 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
+// Sentence complexity heeft sinds v3.40 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
 // bereik van vóór die wijziging hier eenmalig samenvouwen tot 1 vaste waarde (het midden, afgerond).
 if(settings.sentenceComplexityMin !== settings.sentenceComplexityMax){
   const mid = Math.round((settings.sentenceComplexityMin + settings.sentenceComplexityMax) / 2);
@@ -5469,7 +5469,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.39 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.40 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -6020,6 +6020,51 @@ async function handleCheckSuffix(answer){
   }
 }
 
+/* ===================== ZIN-UITLEG (taalkundige toelichting, los van de correctheidsbeoordeling) =====================
+   gradeSentenceTranslation/gradeQuestionAnswer leveren als bijproduct al een KORTE, puur op correctheid
+   gerichte "uitleg" (max 2 zinnen: wat klopte niet). Dat is waardevol maar iets heel anders dan wat een
+   student na afloop echt verder helpt: een taalkundige duiding van de zin zelf -- welke constructie(s)
+   worden gebruikt, is er iets idiomatisch, wat is er verder opvallend/leerzaam. Deze functie levert
+   precies dat, als aanvulling (niet vervanging) op de korte correctheids-uitleg. */
+async function explainSentenceContent(item){
+  if(!hasKeyFor("sentence")) return "";
+  const wordContext = item.words.map(w=>`${w.tr} (${baseEnOf(w.en)})`).join(", ");
+  const gTopic = item.grammarTopic ? grammarTopicByKey(item.grammarTopic) : null;
+  const sys = `Je bent een taaldocent Turks. Schrijf een inhoudelijke, taalkundige toelichting bij de Turkse ${item.type === "question" ? "oefenvraag" : "zin"} "${item.tr}" voor een uitklapbaar "Explanation"-paneel, gericht op een Engelstalige leerder. Schrijf ALTIJD rechtstreeks tegen de gebruiker (spreek "you" aan, NOOIT in de derde persoon), in het Engels, in aparte korte alinea's (gescheiden door een lege regel):
+1) Bespreek de opvallende grammaticale constructie(s) in deze ${item.type === "question" ? "vraag" : "zin"} (bv. een specifieke werkwoordstijd/aspect, naamvalgebruik, bezittelijke constructie, woordvolgorde, postpositie, ...) -- leg uit HOE die constructie werkt en waarom die hier zo gebruikt is. ALTIJD invullen, ook als er verder niets bijzonders te melden is.
+2) ALLEEN als relevant: is er iets idiomatisch, een vaste uitdrukking, of een niet-letterlijke betekenis? Benoem dat en leg het verschil tussen de letterlijke en de figuurlijke betekenis uit. Sla dit punt over als er niets van dien aard is.
+3) ALLEEN als het echt iets toevoegt: iets anders opvallends/leerzaams (bv. een lastige valse vriend, een culturele context, een uitspraakbijzonderheid). Sla dit punt over als er niets noemenswaardigs is.
+Focus op wat een leerder ECHT vooruit helpt -- dit is GEEN herhaling van de correctheidsbeoordeling (die heeft de gebruiker al apart gezien), dus ga niet in op of het antwoord van de gebruiker goed of fout was. Punt 1 mag nooit leeg blijven. Antwoord in JSON.`;
+  const user = `Turkse ${item.type === "question" ? "vraag" : "zin"}: "${item.tr}"\nBetekenisvolle woorden (basisvorm): ${wordContext}` + (gTopic ? `\nBewust gebouwd rond het grammaticale onderwerp: "${gTopic.label}" (${gTopic.hint})` : "");
+  const schema = {
+    name: "zin_uitleg",
+    description: "Taalkundige toelichting bij de geoefende Turkse zin/vraag voor het uitklapbare Explanation-paneel.",
+    input_schema: {
+      type: "object",
+      properties: {
+        uitleg: {type:"string", description:"Toelichting in het Engels, rechtstreeks tegen de gebruiker gericht. Punt 1 (constructie(s)) mag nooit leeg zijn."},
+      },
+      required: ["uitleg"]
+    }
+  };
+  try{
+    const raw = await callAI("sentence", sys, user, 1200, 0, schema);
+    return parseAIJson(raw).uitleg || "";
+  }catch(e){
+    return "";
+  }
+}
+// Registreert de Explanation-knop lazy: toont de al-bekende (gratis) korte correctheids-uitleg meteen
+// zodra de gebruiker 'm opent, aangevuld met de taalkundige duiding (die WEL een aparte AI-call kost,
+// dus pas bij het daadwerkelijk openen opgehaald wordt).
+function registerSentenceExplanation(item, shortUitleg){
+  if(!hasKeyFor("sentence")){ setExplanation(shortUitleg || ""); return; }
+  setExplanationLoader(async ()=>{
+    const deep = await explainSentenceContent(item);
+    return [shortUitleg, deep].map(s=>(s||"").trim()).filter(Boolean).join("\n\n");
+  });
+}
+
 async function handleCheckSentence(answer){
   if(!hasKeyFor("sentence")){
     showFeedback("wrong", "Sentences can only be graded by AI — set a " + keyNameFor("sentence") + " API key in Settings.");
@@ -6030,7 +6075,7 @@ async function handleCheckSentence(answer){
   showFeedback("pending", "🤖 AI is checking your translation and the individual words…");
   try{
     const verdict = await gradeSentenceTranslation(currentItem, answer);
-    setExplanation(verdict.uitleg);
+    registerSentenceExplanation(currentItem, verdict.uitleg);
     currentAnswered = true;
     currentCorrect = !!verdict.correct;
     recordHistory("sentence");
@@ -6081,7 +6126,7 @@ async function handleCheckQuestion(answer){
   showFeedback("pending", "🤖 AI is checking your Turkish answer…");
   try{
     const verdict = await gradeQuestionAnswer(currentItem, answer);
-    setExplanation(verdict.uitleg);
+    registerSentenceExplanation(currentItem, verdict.uitleg);
     currentAnswered = true;
     currentCorrect = !!verdict.correct;
     recordHistory("question");
@@ -6488,7 +6533,7 @@ async function disputeAnswer(){
       const verdict = isQ
         ? await gradeQuestionAnswer(currentItem, answer, true)
         : await gradeSentenceTranslation(currentItem, answer, true);
-      setExplanation(verdict.uitleg);
+      registerSentenceExplanation(currentItem, verdict.uitleg);
       currentItem.words.forEach((w, i)=>{
         const correct = revealedWords.has(w.en) ? false : !!verdict.words[i]; // opgezocht woord = altijd fout
         recordResult(w.en, correct);
