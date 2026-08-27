@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.43</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.46</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.43</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.46</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -103,13 +103,12 @@
     </div>
   </section>
 
-  <!-- ===================== SUFFIX TRAINER SCREEN =====================
-       Voorheen 15% kans binnen de gewone woord-oefeningen op het Practice-tabblad; nu een eigen tab,
-       zodat vervoeging/suffix-oefeningen gericht en los van de gewone woord/zin/vraag-mix geoefend
-       kunnen worden. Geen scoresysteem/niveaubalk (zie renderSuffixPractice) -- puur goed/fout, met
-       bij elk antwoord de morfeem-opbouw (suf-breakdown) en bij een fout antwoord ook het verschil
-       met het eigen antwoord. -->
+  <!-- ===================== "SPECIAL" TAB (voorheen alleen suffixes) =====================
+       settings.specialMode kiest welk van de twee onderstaande content-blokken zichtbaar is: de
+       bestaande suffix-trainer, of de nieuwe "type what you hear"-luisteroefening. Zie switchTab()
+       en renderSpecialTab(). -->
   <section id="screen-suffixes" class="hidden">
+    <div id="special-suffixes-content">
     <div class="card">
       <div class="muted" style="margin-bottom:10px;">Apply mastered grammar patterns to mastered verbs and nouns, practised on their own. No score — just right or wrong, with a breakdown of the suffixes used.</div>
     </div>
@@ -134,6 +133,41 @@
       <div id="suf-feedback-box"></div>
       <div id="suf-diff-box" class="muted hidden" style="margin-top:8px;font-size:.9rem;white-space:pre-line;"></div>
       <div id="suf-breakdown-box" class="hidden" style="margin-top:10px;"></div>
+    </div>
+    </div>
+
+    <!-- ===================== "TYPE WHAT YOU HEAR" (luister-dictee) =====================
+         Speelt een Turks woord of zin af (TTS, geen tekst zichtbaar tot na het beoordelen) die de
+         gebruiker naar het Engels moet vertalen. Lengte instelbaar op DIT scherm zelf (7 niveaus, zie
+         DICTATION_LEVELS) -- los van de suffix/dictation-keuze zelf, die in Settings staat. -->
+    <div id="special-dictation-content" class="hidden">
+      <div class="card">
+        <div class="muted" style="margin-bottom:10px;">Listen to a Turkish word or sentence (no text shown) and type its English translation.</div>
+        <div class="row space-between" style="margin-bottom:4px;">
+          <span>Length</span>
+          <span class="muted" id="dict-level-label">1 word (mastered)</span>
+        </div>
+        <input type="range" id="dict-level-slider" min="1" max="7" step="1" value="1" style="width:100%;">
+      </div>
+      <div class="card" id="dictation-card">
+        <div class="row space-between">
+          <span class="badge badge-word" id="dict-badge">🎧 listening</span>
+          <div class="row" style="gap:6px;">
+            <button class="btn-ghost btn-small" id="btn-dict-speak" title="Play">🔊</button>
+            <button class="btn-ghost btn-small" id="btn-dict-speak-slow" title="Play at half speed">🐢</button>
+          </div>
+        </div>
+        <div id="dict-tr-reveal" class="tr-word sentence hidden" style="margin-top:10px;"></div>
+        <div style="margin-top:16px;">
+          <div class="row space-between" style="margin-bottom:6px;font-weight:700;font-size:.85rem;"><span>✍️ Type the English translation</span></div>
+          <input type="search" id="dict-answer-input" placeholder="Type what you heard, in English…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <button class="btn-primary" id="dict-btn-check" style="flex:1;">Check</button>
+          <button class="btn-secondary btn-small" id="dict-btn-skip">Skip</button>
+        </div>
+        <div id="dict-feedback-box"></div>
+      </div>
     </div>
   </section>
 
@@ -229,6 +263,7 @@
         <div class="box"><div class="num" id="kpi-total">0</div><div class="lbl">total words</div></div>
         <div class="box"><div class="num" id="kpi-never">0</div><div class="lbl">not shown yet</div></div>
         <div class="box" title="Number of PREVIOUSLY shown words whose spaced-repetition review time has passed — i.e. 'due again'. Never-shown words (level 0) are not included here."><div class="num" id="kpi-due">0</div><div class="lbl">ready to practise now</div></div>
+        <div class="box" title="Approximate number of distinct words known at level 8+: (en-tr level-8+ count + tr-en level-8+ count) / 2, since the two lists are separately curated/scored and simply adding them would double-count a word mastered in both directions."><div class="num" id="kpi-mastered8">0</div><div class="lbl">level 8+ (mastered)</div></div>
       </div>
       <div class="muted">Vocabulary mastery per CEFR sub-level (as %)</div>
       <div id="cefr-progress-vocab" style="margin-top:10px;"></div>
@@ -301,6 +336,14 @@
       </div>
       <input type="range" id="sent-complexity-slider" min="0" max="17" step="1" value="3" style="width:100%;">
       <select id="sent-complexity-select" style="width:100%;margin-top:6px;"></select>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">🧩 Special tab</h3>
+      <div class="muted" style="margin-bottom:10px;">What the "Special" tab shows.</div>
+      <select id="special-mode-select" class="select-input" style="width:100%;">
+        <option value="suffixes">Suffix trainer (conjugation practice)</option>
+        <option value="dictation">Type what you hear (listening dictation)</option>
+      </select>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">🔊 Sound effects</h3>
@@ -399,7 +442,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.43</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.46</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -408,7 +451,7 @@
 
   <div class="tabbar">
     <button class="tab-btn active" data-tab="practice"><span class="ic">📝</span>Practice</button>
-    <button class="tab-btn" data-tab="suffixes"><span class="ic">🧩</span>Suffixes</button>
+    <button class="tab-btn" data-tab="suffixes"><span class="ic">🧩</span>Special</button>
     <button class="tab-btn" data-tab="course"><span class="ic">🎓</span>Course</button>
     <button class="tab-btn" data-tab="words"><span class="ic">📖</span>Words</button>
     <button class="tab-btn" data-tab="stats"><span class="ic">📊</span>Stats</button>
@@ -651,7 +694,7 @@ settings.cefrMax = Math.min(settings.cefrMax, MAX_VOCAB_CEFR_IDX);
 // aan elkaar en aan de woord-oefenslider -- nu onafhankelijk instelbaar.
 if(settings.sentenceComplexityMin === undefined) settings.sentenceComplexityMin = settings.cefrMin;
 if(settings.sentenceComplexityMax === undefined) settings.sentenceComplexityMax = settings.cefrMax;
-// Sentence complexity heeft sinds v3.43 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
+// Sentence complexity heeft sinds v3.46 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
 // bereik van vóór die wijziging hier eenmalig samenvouwen tot 1 vaste waarde (het midden, afgerond).
 if(settings.sentenceComplexityMin !== settings.sentenceComplexityMax){
   const mid = Math.round((settings.sentenceComplexityMin + settings.sentenceComplexityMax) / 2);
@@ -676,6 +719,8 @@ if(settings.adaptiveEnabled === undefined) settings.adaptiveEnabled = false;
 // instelling kan de gebruiker dat temperen. Standaard aan, met een gematigde verhouding.
 if(settings.mixNewWords === undefined) settings.mixNewWords = true;
 if(settings.soundEffects === undefined) settings.soundEffects = true;
+if(settings.specialMode === undefined) settings.specialMode = "suffixes";
+if(settings.dictationLevel === undefined) settings.dictationLevel = 1;
 if(settings.newWordsPer5 === undefined) settings.newWordsPer5 = 2;
 // Welke woordenlijst de losse-woord-oefeningen op het hoofdscherm gebruikt: "en-tr" (alleen de en-tr-
 // lijst), "tr-en" (alleen de onafhankelijk gecureerde tr-en-lijst), of "random" (elke beurt 50/50 geloot
@@ -4357,8 +4402,9 @@ async function pickTurkishTargetForSentence(){
 /* Steekproef van woorden die de gebruiker daadwerkelijk al goed beheerst (binnen het ontgrendelde deel
    van de cursus) -- gebruikt om aan de AI expliciet mee te geven welke "vulwoorden" veilig zijn, zodat
    een zin niet stiekem onbekende woorden binnensmokkelt enkel omdat ze "bij het niveau passen". */
-function pickKnownVocabSample(count){
-  const allMastered = baseWordList().map(w=>w.en).filter(en => getProgress(en).level >= 7);
+function pickKnownVocabSample(count, minLevel){
+  const threshold = minLevel ?? 7;
+  const allMastered = baseWordList().map(w=>w.en).filter(en => getProgress(en).level >= threshold);
   const mastered = allMastered.filter(inCefrRangeEn);
   const pool = mastered.length ? mastered : allMastered;
   const shuffled = [...pool];
@@ -5487,7 +5533,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.43 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.46 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -6495,6 +6541,182 @@ function promptAddTranslation(item, answer){
   saveJSON(LS_CUSTOM, custom);
 }
 
+/* ===================== "TYPE WHAT YOU HEAR" (luister-dictee, tweede modus van de Special-tab) =====================
+   Speelt een Turks woord/zin af (TTS, geen tekst zichtbaar tot na het beoordelen) die de gebruiker naar
+   het Engels moet vertalen. 7 lengte-niveaus, instelbaar op het scherm zelf (settings.dictationLevel):
+   niveau 1 is GEEN AI-generatie maar een rechtstreeks uit de eigen woordenlijst getrokken, al beheerst
+   (niveau 8+) woord -- sneller, goedkoper, en garandeert dat het woord ook echt bekend is. Niveau 2-7
+   laat de AI een zin met ongeveer het gevraagde aantal woorden bouwen. */
+const DICTATION_LEVELS = [
+  {n:1, label:"1 word (mastered)", min:1, max:1},
+  {n:2, label:"2 words", min:2, max:2},
+  {n:3, label:"3 words", min:3, max:3},
+  {n:4, label:"4-5 words", min:4, max:5},
+  {n:5, label:"6-8 words", min:6, max:8},
+  {n:6, label:"9-12 words", min:9, max:12},
+  {n:7, label:"12+ words", min:12, max:16},
+];
+let currentDictationItem = null;
+let dictationAnswered = false;
+
+function dictationTierFor(level){
+  return DICTATION_LEVELS[Math.max(1, Math.min(7, level||1)) - 1];
+}
+
+// Niveau 1: rechtstreeks een al beheerst (niveau 8+) woord uit de eigen en-tr-lijst, geen AI-call nodig.
+async function pickMasteredWordForDictation(){
+  const mastered = baseWordList().map(w=>w.en).filter(en => getProgress(en).level >= 8);
+  const poolInRange = mastered.filter(inCefrRangeEn);
+  const pool = poolInRange.length ? poolInRange : mastered;
+  if(!pool.length) return null;
+  const en = pool[Math.floor(Math.random()*pool.length)];
+  const tr = await getOrFetchTranslation(en);
+  if(!tr || !tr.length) return null;
+  return {tr: tr[0], en: baseEnOf(en), wordCount: 1};
+}
+
+// Niveau 2-7: AI bouwt een zin van ongeveer het gevraagde aantal woorden, uit bekende woordenschat --
+// dit is een LUISTEROEFENING (kunnen volgen/verstaan), geen woordenschat-uitbreiding, dus bewust geen
+// nieuwe/moeilijke woorden erin.
+async function generateDictationSentence(tier){
+  const knownSample = pickKnownVocabSample(35, 8); // liefst al beheerst (niveau 8+), niet alleen "redelijk bekend" (7+)
+  const sys = `Je maakt korte, natuurlijke Turkse luister-dictee-zinnen voor een taalleerapp: de gebruiker HOORT de zin (audio) en moet 'm naar het Engels vertalen, zonder de Turkse tekst te zien.
+De zin moet ONGEVEER het opgegeven aantal woorden hebben (functiewoorden meegeteld) en grammaticaal correct + natuurlijk klinken voor een moedertaalspreker.
+Dit is een LUISTEROEFENING (kunnen volgen/verstaan van gesproken Turks), GEEN woordenschat-uitbreiding: gebruik daarom ALLEEN eenvoudige, hoogfrequente woorden, bij voorkeur letterlijk uit de meegegeven bekende-woordenlijst van de gebruiker, aangevuld met simpele functiewoorden (voornaamwoorden, is/zijn, veelvoorkomende bijwoorden) waar nodig. Verzin geen nieuw/moeilijk woord puur om op het gevraagde aantal woorden uit te komen.
+Bij 2 woorden: bouw een minimale maar volledige, natuurlijke zin (bv. onderwerp+werkwoord, bijvoeglijk naamwoord+zelfstandig naamwoord, werkwoord+lijdend voorwerp) -- geen twee losse woorden zonder samenhang.
+Geef ook een natuurlijke, vloeiende Engelse referentievertaling van de hele zin.
+Antwoord in JSON.`;
+  const user = `Gevraagd aantal woorden: ${tier.min === tier.max ? tier.min : `${tier.min}-${tier.max}`}${tier.n===7 ? " (mag ook iets meer zijn)" : ""}.
+${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}`;
+  const schema = {
+    name: "dictee_zin",
+    description: "Een Turkse luister-dictee-zin met Engelse referentievertaling.",
+    input_schema: {
+      type: "object",
+      properties: {
+        tr: {type:"string", description:"De Turkse zin (of het Turkse woord bij 1-2 woorden)."},
+        en: {type:"string", description:"Natuurlijke, vloeiende Engelse vertaling van de hele zin."},
+      },
+      required: ["tr","en"]
+    }
+  };
+  const raw = await callAI("sentence", sys, user, 600, 0.6, schema);
+  const parsed = parseAIJson(raw);
+  if(!parsed.tr || !parsed.en) throw new Error("AI did not return a dictation sentence.");
+  return {tr: parsed.tr, en: parsed.en, wordCount: tier.n};
+}
+
+async function generateDictationItem(){
+  const tier = dictationTierFor(settings.dictationLevel);
+  if(tier.n === 1){
+    const item = await pickMasteredWordForDictation();
+    if(item) return item;
+    return null; // geen mastered woord beschikbaar -- renderDictationPractice toont dan een melding
+  }
+  return generateDictationSentence(tier);
+}
+
+function renderDictationLevelLabel(){
+  const tier = dictationTierFor(settings.dictationLevel);
+  el("dict-level-slider").value = tier.n;
+  el("dict-level-label").textContent = tier.label;
+}
+
+async function renderDictationPractice(){
+  dictationAnswered = false;
+  currentDictationItem = null;
+  el("dict-answer-input").value = "";
+  el("dict-answer-input").disabled = true;
+  el("dict-btn-check").disabled = true;
+  el("dict-btn-check").textContent = "Check";
+  el("dict-feedback-box").innerHTML = "";
+  el("dict-tr-reveal").classList.add("hidden");
+  el("dict-tr-reveal").textContent = "";
+  el("dict-badge").textContent = "🤖 …";
+  renderDictationLevelLabel();
+  try{
+    currentDictationItem = await generateDictationItem();
+  }catch(e){
+    el("dict-feedback-box").innerHTML = `<div class="feedback wrong">⚠️ Could not generate an exercise: ${escapeHtml(e.message)}</div>`;
+    el("dict-badge").textContent = "🎧 listening";
+    return;
+  }
+  el("dict-badge").textContent = "🎧 listening";
+  if(!currentDictationItem){
+    el("dict-feedback-box").innerHTML = `<div class="feedback wrong">⚠️ No mastered word (level 8+) available yet for "1 word" — practice some words first on the Practice tab, or pick a longer length above.</div>`;
+    return;
+  }
+  el("dict-answer-input").disabled = false;
+  el("dict-btn-check").disabled = false;
+  if(hasLikelyPhysicalKeyboard()) el("dict-answer-input").focus();
+  speakTurkish(currentDictationItem.tr);
+}
+
+async function gradeDictationAnswer(item, answer){
+  if(normalize(answer) === normalize(item.en)) return {correct:true};
+  if(!hasKeyFor("sentence")) return {correct:false, noKey:true};
+  const sys = `Je beoordeelt of de Engelse vertaling van een gebruiker de betekenis correct weergeeft van het Turkse ${item.wordCount===1?"woord":"zinnetje"} "${item.tr}". De referentievertaling is "${item.en}", maar andere bewoordingen die hetzelfde correct weergeven zijn OOK goed (parafrasering, synoniemen, een andere maar even correcte woordvolgorde). Kleine tikfouten met een ondubbelzinnige bedoeling reken je gewoon goed. Antwoord in JSON.`;
+  const schema = {
+    name: "beoordeel_dictee",
+    description: "Of de Engelse vertaling van de gebruiker een acceptabele weergave van de Turkse zin is.",
+    input_schema: { type:"object", properties: { correct: {type:"boolean"} }, required: ["correct"] }
+  };
+  try{
+    const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 150, 0, schema);
+    return {correct: !!parseAIJson(raw).correct};
+  }catch(e){
+    return {correct:false, error:e.message};
+  }
+}
+
+function finalizeDictationAnswer(correct, extraNote){
+  dictationAnswered = true;
+  playFeedbackSound(correct ? "correct" : "wrong");
+  el("dict-tr-reveal").textContent = currentDictationItem.tr;
+  el("dict-tr-reveal").classList.remove("hidden");
+  el("dict-feedback-box").innerHTML = `<div class="feedback ${correct ? "correct" : "wrong"}">${correct ? "✅" : "❌"}<br>` +
+    `You heard: <b>${escapeHtml(currentDictationItem.tr)}</b><br>Reference translation: <b>${escapeHtml(currentDictationItem.en)}</b>` +
+    (extraNote ? `<br><span class="muted">${extraNote}</span>` : "") + `</div>`;
+  el("dict-btn-check").textContent = "Next ▶";
+  el("dict-btn-check").disabled = false;
+  el("dict-answer-input").disabled = false;
+}
+
+async function handleCheckDictation(){
+  if(!currentDictationItem || dictationAnswered) return;
+  const answer = el("dict-answer-input").value.trim();
+  el("dict-btn-check").disabled = true;
+  el("dict-answer-input").disabled = true;
+  if(!answer){
+    finalizeDictationAnswer(false);
+    return;
+  }
+  if(normalize(answer) === normalize(currentDictationItem.en)){
+    finalizeDictationAnswer(true);
+    return;
+  }
+  if(!hasKeyFor("sentence")){
+    finalizeDictationAnswer(false, `Set a ${keyNameFor("sentence")} API key to have other phrasings judged too.`);
+    return;
+  }
+  el("dict-feedback-box").innerHTML = `<div class="feedback pending">🤖 AI is checking your answer…</div>`;
+  const verdict = await gradeDictationAnswer(currentDictationItem, answer);
+  finalizeDictationAnswer(!!verdict.correct, verdict.error ? "⚠️ Could not reach the AI, counted as incorrect for now." : null);
+}
+
+// Dispatcher voor de Special-tab: toont/genereert suffix-oefeningen of de dictee-oefening, afhankelijk
+// van settings.specialMode (zie de instelling "🧩 Special tab").
+function renderSpecialTab(){
+  const mode = settings.specialMode || "suffixes";
+  el("special-suffixes-content").classList.toggle("hidden", mode !== "suffixes");
+  el("special-dictation-content").classList.toggle("hidden", mode !== "dictation");
+  if(mode === "suffixes"){
+    if(!currentSuffixItem) renderSuffixPractice(); // niet opnieuw genereren als er al een opgave actief is
+  } else {
+    if(!currentDictationItem) renderDictationPractice();
+  }
+}
+
 /* ===================== HANDMATIGE WOORDCORRECTIE ===================== */
 // Laat de gebruiker een woordkaart (Engels<->Turks) direct corrigeren als de AI/gecureerde data
 // fout blijkt te zijn -- de correctie vervangt de vertaling volledig en heeft overal voorrang
@@ -6744,7 +6966,7 @@ function renderCefrProgress(containerId, getPct){
 
 function renderStats(){
   const words = allWords();
-  let total=0, due=0, neverShown=0;
+  let total=0, due=0, neverShown=0, mastered8=0;
   const now = Date.now();
   for(const it of words){
     const p = getProgress(it.en);
@@ -6760,11 +6982,25 @@ function renderStats(){
     } else if(p.due <= now){
       due++;
     }
+    if(p.level >= 8) mastered8++; // zelfde pool als pickMasteredWordForDictation/pickKnownVocabSample(.., 8) gebruiken
   }
+  // en-tr en tr-en zijn twee APART gecureerde lijsten met elk hun eigen score voor hetzelfde onderliggende
+  // Turkse vocabulaire (zie [[oxford5000-wordlist]]) -- ze gewoon optellen zou dubbeltellen (een woord dat
+  // in beide richtingen beheerst wordt telt dan 2x), maar los tonen (zoals eerder bij het totale
+  // woordenaantal wél bewust gedaan is, om inflatie te voorkomen) onderschat juist als een woord wél in de
+  // ene richting maar nog niet in de andere op niveau 8 staat. Het GEMIDDELDE van beide tellingen ligt daar
+  // tussenin en benadert het werkelijke aantal beheerste woorden nauwkeuriger dan elke richting apart.
+  let mastered8Tr = 0;
+  for(const w of TR_WORDS_DATA){
+    if(getProgress(w.key).level >= 8) mastered8Tr++;
+  }
+  const mastered8Avg = Math.round((mastered8 + mastered8Tr) / 2);
   el("kpi-total").textContent = total;
   el("kpi-due").textContent = due;
   const neverEl = el("kpi-never");
   if(neverEl) neverEl.textContent = neverShown;
+  const mastered8El = el("kpi-mastered8");
+  if(mastered8El) mastered8El.textContent = mastered8Avg;
 
   // Grammatica-KPI's: zelfde soort tellingen, maar dan voor de 46 grammatica-onderwerpen
   let gTotal=0, gDue=0;
@@ -7401,7 +7637,7 @@ function switchTab(tab){
   if(tab==="course") renderCourseTab();
   if(tab==="words") renderWordsTab();
   if(tab==="suffixes"){
-    if(!currentSuffixItem) renderSuffixPractice(); // niet opnieuw genereren als er al een opgave actief is
+    renderSpecialTab();
   }
   if(tab==="practice"){
     if(!currentItem) renderPractice(); // niet opnieuw genereren als er al een opgave actief is
@@ -7749,6 +7985,7 @@ function initSettingsUI(){
   updateCefrUnlockedInfo();
   el("adaptive-enabled").checked = !!settings.adaptiveEnabled;
   el("sound-effects-toggle").checked = !!settings.soundEffects;
+  el("special-mode-select").value = settings.specialMode;
   el("adaptive-threshold").value = settings.adaptiveThreshold ?? 60;
   updateAdaptiveLabels();
   el("key-status").textContent = settings.apiKey ? "✅ Key is set." : "No key set yet.";
@@ -7883,6 +8120,28 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     }
   });
 
+  el("dict-level-slider").addEventListener("input", ()=>{
+    settings.dictationLevel = parseInt(el("dict-level-slider").value, 10);
+    saveJSON(LS_SETTINGS, settings);
+    renderDictationLevelLabel();
+  });
+  el("dict-level-slider").addEventListener("change", renderDictationPractice); // pas na loslaten een nieuwe opgave laden, niet bij elke tussenstap
+  el("btn-dict-speak").addEventListener("click", ()=> currentDictationItem && speakTurkish(currentDictationItem.tr));
+  el("btn-dict-speak-slow").addEventListener("click", ()=> currentDictationItem && speakTurkish(currentDictationItem.tr, 0.5));
+  el("dict-btn-check").addEventListener("click", ()=>{
+    if(!dictationAnswered) handleCheckDictation(); else renderDictationPractice();
+  });
+  el("dict-btn-skip").addEventListener("click", ()=>{
+    if(!currentDictationItem || dictationAnswered) return;
+    renderDictationPractice();
+  });
+  el("dict-answer-input").addEventListener("keydown", e=>{
+    if(e.key === "Enter"){
+      e.preventDefault();
+      if(!dictationAnswered) handleCheckDictation(); else renderDictationPractice();
+    }
+  });
+
   el("words-sort").addEventListener("change", renderWordsTab);
   el("words-filter").addEventListener("change", renderWordsTab);
   el("words-cefr-filter").addEventListener("change", renderWordsTab);
@@ -7975,6 +8234,11 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   }
   el("sent-complexity-slider").addEventListener("input", ()=> applySentComplexity(parseInt(el("sent-complexity-slider").value,10)));
   el("sent-complexity-select").addEventListener("change", ()=> applySentComplexity(parseInt(el("sent-complexity-select").value,10)));
+  el("special-mode-select").addEventListener("change", ()=>{
+    settings.specialMode = el("special-mode-select").value;
+    saveJSON(LS_SETTINGS, settings);
+    if(el("screen-suffixes") && !el("screen-suffixes").classList.contains("hidden")) renderSpecialTab();
+  });
   el("adaptive-enabled").addEventListener("change", ()=>{
     settings.adaptiveEnabled = el("adaptive-enabled").checked;
     settings.soundEffects = el("sound-effects-toggle").checked;
