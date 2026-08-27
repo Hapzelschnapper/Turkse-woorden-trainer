@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.38</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.39</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.38</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.39</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -399,7 +399,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.38</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.39</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -651,7 +651,7 @@ settings.cefrMax = Math.min(settings.cefrMax, MAX_VOCAB_CEFR_IDX);
 // aan elkaar en aan de woord-oefenslider -- nu onafhankelijk instelbaar.
 if(settings.sentenceComplexityMin === undefined) settings.sentenceComplexityMin = settings.cefrMin;
 if(settings.sentenceComplexityMax === undefined) settings.sentenceComplexityMax = settings.cefrMax;
-// Sentence complexity heeft sinds v3.38 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
+// Sentence complexity heeft sinds v3.39 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
 // bereik van vóór die wijziging hier eenmalig samenvouwen tot 1 vaste waarde (het midden, afgerond).
 if(settings.sentenceComplexityMin !== settings.sentenceComplexityMax){
   const mid = Math.round((settings.sentenceComplexityMin + settings.sentenceComplexityMax) / 2);
@@ -4166,7 +4166,18 @@ function pickNextItem(){
     sentence: (sentPct/totalPct) - recentSentenceShare,
     question: (questPct/totalPct) - recentQuestionShare,
   } : {word:1, sentence:0, question:0};
-  const bestType = Object.entries(deficits).sort((a,b)=>b[1]-a[1])[0][0];
+  const ranked = Object.entries(deficits).sort((a,b)=>b[1]-a[1]);
+  // Voorkom twee keer ACHTER ELKAAR hetzelfde type: bij een klein streefaandeel (bv. 15% zinnen = 1,5 op
+  // een venster van 10) blijft dat type na precies 1 voorkomen nog altijd een positief deficit houden
+  // (1 < 1,5), waardoor het pure deficit-algoritme het gewoon meteen weer kiest -- geen toeval, een
+  // voorspelbaar gevolg van kleine streefaandelen op een venster van 10. Is er een tweede-beste type met
+  // een niet te veel lager deficit (binnen 0,15), kies die in plaats daarvan; is het verschil groot (bv.
+  // woorden staan écht ver achter), dan mag het type alsnog een keer herhalen -- dat is dan terecht.
+  const lastType = history.length ? history[history.length-1] : null;
+  let bestType = ranked[0][0];
+  if(bestType === lastType && ranked.length > 1 && (ranked[0][1] - ranked[1][1]) < 0.15){
+    bestType = ranked[1][0];
+  }
 
   // Sorteer op zwakste niveau eerst, en bij gelijk niveau op de dichtstbijzijnde duedatum (nog-nooit-
   // getoonde woorden staan al op niveau 0 met due = "nu", dus die komen vanzelf bovenaan). Bij een
@@ -4278,23 +4289,31 @@ function pickEnglishWordForSentence(){
   const words = [...unlockedWordSet()];
   const now = Date.now();
 
-  // Zelfde "laagste level eerst"-aanpak als het gewone woordoefenpad (pickNextItem): geen aparte
-  // percentage-knop meer nodig -- een nooit-geoefend woord heeft altijd level 0 (het laagst mogelijke),
-  // dus nieuwe woorden winnen vanzelf zolang er nog introduceerbare woorden binnen bereik zijn, en de
-  // aandacht schuift vanzelf naar herhaling zodra dat niet meer zo is. Consistent met hoe het hoofdscherm
-  // al werkt, in plaats van een losse willekeurige munt-worp. Alles eerst binnen bereik proberen; pas als
-  // dat écht helemaal leeg is (geen due-woord én geen introduceerbaar woord binnen bereik) breder zoeken.
+  // BUGFIX: dit gebruikte voorheen dezelfde "laagste level eerst"-aanpak als het gewone woordoefenpad,
+  // maar dan zonder de mix-kwotering die dat pad WEL heeft (settings.mixNewWords) -- een nooit-getoond
+  // woord staat altijd op niveau 0 (het laagst mogelijke, exclusief voor nieuwe woorden), dus zodra due-
+  // en introduceerbare woorden gewoon samengevoegd en op laagste-niveau gesorteerd werden, wonnen nieuwe
+  // woorden ALTIJD van due-woorden (due-woorden hebben nooit niveau 0). Zinnen gebruikten daardoor vrijwel
+  // nooit een due-woord zolang er nog iets introduceerbaars was. Nu: due-woorden krijgen expliciet
+  // voorrang, en pas als er ECHT niets due is binnen bereik valt dit terug op een nieuw/introduceerbaar
+  // woord.
   const introducible = getIntroducibleWords(); // al gescoped op de huidige/ontgrendelde les(sen) + CEFR-bereik
   const dueShownAll = words.filter(en => { const p = getProgress(en); return p.reps > 0 && p.due <= now; });
   const dueShownInRange = dueShownAll.filter(inCefrRangeEn);
-  const combinedInRange = [...dueShownInRange, ...introducible.map(w=>w.en)];
-  if(combinedInRange.length){
-    const minLevel = Math.min(...combinedInRange.map(en=>getProgress(en).level));
-    const pool = combinedInRange.filter(en=>getProgress(en).level === minLevel);
+  if(dueShownInRange.length){
+    // Due-woorden altijd voorrang boven nieuwe woorden (zie toelichting hierboven) -- en daarbinnen bij
+    // voorkeur een "redelijk sterk" woord (niveau 3+, niet het broze net-geleerde niveau 1-2), zodat de
+    // gebruiker zich in de zin op de zinsbouw kan concentreren i.p.v. ook nog met het doelwoord zelf te
+    // worstelen. Is er binnen due niets van niveau 3+, dan toch gewoon uit alle due-woorden kiezen.
+    const decent = dueShownInRange.filter(en => getProgress(en).level >= 3);
+    const pool = decent.length ? decent : dueShownInRange;
     return pool[Math.floor(Math.random()*pool.length)];
   }
+  if(introducible.length){
+    return introducible[Math.floor(Math.random()*introducible.length)].en;
+  }
 
-  // niets binnen bereik (due of introduceerbaar) -> breder zoeken: eerst due-woorden ongeacht bereik,
+  // Niets due binnen bereik EN niets introduceerbaar -> breder zoeken: eerst due-woorden ongeacht bereik,
   // en pas als er ECHT niks meer is, terugvallen op het absoluut laagste niveau van alle woorden.
   if(dueShownAll.length){
     const minLevel = Math.min(...dueShownAll.map(en=>getProgress(en).level));
@@ -5450,7 +5469,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.38 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.39 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
