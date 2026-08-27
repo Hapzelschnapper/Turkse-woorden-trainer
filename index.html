@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.34</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.35</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.34</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.35</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -404,7 +404,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.34</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.35</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -2644,7 +2644,7 @@ async function submitCheckupAnswer(){
       }
     }
     const scoreCorrect = cur.peeked ? false : correct;
-    recordResult(cur.progressKey || cur.en, scoreCorrect); // telt gewoon mee voor je normale voortgang op dat woord
+    recordResult(cur.progressKey || cur.en, scoreCorrect, (cur.peeked && correct) ? hintPenaltySeverity(cur) : 1); // telt gewoon mee voor je normale voortgang op dat woord
     if(cur.direction === "en-tr" && cur.tr) setCheckupSpeakableTr(spokenTr || cur.tr);
     if(correct && cur.direction === "en-tr" && cur.tr) speakTurkish(spokenTr || cur.tr);
     checkupState.vocabLevelResults.push(scoreCorrect);
@@ -3038,7 +3038,7 @@ async function submitSkillPracticeAnswer(){
       }
     }
     const scoreCorrect = cur.peeked ? false : correct;
-    recordResult(cur.progressKey || cur.en, scoreCorrect);
+    recordResult(cur.progressKey || cur.en, scoreCorrect, (cur.peeked && correct) ? hintPenaltySeverity(cur) : 1);
     if(cur.direction === "en-tr" && cur.tr) setCheckupSpeakableTr(spokenTr || cur.tr);
     if(correct && cur.direction === "en-tr" && cur.tr) speakTurkish(spokenTr || cur.tr);
     chatItem = {type:"word", en:cur.en, tr:cur.tr || correctAnswerTxt, direction:cur.direction};
@@ -3497,7 +3497,7 @@ function easeOf(en){
 // Berekent het volgende interval (in minuten) voor een woord op basis van zijn EIGEN ease-factor,
 // niet van het generieke niveau-interval. p.intervalMin bootstrapt bij de eerste beurt vanuit het
 // oude niveau-interval, en groeit/krimpt daarna zelfstandig per woord.
-function nextWordIntervalMinutes(p, outcome){
+function nextWordIntervalMinutes(p, outcome, severity){
   ensureEase(p);
   const current = p.intervalMin || intervalMinutes(p.level);
   let next;
@@ -3509,8 +3509,14 @@ function nextWordIntervalMinutes(p, outcome){
     // geen "gewone" beurt -- het dispuut herstelt/versterkt alleen het interval zelf).
     next = current * p.ease * p.ease;
   } else {
-    p.ease = Math.max(EASE_MIN, p.ease - EASE_STEP_DOWN);
-    next = Math.min(current * WRONG_INTERVAL_FACTOR, WRONG_INTERVAL_CAP_MIN);
+    // severity (0-1) schaalt de zwaarte van de terugval -- standaard 1 (volledig), maar bij een
+    // hint-met-schaalverdeling (zie hintPenaltySeverity) kan dit lager liggen. Bij severity=1 is dit
+    // exact het oude gedrag; bij severity<1 wordt zowel de ease-daling als de interval-krimp naar rato
+    // verzacht (het interval schuift dan minder ver richting het volle-fout-doel).
+    const sev = (typeof severity === "number") ? Math.max(0, Math.min(1, severity)) : 1;
+    p.ease = Math.max(EASE_MIN, p.ease - EASE_STEP_DOWN * sev);
+    const fullWrongTarget = Math.min(current * WRONG_INTERVAL_FACTOR, WRONG_INTERVAL_CAP_MIN);
+    next = current - sev * (current - fullWrongTarget);
   }
   p.intervalMin = Math.max(MIN_MIN, Math.min(MAX_MIN, next));
   return p.intervalMin;
@@ -4857,7 +4863,7 @@ ${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om
   return parsed;
 }
 
-function recordResult(tr, correct){
+function recordResult(tr, correct, severity){
   const p = getProgress(tr);
   ensureEase(p);
   const firstTime = p.reps === 0;
@@ -4869,13 +4875,29 @@ function recordResult(tr, correct){
     nextWordIntervalMinutes(p, "correct");
   } else {
     p.level = Math.max(1, p.level - 1); // ondergrens 1 i.p.v. 0 zodra een woord ooit getoond is
-    nextWordIntervalMinutes(p, "wrong");
+    nextWordIntervalMinutes(p, "wrong", severity);
   }
   p.reps += 1;
   p.correct = (p.correct || 0) + (correct ? 1 : 0); // ECHTE nauwkeurigheid, los van het SRS-niveau hierboven
   if(!correct) p.lastWrongAt = Date.now(); // nodig voor het "meest recent fout"-criterium in weaknessScore()
   p.due = Date.now() + p.intervalMin * 60 * 1000;
   saveJSON(LS_PROGRESS, progress);
+}
+
+// Schaalverdeling voor de SRS-terugval/moeilijkheids-straf bij "hint gebruikt, maar toch zelf goed
+// getypt": bij 1 onthulde letter/hint 50% van de volle terugval, lineair oplopend tot 100% zodra n-2
+// letters onthuld zijn (en daarboven -- vanaf dat punt is het woord al zo goed als weggegeven, dus
+// dan is een volledige terugval terecht). Bij een te kort woord (waar n-2 geen zinvolle marge overlaat)
+// gewoon altijd de volle 100%.
+function hintPenaltySeverity(item){
+  const primary = item.direction === "tr-en"
+    ? baseEnOf(item.en)
+    : (item.tr || (item.senseTr && item.senseTr[0]) || (cachedTranslation(item.en) || [])[0] || "");
+  const letterCount = (primary || "").replace(/\s/g, "").length;
+  const cap = letterCount - 2;
+  if(cap <= 1) return 1;
+  const hintLevel = Math.max(1, Math.min(item.hintLevel || 1, cap));
+  return 0.5 + 0.5 * (hintLevel - 1) / (cap - 1);
 }
 
 function recordHistory(type){
@@ -5405,7 +5427,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.34 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.35 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -5666,7 +5688,7 @@ function finalizeCorrectDisplayButScoredWrong(message){
   if(currentItem.direction === "en-tr" && currentItem.tr) setSpeakableTr(currentItem.matchedTr || currentItem.tr);
   if(currentItem.direction === "en-tr" && currentItem.tr) speakTurkish(currentItem.matchedTr || currentItem.tr); // getypt antwoord was zelf wél juist -- spreek dat specifieke synoniem uit
   recordHistory("word");
-  recordResult(currentItem.progressKey || currentItem.en, false);
+  recordResult(currentItem.progressKey || currentItem.en, false, hintPenaltySeverity(currentItem));
   const lessonNote = advanceLessonSession();
   const adaptiveNote = recordAdaptiveResult(false);
   showFeedback("correct", message + lessonNote + adaptiveNote);
