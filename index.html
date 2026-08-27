@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.33</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.34</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.33</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.34</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -404,7 +404,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.33</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.34</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -2639,7 +2639,7 @@ async function submitCheckupAnswer(){
           const verdict = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false);
           correct = !!verdict.correct;
           deviation = verdict.afwijking || "";
-          if(correct) spokenTr = answer; // AI accepteerde een ANDER geldig synoniem dan de standaardvertaling
+          if(correct) spokenTr = /typo|tikfout/i.test(deviation) ? (closestTrMatch(cur, answer) || cur.tr) : answer;
         }catch(e){ correct = false; }
       }
     }
@@ -3034,7 +3034,7 @@ async function submitSkillPracticeAnswer(){
       } else if(answer && normalize(answer) === normalize(correctAnswerTxt)){
         correct = true;
       } else if(answer){
-        try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; deviation = v.afwijking || ""; if(correct) spokenTr = answer; }catch(e){ correct = false; }
+        try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; deviation = v.afwijking || ""; if(correct) spokenTr = /typo|tikfout/i.test(deviation) ? (closestTrMatch(cur, answer) || cur.tr) : answer; }catch(e){ correct = false; }
       }
     }
     const scoreCorrect = cur.peeked ? false : correct;
@@ -4973,6 +4973,23 @@ function findMatchedTr(item, answer){
   return null;
 }
 
+// Bij een door de AI als TIKFOUT goedgekeurd antwoord (verdict.afwijking bevat "typo"/"tikfout") mag niet
+// de getypte tekst zelf uitgesproken worden (dat is per definitie verkeerd gespeld) -- zoek in plaats
+// daarvan de dichtstbijzijnde bekende, correct gespelde vertaling op (Levenshtein, net als de tikfout-
+// tolerantie zelf al gebruikt).
+function closestTrMatch(item, answer){
+  const tr = (item.senseTr && item.note) ? item.senseTr : (cachedTranslation(item.en) || []);
+  if(!tr.length) return null;
+  const answerFolded = foldTurkishDiacritics(normalize(answer));
+  let best = null, bestDist = Infinity;
+  for(const raw of tr){
+    const cleaned = stripTrClarifier(raw);
+    const dist = levenshteinDistance(answerFolded, foldTurkishDiacritics(normalize(cleaned)));
+    if(dist < bestDist){ bestDist = dist; best = cleaned; }
+  }
+  return best;
+}
+
 function matchesTrList(norm, trList){
   if(!Array.isArray(trList) || !trList.length) return false;
   if(trList.map(normalize).includes(norm)) return true;
@@ -5388,7 +5405,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.33 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.34 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -5854,7 +5871,10 @@ async function handleCheck(){
     setExplanation(verdict.uitleg);
     const regInfo = (verdict.correct && currentItem.direction === "en-tr") ? currentItem.registerInfo : null;
     if(verdict.correct){
-      currentItem.matchedTr = (currentItem.direction === "en-tr") ? (findMatchedTr(currentItem, answer) || answer) : null;
+      const wasTypo = /typo|tikfout/i.test(verdict.afwijking || "");
+      currentItem.matchedTr = (currentItem.direction === "en-tr")
+        ? (wasTypo ? (closestTrMatch(currentItem, answer) || currentItem.tr) : (findMatchedTr(currentItem, answer) || answer))
+        : null;
       finalizeAnswer(true, "✅" + (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, true, verdict.betekenis_antwoord, regInfo, verdict.afwijking) : ""));
       el("btn-skip").disabled = true;
     } else {
