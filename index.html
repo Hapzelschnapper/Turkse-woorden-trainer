@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.47</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.48</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.47</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.48</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -442,7 +442,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.47</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.48</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -476,9 +476,9 @@
   <div class="modal">
     <h3>✏️ Correct this word</h3>
     <div class="muted" style="margin-bottom:10px;">Overrides the AI/curated data for this word everywhere it's used. Your progress stays tied to the original word — only what's shown/graded changes.</div>
-    <div class="muted" style="margin-bottom:4px;">English (source):</div>
+    <div class="muted" style="margin-bottom:4px;" id="edit-word-first-label">English (source):</div>
     <input type="text" id="edit-word-en-input" placeholder="e.g. to be born" style="width:100%;margin-bottom:10px;">
-    <div class="muted" style="margin-bottom:4px;">Turkish translation(s), comma-separated:</div>
+    <div class="muted" style="margin-bottom:4px;" id="edit-word-second-label">Turkish translation(s), comma-separated:</div>
     <input type="text" id="edit-word-tr-input" placeholder="e.g. kitap, kitabı" style="width:100%;">
     <div class="row" style="margin-top:10px;">
       <button class="btn-primary" id="btn-edit-word-save" style="flex:1;">Save correction</button>
@@ -622,6 +622,7 @@ let VOCAB_LESSON_DATA, EMBEDDED_CURATED_TR, REVERSE_TR_INDEX; // gevuld door loa
 const LS_PROGRESS = "turks_progress_v1";      // { [en]: {level, due, reps} } — nu op ENGELS trefwoord (Oxford lemma)
 const LS_CUSTOM    = "turks_custom_v1";        // { [en]: {tr:[...]} } — extra geaccepteerde Turkse antwoorden (via 'oneens')
 const LS_OVERRIDES = "turks_overrides_v1";     // { [en]: {tr:[...]} } — HANDMATIGE correctie van een woordkaart, vervangt (i.p.v. vult aan) de vertaling en heeft ALTIJD voorrang, ook boven curatedTr
+const LS_TR_OVERRIDES = "turks_tr_overrides_v1"; // { [trwordKey]: {tr, en} } — zelfde soort handmatige correctie, maar dan voor tr-en-woorden (TR_WORDS_DATA, eigen "trword:"-sleutel)
 // Hoogste sub-niveau-index die daadwerkelijk in de woordenlijst voorkomt (C1 end) -- de "Language
 // level"-sliders/dropdowns (woord-oefening) mogen hier niet overheen; de aparte "Sentence complexity"-
 // sliders (zinsbouw, niet vocabulaire) blijven wél het volledige 0-17-bereik gebruiken.
@@ -657,12 +658,13 @@ function loadJSON(key, fallback){
 let syncPushTimer = null;
 function saveJSON(key, val){
   localStorage.setItem(key, JSON.stringify(val));
-  if(key === LS_PROGRESS || key === LS_CUSTOM || key === LS_OVERRIDES || key === LS_NEWWORDS || key === LS_GRAMMAR || key === LS_TRCACHE || key === LS_LESSONS) syncMaybePush();
+  if(key === LS_PROGRESS || key === LS_CUSTOM || key === LS_OVERRIDES || key === LS_TR_OVERRIDES || key === LS_NEWWORDS || key === LS_GRAMMAR || key === LS_TRCACHE || key === LS_LESSONS) syncMaybePush();
 }
 
 let progress = loadJSON(LS_PROGRESS, {});
 let custom   = loadJSON(LS_CUSTOM, {});
 let overrides = loadJSON(LS_OVERRIDES, {});
+let trOverrides = loadJSON(LS_TR_OVERRIDES, {});
 let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentencePercent:20, cefrLevel:4, questionPercent:0});
 
 /* Alle netwerkaanroepen naar DeepSeek/Anthropic lopen hierdoorheen: voorkomt dat de app oneindig blijft
@@ -694,7 +696,7 @@ settings.cefrMax = Math.min(settings.cefrMax, MAX_VOCAB_CEFR_IDX);
 // aan elkaar en aan de woord-oefenslider -- nu onafhankelijk instelbaar.
 if(settings.sentenceComplexityMin === undefined) settings.sentenceComplexityMin = settings.cefrMin;
 if(settings.sentenceComplexityMax === undefined) settings.sentenceComplexityMax = settings.cefrMax;
-// Sentence complexity heeft sinds v3.47 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
+// Sentence complexity heeft sinds v3.48 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
 // bereik van vóór die wijziging hier eenmalig samenvouwen tot 1 vaste waarde (het midden, afgerond).
 if(settings.sentenceComplexityMin !== settings.sentenceComplexityMax){
   const mid = Math.round((settings.sentenceComplexityMin + settings.sentenceComplexityMax) / 2);
@@ -1375,10 +1377,15 @@ function buildTrWordsData(){
       const groupKey = s.tr + "::" + pos;
       let entry = groups.get(groupKey);
       if(!entry){
+        const key = "trword:" + groupKey;
+        // Handmatige correctie (zie openEditTrWordModal) heeft ALTIJD voorrang boven de gecureerde data,
+        // net als bij en-tr (overrides). Alleen tr/en zijn corrigeerbaar; pos/cefr/register/note blijven
+        // de gecureerde waarden -- die veranderen niet mee als je alleen de spelling/vertaling aanpast.
+        const ov = trOverrides[key];
         entry = {
-          key: "trword:" + groupKey,
-          tr: s.tr,
-          en,
+          key,
+          tr: ov?.tr || s.tr,
+          en: ov?.en || en,
           pos: s.pos || null,
           cefr: typeof s.cefr === "number" ? s.cefr : 9,
           register: s.register || "neutral",
@@ -5500,7 +5507,7 @@ async function renderPractice(){
 
   el("badge-type").textContent = isSuffix ? "suffix" : (isQuestion ? "question" : (isSentence ? "sentence" : (isTrEn ? "TR → EN" : "EN → TR")));
   el("badge-type").className = "badge " + (isQuestion ? "badge-question" : (isSentence ? "badge-sentence" : "badge-word"));
-  el("btn-edit-flashcard").classList.toggle("hidden", !isWord || currentItem.wordSource === "tr");
+  el("btn-edit-flashcard").classList.toggle("hidden", !isWord);
   el("btn-reveal-word").classList.toggle("hidden", !isWord);
   const wordEl = el("tr-word");
   wordEl.textContent = isSuffix ? currentItem.prompt : ((isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || baseEnOf(currentItem.en)));
@@ -5533,7 +5540,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.47 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.48 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -6722,13 +6729,38 @@ function renderSpecialTab(){
 // fout blijkt te zijn -- de correctie vervangt de vertaling volledig en heeft overal voorrang
 // (zie cachedTranslation), i.t.t. custom[] dat alleen een extra geaccepteerd antwoord toevoegt.
 let editWordCurrentEn = null;
+let editWordCurrentSource = "en"; // "en" = en-tr-woord (overrides), "tr" = tr-en-woord (trOverrides)
 function openEditWordModal(en){
   if(!en) return;
   editWordCurrentEn = en;
+  editWordCurrentSource = "en";
+  el("edit-word-first-label").textContent = "English (source):";
+  el("edit-word-second-label").textContent = "Turkish translation(s), comma-separated:";
+  el("edit-word-en-input").placeholder = "e.g. to be born";
+  el("edit-word-tr-input").placeholder = "e.g. kitap, kitabı";
   el("edit-word-en-input").value = displayEnglishWord(en);
   const current = overrides[en]?.tr || cachedTranslation(en) || [];
   el("edit-word-tr-input").value = current.join(", ");
   el("btn-edit-word-clear").classList.toggle("hidden", !(overrides[en] && ((overrides[en].tr && overrides[en].tr.length) || overrides[en].en)));
+  el("modal-edit-word").classList.remove("hidden");
+  setTimeout(()=> el("edit-word-en-input").focus(), 50);
+}
+// tr-en-tegenhanger: TR_WORDS_DATA-entries hebben één vast Turks woord en één Engelse vertaling (geen
+// lijst), dus de velden staan hier omgedraaid t.o.v. de en-tr-modal -- "eerste veld" is hier het Turkse
+// woord, "tweede veld" de Engelse vertaling (mag ook hier komma-gescheiden meerdere varianten bevatten,
+// puur voor weergave/uitleg; matchesTrList e.d. gebruiken toch alleen het eerste).
+function openEditTrWordModal(key){
+  const w = trWordDataOf(key);
+  if(!w) return;
+  editWordCurrentEn = key;
+  editWordCurrentSource = "tr";
+  el("edit-word-first-label").textContent = "Turkish word:";
+  el("edit-word-second-label").textContent = "English translation:";
+  el("edit-word-en-input").placeholder = "e.g. kitap";
+  el("edit-word-tr-input").placeholder = "e.g. book";
+  el("edit-word-en-input").value = w.tr;
+  el("edit-word-tr-input").value = w.en;
+  el("btn-edit-word-clear").classList.toggle("hidden", !trOverrides[key]);
   el("modal-edit-word").classList.remove("hidden");
   setTimeout(()=> el("edit-word-en-input").focus(), 50);
 }
@@ -6738,6 +6770,26 @@ function closeEditWordModal(){
 }
 function saveEditWord(){
   if(!editWordCurrentEn) return;
+  if(editWordCurrentSource === "tr"){
+    const trText = el("edit-word-en-input").value.trim();
+    const enText = el("edit-word-tr-input").value.trim();
+    if(!trText){ alert("Enter the Turkish word."); return; }
+    if(!enText){ alert("Enter the English translation."); return; }
+    // De key (dus de progress/level/due-koppeling) blijft ongewijzigd -- dit is puur een weergave/
+    // matching-correctie, geen hernoeming van het onderliggende woord.
+    trOverrides[editWordCurrentEn] = {tr: trText, en: enText};
+    saveJSON(LS_TR_OVERRIDES, trOverrides);
+    TR_WORDS_DATA = buildTrWordsData(); // herbouwen zodat de correctie meteen overal doorwerkt
+    closeEditWordModal();
+    if(el("screen-words") && !el("screen-words").classList.contains("hidden")) renderWordsTab();
+    if(currentItem && currentItem.type === "word" && currentItem.progressKey === editWordCurrentEn){
+      currentItem.tr = trText;
+      currentItem.en = enText;
+      if(currentItem.trData) currentItem.trData = trWordDataOf(editWordCurrentEn);
+      el("tr-word").textContent = currentItem.direction === "tr-en" ? currentItem.tr : displayEnglishWord(currentItem.en);
+    }
+    return;
+  }
   const enText = el("edit-word-en-input").value.trim();
   const raw = el("edit-word-tr-input").value.trim();
   const trList = raw.split(",").map(s=>s.trim()).filter(Boolean);
@@ -6757,6 +6809,14 @@ function saveEditWord(){
 }
 function clearEditWord(){
   if(!editWordCurrentEn) return;
+  if(editWordCurrentSource === "tr"){
+    delete trOverrides[editWordCurrentEn];
+    saveJSON(LS_TR_OVERRIDES, trOverrides);
+    TR_WORDS_DATA = buildTrWordsData();
+    closeEditWordModal();
+    if(el("screen-words") && !el("screen-words").classList.contains("hidden")) renderWordsTab();
+    return;
+  }
   delete overrides[editWordCurrentEn];
   saveJSON(LS_OVERRIDES, overrides);
   closeEditWordModal();
@@ -7107,8 +7167,8 @@ function renderWordsTab(){
         displayWord: w.tr,
         displayTrans: displayTrEntryGloss(w),
         pos: (WORD_CATEGORY_ABBR[w.pos] || w.pos || ""),
-        hasOverride: false,
-        editEn: null,
+        hasOverride: !!trOverrides[w.key],
+        editEn: w.key,
         searchText: (w.tr + " " + w.en).toLowerCase(),
       };
     }));
@@ -7140,9 +7200,7 @@ function renderWordsTab(){
     const easeLabel = w.reps===0 ? "" : ` <span class="muted" style="font-size:.65rem;" title="Individual ease-factor (steers repeat timing)">⚙️${w.ease.toFixed(2)}</span>`;
     const cefrTxt = typeof w.cefr === "number" ? cefrLabel(w.cefr) : "?";
     const dirTag = w.source === "tr" ? ` <span class="muted" style="font-size:.65rem;">TR→EN</span>` : ` <span class="muted" style="font-size:.65rem;">EN→TR</span>`;
-    const fixBtn = w.source === "en"
-      ? `<button class="btn-ghost btn-small edit-word-btn" data-en="${w.editEn.replace(/"/g,'&quot;')}" style="margin-top:4px;padding:1px 6px;font-size:.68rem;">✏️ Fix</button>`
-      : "";
+    const fixBtn = `<button class="btn-ghost btn-small edit-word-btn" data-en="${w.editEn.replace(/"/g,'&quot;')}" data-source="${w.source}" style="margin-top:4px;padding:1px 6px;font-size:.68rem;">✏️ Fix</button>`;
     // Turks om uit te spreken: bij een tr-en-rij is dat het getoonde woord zelf, bij en-tr de vertaling.
     const speakTxt = w.source === "tr" ? w.displayWord : w.displayTrans;
     const speakBtn = speakTxt ? `<button class="btn-ghost btn-small speak-word-btn" data-tr="${escapeHtml(speakTxt)}" style="margin-top:0;padding:1px 6px;font-size:.85rem;" title="Pronounce">🔊</button>` : "";
@@ -7162,7 +7220,7 @@ function renderWordsTab(){
     btn.addEventListener("click", ()=> speakTurkish(btn.dataset.tr));
   });
   el("words-list").querySelectorAll(".edit-word-btn").forEach(btn=>{
-    btn.addEventListener("click", ()=> openEditWordModal(btn.dataset.en));
+    btn.addEventListener("click", ()=> btn.dataset.source === "tr" ? openEditTrWordModal(btn.dataset.en) : openEditWordModal(btn.dataset.en));
   });
 }
 
@@ -8154,7 +8212,9 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   el("btn-speak-word-slow").addEventListener("click", ()=> speakTurkish(currentSpeakableTr, 0.5));
   el("btn-checkup-speak-word").addEventListener("click", ()=> speakTurkish(currentCheckupSpeakableTr));
   el("btn-edit-flashcard").addEventListener("click", ()=>{
-    if(currentItem && currentItem.type === "word") openEditWordModal(currentItem.en);
+    if(!currentItem || currentItem.type !== "word") return;
+    if(currentItem.wordSource === "tr") openEditTrWordModal(currentItem.progressKey);
+    else openEditWordModal(currentItem.en);
   });
   el("btn-edit-word-save").addEventListener("click", saveEditWord);
   el("btn-edit-word-close").addEventListener("click", closeEditWordModal);
