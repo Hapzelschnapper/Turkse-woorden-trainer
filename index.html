@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.49</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.50</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.49</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.50</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -442,7 +442,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.49</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.50</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -696,7 +696,7 @@ settings.cefrMax = Math.min(settings.cefrMax, MAX_VOCAB_CEFR_IDX);
 // aan elkaar en aan de woord-oefenslider -- nu onafhankelijk instelbaar.
 if(settings.sentenceComplexityMin === undefined) settings.sentenceComplexityMin = settings.cefrMin;
 if(settings.sentenceComplexityMax === undefined) settings.sentenceComplexityMax = settings.cefrMax;
-// Sentence complexity heeft sinds v3.49 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
+// Sentence complexity heeft sinds v3.50 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
 // bereik van vóór die wijziging hier eenmalig samenvouwen tot 1 vaste waarde (het midden, afgerond).
 if(settings.sentenceComplexityMin !== settings.sentenceComplexityMax){
   const mid = Math.round((settings.sentenceComplexityMin + settings.sentenceComplexityMax) / 2);
@@ -5540,7 +5540,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.49 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.50 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -6585,15 +6585,22 @@ async function pickMasteredWordForDictation(){
 // Niveau 2-7: AI bouwt een zin van ongeveer het gevraagde aantal woorden, uit bekende woordenschat --
 // dit is een LUISTEROEFENING (kunnen volgen/verstaan), geen woordenschat-uitbreiding, dus bewust geen
 // nieuwe/moeilijke woorden erin.
-async function generateDictationSentence(tier){
+function countTrWords(tr){
+  return (tr || "").trim().split(/\s+/).filter(Boolean).length;
+}
+
+async function generateDictationSentence(tier, _retry){
   const knownSample = pickKnownVocabSample(35, 8); // liefst al beheerst (niveau 8+), niet alleen "redelijk bekend" (7+)
+  const exact = tier.min === tier.max;
   const sys = `Je maakt korte, natuurlijke Turkse luister-dictee-zinnen voor een taalleerapp: de gebruiker HOORT de zin (audio) en moet 'm naar het Engels vertalen, zonder de Turkse tekst te zien.
-De zin moet ONGEVEER het opgegeven aantal woorden hebben (functiewoorden meegeteld) en grammaticaal correct + natuurlijk klinken voor een moedertaalspreker.
+${exact
+  ? `De zin moet PRECIES het opgegeven aantal woorden hebben, niet meer en niet minder -- tel elk los, spatie-gescheiden woord mee, INCLUSIEF vraagpartikels als "mi/mı/mu/mü" (die worden in het Turks apart geschreven en tellen dus gewoon als een eigen woord). Tel je eigen zin na voordat je antwoordt, en herschrijf 'm als het aantal niet precies klopt.`
+  : `De zin moet BINNEN het opgegeven bereik vallen (functiewoorden en vraagpartikels als "mi/mı/mu/mü" meegeteld als apart woord) en grammaticaal correct + natuurlijk klinken voor een moedertaalspreker.`}
 Dit is een LUISTEROEFENING (kunnen volgen/verstaan van gesproken Turks), GEEN woordenschat-uitbreiding: gebruik daarom ALLEEN eenvoudige, hoogfrequente woorden, bij voorkeur letterlijk uit de meegegeven bekende-woordenlijst van de gebruiker, aangevuld met simpele functiewoorden (voornaamwoorden, is/zijn, veelvoorkomende bijwoorden) waar nodig. Verzin geen nieuw/moeilijk woord puur om op het gevraagde aantal woorden uit te komen.
 Bij 2 woorden: bouw een minimale maar volledige, natuurlijke zin (bv. onderwerp+werkwoord, bijvoeglijk naamwoord+zelfstandig naamwoord, werkwoord+lijdend voorwerp) -- geen twee losse woorden zonder samenhang.
 Geef ook een natuurlijke, vloeiende Engelse referentievertaling van de hele zin.
 Antwoord in JSON.`;
-  const user = `Gevraagd aantal woorden: ${tier.min === tier.max ? tier.min : `${tier.min}-${tier.max}`}${tier.n===7 ? " (mag ook iets meer zijn)" : ""}.
+  const user = `Gevraagd aantal woorden: ${exact ? tier.min : `${tier.min}-${tier.max}`}${tier.n===7 ? " (mag ook iets meer zijn)" : ""}.
 ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}`;
   const schema = {
     name: "dictee_zin",
@@ -6610,6 +6617,13 @@ ${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>
   const raw = await callAI("sentence", sys, user, 600, 0.6, schema);
   const parsed = parseAIJson(raw);
   if(!parsed.tr || !parsed.en) throw new Error("AI did not return a dictation sentence.");
+  const n = countTrWords(parsed.tr);
+  // BUGFIX: "ongeveer" gaf de AI bij EXACTE niveaus (bv. "3 woorden") te veel speelruimte -- die kon dan
+  // gewoon 4 afleveren. Eén stille herpoging als het bij een exact niveau toch niet klopt, vóórdat de
+  // (mogelijk nog steeds net-niet-kloppende) zin alsnog gebruikt wordt.
+  if(exact && n !== tier.min && !_retry){
+    return generateDictationSentence(tier, true);
+  }
   return {tr: parsed.tr, en: parsed.en, wordCount: tier.n};
 }
 
