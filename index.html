@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.32</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.33</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.32</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.33</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -404,7 +404,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.32</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.33</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -2612,6 +2612,7 @@ async function submitCheckupAnswer(){
   let correctAnswerTxt = "";
   let deviation = "";
 
+  let spokenTr = null; // welk specifiek Turks synoniem uitgesproken moet worden -- null = val terug op cur.tr
   if(cur.type === "word"){
     if(cur.sentenceDrill){
       correctAnswerTxt = cur.sentenceDrill.correct;
@@ -2638,13 +2639,14 @@ async function submitCheckupAnswer(){
           const verdict = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false);
           correct = !!verdict.correct;
           deviation = verdict.afwijking || "";
+          if(correct) spokenTr = answer; // AI accepteerde een ANDER geldig synoniem dan de standaardvertaling
         }catch(e){ correct = false; }
       }
     }
     const scoreCorrect = cur.peeked ? false : correct;
     recordResult(cur.progressKey || cur.en, scoreCorrect); // telt gewoon mee voor je normale voortgang op dat woord
-    if(cur.direction === "en-tr" && cur.tr) setCheckupSpeakableTr(cur.tr);
-    if(correct && cur.direction === "en-tr" && cur.tr) speakTurkish(cur.tr);
+    if(cur.direction === "en-tr" && cur.tr) setCheckupSpeakableTr(spokenTr || cur.tr);
+    if(correct && cur.direction === "en-tr" && cur.tr) speakTurkish(spokenTr || cur.tr);
     checkupState.vocabLevelResults.push(scoreCorrect);
   } else {
     correctAnswerTxt = cur.drill.correct;
@@ -2993,6 +2995,7 @@ async function submitSkillPracticeAnswer(){
   let correctAnswerTxt = "";
   let uitleg = "";
   let deviation = "";
+  let spokenTr = null; // welk specifiek Turks synoniem uitgesproken moet worden -- null = val terug op cur.tr
 
   if(cur.type === "word"){
     if(cur.sentenceDrill){
@@ -3031,13 +3034,13 @@ async function submitSkillPracticeAnswer(){
       } else if(answer && normalize(answer) === normalize(correctAnswerTxt)){
         correct = true;
       } else if(answer){
-        try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; deviation = v.afwijking || ""; }catch(e){ correct = false; }
+        try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; deviation = v.afwijking || ""; if(correct) spokenTr = answer; }catch(e){ correct = false; }
       }
     }
     const scoreCorrect = cur.peeked ? false : correct;
     recordResult(cur.progressKey || cur.en, scoreCorrect);
-    if(cur.direction === "en-tr" && cur.tr) setCheckupSpeakableTr(cur.tr);
-    if(correct && cur.direction === "en-tr" && cur.tr) speakTurkish(cur.tr);
+    if(cur.direction === "en-tr" && cur.tr) setCheckupSpeakableTr(spokenTr || cur.tr);
+    if(correct && cur.direction === "en-tr" && cur.tr) speakTurkish(spokenTr || cur.tr);
     chatItem = {type:"word", en:cur.en, tr:cur.tr || correctAnswerTxt, direction:cur.direction};
   } else {
     correctAnswerTxt = cur.drill.correct;
@@ -4956,6 +4959,20 @@ function normalize(s){
 function stripTrClarifier(s){
   return String(s || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
 }
+// Zoekt, binnen de bekende vertalingen van dit woord, de specifieke (correct geaccentueerde) Turkse
+// tekst die overeenkomt met wat de gebruiker typte -- een en-tr-woord kan meerdere geldige Turkse
+// synoniemen hebben (bv. "çağrı" EN "arama" voor "call"), en zonder deze check werd bij het uitspreken
+// altijd de eerste/standaard vertaling gepakt, ongeacht welke van de synoniemen de gebruiker had getypt.
+function findMatchedTr(item, answer){
+  const norm = normalize(answer);
+  if(!norm) return null;
+  const tr = (item.senseTr && item.note) ? item.senseTr : (cachedTranslation(item.en) || []);
+  for(const t of tr){
+    if(normalize(t) === norm || normalize(stripTrClarifier(t)) === norm) return stripTrClarifier(t);
+  }
+  return null;
+}
+
 function matchesTrList(norm, trList){
   if(!Array.isArray(trList) || !trList.length) return false;
   if(trList.map(normalize).includes(norm)) return true;
@@ -5371,7 +5388,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.32 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.33 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -5629,8 +5646,8 @@ function enterWordRetry(message){
 // nog een aparte herkansing te forceren: de gebruiker heeft het antwoord net al 1x zelf goed getypt.
 function finalizeCorrectDisplayButScoredWrong(message){
   currentCorrect = false;
-  if(currentItem.direction === "en-tr" && currentItem.tr) setSpeakableTr(currentItem.tr);
-  if(currentItem.direction === "en-tr" && currentItem.tr) speakTurkish(currentItem.tr); // getypt antwoord was zelf wél juist
+  if(currentItem.direction === "en-tr" && currentItem.tr) setSpeakableTr(currentItem.matchedTr || currentItem.tr);
+  if(currentItem.direction === "en-tr" && currentItem.tr) speakTurkish(currentItem.matchedTr || currentItem.tr); // getypt antwoord was zelf wél juist -- spreek dat specifieke synoniem uit
   recordHistory("word");
   recordResult(currentItem.progressKey || currentItem.en, false);
   const lessonNote = advanceLessonSession();
@@ -5790,6 +5807,7 @@ async function handleCheck(){
     // aparte herkansing geforceerd te worden -- dat antwoord is dan al 1x zelf getypt.
     const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
     if(checkStaticMatch(currentItem, answer)){
+      currentItem.matchedTr = findMatchedTr(currentItem, answer);
       finalizeCorrectDisplayButScoredWrong("✅ Correct! (still counted as a miss since you used a hint)");
       registerWordExplanation(currentItem, null);
       return;
@@ -5815,6 +5833,7 @@ async function handleCheck(){
   const staticMatch = checkStaticMatch(currentItem, answer);
 
   if(staticMatch){
+    currentItem.matchedTr = findMatchedTr(currentItem, answer);
     const regInfo = currentItem.direction === "en-tr" ? currentItem.registerInfo : null;
     finalizeAnswer(true, "✅" + (regInfo ? `<br><span class="muted">ℹ️ Heads up: this is a bit ${regInfo.register}${regInfo.note ? " — " + escapeHtml(regInfo.note) : ""}.</span>` : ""));
     registerWordExplanation(currentItem, null);
@@ -5835,6 +5854,7 @@ async function handleCheck(){
     setExplanation(verdict.uitleg);
     const regInfo = (verdict.correct && currentItem.direction === "en-tr") ? currentItem.registerInfo : null;
     if(verdict.correct){
+      currentItem.matchedTr = (currentItem.direction === "en-tr") ? (findMatchedTr(currentItem, answer) || answer) : null;
       finalizeAnswer(true, "✅" + (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, true, verdict.betekenis_antwoord, regInfo, verdict.afwijking) : ""));
       el("btn-skip").disabled = true;
     } else {
@@ -6001,8 +6021,8 @@ function revealCheckupHint(){
 
 function finalizeAnswer(correct, message){
   currentAnswered = true;
-  if(currentItem.direction === "en-tr" && currentItem.tr) setSpeakableTr(currentItem.tr);
-  if(correct && currentItem.direction === "en-tr" && currentItem.tr) speakTurkish(currentItem.tr); // automatisch uitspreken bij een juist ingediend antwoord
+  if(currentItem.direction === "en-tr" && currentItem.tr) setSpeakableTr(currentItem.matchedTr || currentItem.tr);
+  if(correct && currentItem.direction === "en-tr" && currentItem.tr) speakTurkish(currentItem.matchedTr || currentItem.tr); // spreek het specifiek getypte synoniem uit, niet altijd de standaardvertaling
   currentCorrect = correct;
   recordHistory("word");
   recordResult(currentItem.progressKey || currentItem.en, correct);
