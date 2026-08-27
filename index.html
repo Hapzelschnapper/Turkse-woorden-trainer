@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.37</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.38</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.37</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.38</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -65,7 +65,8 @@
       </div>
       <div class="row" style="align-items:baseline;gap:6px;">
         <div id="tr-word" class="tr-word">…</div>
-        <button class="btn-ghost btn-small hidden" id="btn-speak-word" style="margin-top:0;padding:2px 8px;font-size:.9rem;" title="Pronounce the Turkish word">🔊</button>
+        <button class="btn-ghost btn-small hidden" id="btn-speak-word" style="margin-top:0;padding:2px 8px;font-size:.9rem;" title="Pronounce">🔊</button>
+        <button class="btn-ghost btn-small hidden" id="btn-speak-word-slow" style="margin-top:0;padding:2px 8px;font-size:.9rem;" title="Pronounce at half speed">🐢</button>
       </div>
       <div class="hidden" id="word-peek-hint" style="font-size:1.4rem;font-weight:600;margin-top:4px;color:#2f7cae;"></div>
       <div class="row space-between" style="align-items:flex-start;">
@@ -295,17 +296,11 @@
       <h3 style="margin-top:0;">Sentence generation — complexity</h3>
       <div class="muted" style="margin-bottom:10px;">How complex generated sentences/questions are (length, tense variety, subclauses) — independent of the word range above. E.g. combine simple words with complex sentence structure, or vice versa.</div>
       <div class="row space-between" style="margin-bottom:4px;">
-        <span>Minimum</span>
-        <span class="muted" id="sent-complexity-min-label">A1 start</span>
+        <span>Complexity</span>
+        <span class="muted" id="sent-complexity-label">A1 start</span>
       </div>
-      <input type="range" id="sent-complexity-min-slider" min="0" max="17" step="1" value="3" style="width:100%;">
-      <select id="sent-complexity-min-select" style="width:100%;margin-top:6px;"></select>
-      <div class="row space-between" style="margin-top:16px;margin-bottom:4px;">
-        <span>Maximum</span>
-        <span class="muted" id="sent-complexity-max-label">A2 mid</span>
-      </div>
-      <input type="range" id="sent-complexity-max-slider" min="0" max="17" step="1" value="5" style="width:100%;">
-      <select id="sent-complexity-max-select" style="width:100%;margin-top:6px;"></select>
+      <input type="range" id="sent-complexity-slider" min="0" max="17" step="1" value="3" style="width:100%;">
+      <select id="sent-complexity-select" style="width:100%;margin-top:6px;"></select>
     </div>
     <div class="card">
       <h3 style="margin-top:0;">🔊 Sound effects</h3>
@@ -404,7 +399,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.37</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.38</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -656,6 +651,13 @@ settings.cefrMax = Math.min(settings.cefrMax, MAX_VOCAB_CEFR_IDX);
 // aan elkaar en aan de woord-oefenslider -- nu onafhankelijk instelbaar.
 if(settings.sentenceComplexityMin === undefined) settings.sentenceComplexityMin = settings.cefrMin;
 if(settings.sentenceComplexityMax === undefined) settings.sentenceComplexityMax = settings.cefrMax;
+// Sentence complexity heeft sinds v3.38 nog maar 1 slider -- een eventueel bestaand, uiteenlopend
+// bereik van vóór die wijziging hier eenmalig samenvouwen tot 1 vaste waarde (het midden, afgerond).
+if(settings.sentenceComplexityMin !== settings.sentenceComplexityMax){
+  const mid = Math.round((settings.sentenceComplexityMin + settings.sentenceComplexityMax) / 2);
+  settings.sentenceComplexityMin = mid;
+  settings.sentenceComplexityMax = mid;
+}
 function pickLevelInRange(min, max){
   const lo = Math.min(min, max), hi = Math.max(min, max);
   return lo + Math.floor(Math.random() * (hi - lo + 1));
@@ -4904,9 +4906,16 @@ function recordResult(tr, correct, severity){
 // dan is een volledige terugval terecht). Bij een te kort woord (waar n-2 geen zinvolle marge overlaat)
 // gewoon altijd de volle 100%.
 function hintPenaltySeverity(item){
-  const primary = item.direction === "tr-en"
+  let primary = item.direction === "tr-en"
     ? baseEnOf(item.en)
     : (item.tr || (item.senseTr && item.senseTr[0]) || (cachedTranslation(item.en) || [])[0] || "");
+  // Werkwoorden eindigen in het Turks ALTIJD op -mek/-mak -- dat achtervoegsel weggeven is dus geen
+  // echte hint (de gebruiker weet dat toch al), en mag niet meetellen in de lengte waarop de
+  // schaalverdeling (n-2) gebaseerd is. Alleen relevant voor en-tr (bij tr-en is "primary" de Engelse
+  // vertaling, die niet op -mek/-mak eindigt).
+  if(item.direction !== "tr-en" && wordCategoryOf(item.en) === "v."){
+    primary = primary.replace(/(mek|mak)$/i, "");
+  }
   const letterCount = (primary || "").replace(/\s/g, "").length;
   const cap = letterCount - 2;
   if(cap <= 1) return 1;
@@ -5412,8 +5421,8 @@ async function renderPractice(){
   el("btn-reveal-word").classList.toggle("hidden", !isWord);
   const wordEl = el("tr-word");
   wordEl.textContent = isSuffix ? currentItem.prompt : ((isWord && !isTrEn) ? displayEnglishWord(currentItem.en) : (currentItem.tr || baseEnOf(currentItem.en)));
-  setSpeakableTr(isTrEn ? currentItem.tr : null); // bij en-tr is de Turkse vertaling pas na het beoordelen bekend
-  if(isTrEn && currentItem.tr) speakTurkish(currentItem.tr); // automatisch uitspreken zodra het in beeld komt
+  setSpeakableTr((isTrEn || isSentence || isQuestion) ? currentItem.tr : null); // bij en-tr is de Turkse vertaling pas na het beoordelen bekend; zinnen/vragen tonen meteen Turkse tekst
+  if((isTrEn || isSentence || isQuestion) && currentItem.tr) speakTurkish(currentItem.tr); // automatisch uitspreken zodra het in beeld komt
   currentItem.hintRevealed = false;
   wordEl.className = "tr-word" + ((isSentence||isQuestion) ? " sentence" : "");
   el("word-peek-hint").classList.add("hidden");
@@ -5441,7 +5450,7 @@ async function renderPractice(){
       const posAbbr = (currentItem.trData && (WORD_CATEGORY_ABBR[currentItem.trData.pos] || currentItem.trData.pos)) || "";
       const cefrTxt = typeof currentItem.cefr === "number" ? cefrLabel(currentItem.cefr) : null;
       // Woorden met meerdere losstaande betekenissen (bv. "yüz" = gezicht/zwemmen/honderd) kregen tot
-      // v3.37 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
+      // v3.38 hun disambiguatie letterlijk IN het te raden Turkse woord verwerkt ("yüz (sayı)"), en
       // dat nog in het Turks -- dat helpt een Engelstalige gebruiker niet. Zit er een (nu Engelse)
       // note bij deze entry, toon die dan als hint i.p.v. de kale pos-afkorting, net als wordMetaText
       // dat al voor de en-tr-richting doet.
@@ -5561,15 +5570,52 @@ function playFeedbackSound(kind){
    geen audiobestand nodig. Kwaliteit/beschikbaarheid van een Turkse stem hangt af van het apparaat/de
    browser van de gebruiker; is er geen "tr-TR"-stem beschikbaar, dan valt de browser meestal terug op
    een andere stem of doet gewoon niets -- dat is buiten onze controle en niet iets om over te alarmeren. */
-function speakTurkish(text){
+let _cachedVoices = [];
+function refreshVoiceCache(){
+  if(!("speechSynthesis" in window)) return;
+  try{ _cachedVoices = window.speechSynthesis.getVoices() || []; }catch(e){ /* negeren */ }
+}
+if("speechSynthesis" in window){
+  // BUGFIX (TTS "werkt niet altijd" #1): getVoices() geeft bij de ALLEREERSTE aanroep in veel browsers
+  // een lege lijst terug -- de stemmenlijst wordt pas asynchroon geladen. Zonder deze warm-up kon de
+  // eerste uitspraak van een sessie stil blijven (geen tr-TR-stem gevonden, browser valt soms op niets
+  // terug i.p.v. op een andere stem) terwijl latere uitspraken wel werkten.
+  refreshVoiceCache();
+  window.speechSynthesis.addEventListener("voiceschanged", refreshVoiceCache);
+}
+function pickTurkishVoice(){
+  if(!_cachedVoices.length) refreshVoiceCache();
+  return _cachedVoices.find(v => v.lang === "tr-TR")
+    || _cachedVoices.find(v => (v.lang||"").toLowerCase().startsWith("tr"))
+    || null;
+}
+function speakTurkish(text, rate){
   if(!text || !("speechSynthesis" in window)) return;
+  const doSpeak = (retry)=>{
+    try{
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = "tr-TR";
+      utter.rate = rate || 0.9; // iets trager dan standaard, makkelijker te volgen tijdens het leren
+      const voice = pickTurkishVoice();
+      if(voice) utter.voice = voice; // BUGFIX #2: expliciet een tr-TR-stem meegeven i.p.v. alleen op
+      // utter.lang te vertrouwen -- sommige browsers negeren lang stilzwijgend als er geen exact
+      // passende stem "toegewezen" is, en spreken dan met de systeemstandaardstem (of helemaal niet).
+      if(!retry){
+        // BUGFIX (TTS "werkt niet altijd" #3): geen enkele automatische herpoging bestond bij een falende
+        // uitspraak (bv. browser negeert de aanroep zonder foutmelding, of de stem was nog niet geladen).
+        // Eén stille herpoging na een korte pauze vangt het gros van die stille fails op.
+        utter.onerror = ()=> setTimeout(()=> doSpeak(true), 150);
+      }
+      window.speechSynthesis.speak(utter);
+    }catch(e){ /* uitspraak is nooit kritiek voor de werking van de oefening -- gewoon negeren */ }
+  };
   try{
     window.speechSynthesis.cancel(); // een eventuele nog lopende uitspraak afbreken voor de nieuwe
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = "tr-TR";
-    utter.rate = 0.9; // iets trager dan standaard, makkelijker te volgen tijdens het leren
-    window.speechSynthesis.speak(utter);
-  }catch(e){ /* uitspraak is nooit kritiek voor de werking van de oefening -- gewoon negeren */ }
+  }catch(e){ /* negeren */ }
+  // BUGFIX (TTS "werkt niet altijd" #4): speak() vlak na cancel() in dezelfde synchrone tick wordt in
+  // sommige Chromium-versies stilzwijgend genegeerd (bekende browserbug) -- een héél korte vertraging
+  // ertussen voorkomt dat.
+  setTimeout(()=> doSpeak(false), 40);
 }
 // Houdt bij welk Turks woord op dit moment "spreekbaar" is voor de twee vaste 🔊-knoppen (hoofdscherm en
 // checkup-scherm). Bij tr-en is dat vanaf het tonen van de vraag al bekend; bij en-tr pas na het
@@ -5580,6 +5626,8 @@ function setSpeakableTr(text){
   currentSpeakableTr = text || null;
   const btn = el("btn-speak-word");
   if(btn) btn.classList.toggle("hidden", !currentSpeakableTr);
+  const slowBtn = el("btn-speak-word-slow");
+  if(slowBtn) slowBtn.classList.toggle("hidden", !currentSpeakableTr);
 }
 function setCheckupSpeakableTr(text){
   currentCheckupSpeakableTr = text || null;
@@ -7595,7 +7643,20 @@ function initSettingsUI(){
     el(`${prefix}-max-label`).textContent = cefrLabel(settings[maxKey]);
   }
   initCefrRangeDisplay("cefr", "cefrMin", "cefrMax", MAX_VOCAB_CEFR_IDX);
-  initCefrRangeDisplay("sent-complexity", "sentenceComplexityMin", "sentenceComplexityMax", 17);
+  // Sentence complexity heeft (i.t.t. de CEFR-woordrange hierboven) maar 1 slider -- settings.sentenceComplexityMin
+  // en -Max blijven intern wel allebei bestaan (o.a. pickLevelInRange/cefrCeiling elders lezen ze), maar
+  // worden hier altijd gelijk aan elkaar gehouden: 1 vaste complexiteit i.p.v. een bereik.
+  function initSentComplexityDisplay(){
+    el("sent-complexity-slider").max = 17;
+    if(!el("sent-complexity-select").options.length){
+      for(let i=0;i<=17;i++) el("sent-complexity-select").add(new Option(cefrLabel(i), i));
+    }
+    const v = settings.sentenceComplexityMin;
+    el("sent-complexity-slider").value = v;
+    el("sent-complexity-select").value = v;
+    el("sent-complexity-label").textContent = cefrLabel(v);
+  }
+  initSentComplexityDisplay();
   updateCefrUnlockedInfo();
   el("adaptive-enabled").checked = !!settings.adaptiveEnabled;
   el("sound-effects-toggle").checked = !!settings.soundEffects;
@@ -7740,6 +7801,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   el("words-search").addEventListener("input", renderWordsTab);
   el("btn-ask-ai").addEventListener("click", openAiModal);
   el("btn-speak-word").addEventListener("click", ()=> speakTurkish(currentSpeakableTr));
+  el("btn-speak-word-slow").addEventListener("click", ()=> speakTurkish(currentSpeakableTr, 0.5));
   el("btn-checkup-speak-word").addEventListener("click", ()=> speakTurkish(currentCheckupSpeakableTr));
   el("btn-edit-flashcard").addEventListener("click", ()=>{
     if(currentItem && currentItem.type === "word") openEditWordModal(currentItem.en);
@@ -7814,7 +7876,16 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     el(`${prefix}-max-select`).addEventListener("change", ()=> applyCefrRange(prefix, minKey, maxKey, settings[minKey], parseInt(el(`${prefix}-max-select`).value,10), "max", onChange));
   }
   wireCefrRangeControl("cefr", "cefrMin", "cefrMax", ()=>{ updateCefrUnlockedInfo(); renderDueCount(); });
-  wireCefrRangeControl("sent-complexity", "sentenceComplexityMin", "sentenceComplexityMax");
+  function applySentComplexity(v){
+    settings.sentenceComplexityMin = v;
+    settings.sentenceComplexityMax = v;
+    saveJSON(LS_SETTINGS, settings);
+    el("sent-complexity-slider").value = v;
+    el("sent-complexity-select").value = v;
+    el("sent-complexity-label").textContent = cefrLabel(v);
+  }
+  el("sent-complexity-slider").addEventListener("input", ()=> applySentComplexity(parseInt(el("sent-complexity-slider").value,10)));
+  el("sent-complexity-select").addEventListener("change", ()=> applySentComplexity(parseInt(el("sent-complexity-select").value,10)));
   el("adaptive-enabled").addEventListener("change", ()=>{
     settings.adaptiveEnabled = el("adaptive-enabled").checked;
     settings.soundEffects = el("sound-effects-toggle").checked;
