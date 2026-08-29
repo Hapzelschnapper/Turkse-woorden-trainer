@@ -1,0 +1,23 @@
+name: Tests
+
+# Draait automatisch bij elke push en bij elke pull request naar main -- geen lokale Node-installatie
+# nodig, GitHub voert dit zelf uit. Resultaat is zichtbaar als een groen vinkje / rood kruisje bij de
+# commit en onder het "Actions"-tabblad van de repo.
+"on":
+  push:
+  pull_request:
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo uitchecken
+        uses: actions/checkout@v4
+
+      - name: Node.js installeren
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Testsuite draaien
+        run: node tests/run-all.js
