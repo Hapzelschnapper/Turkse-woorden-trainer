@@ -5,6 +5,8 @@
 /* ===================== GRAMMATICA-TAXONOMIE ===================== */
 // Vaste lijst Turkse grammaticale onderwerpen (A1 t/m C1/C2), die de app zelf kan volgen
 // en gericht kan invlechten in gegenereerde zinnen/vragen — los van losse woordenschat.
+// Bewust een cross-script global: app.js gebruikt dit (zie eslint.config.js), niet dit bestand zelf.
+// eslint-disable-next-line no-unused-vars
 const GRAMMAR_TOPICS = [
   {key:"copula_basic",     label:"Copula — singular forms (\"to be\" as a suffix)", hint:"ONLY singular persons: ben/sen/o (I am / you are / he-she-it is), attached to a noun or adjective predicate — e.g. \"öğretmenim\" (I am a teacher), \"iyisin\" (you are good). Do NOT use plural persons (biz/siz/onlar) here.", minCefr:0,
     variants: [

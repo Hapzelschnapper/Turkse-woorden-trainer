@@ -5,10 +5,60 @@
 // is een vervolgstap; deze eerste opsplitsing haalt specifiek de meest bug-gevoelige, goed te isoleren
 // kernlogica los.
 
-import { CEFR_MAJOR, CEFR_SUB, cefrLabel, vocabCefrBand, normalize, foldTurkishDiacritics, escapeHtml } from './utils.js';
-import { levenshteinDistance, typoTolerance, isTypoOf } from './typo.js';
+import { CEFR_MAJOR, cefrLabel, vocabCefrBand, normalize, foldTurkishDiacritics, escapeHtml } from './utils.js';
+import { isTypoOf } from './typo.js';
 import { intervalMinutes, EASE_START, resolveWordMixSlot, pickBestPracticeType } from './srs.js';
 import { scheduleReview, migrateLegacyProgress, gradeFromResult, GRADE_EASY } from './fsrs.js';
+import {
+  callAI,
+  generateSuffixDrill,
+  gradeSuffixDrillAnswer,
+  gradeGrammarDrillAnswer,
+  gradeCheckupWordAnswer,
+  pickWordSense,
+  gradeSingleTestItem,
+  generateSentence,
+  generateQuestion,
+  gradeQuestionAnswer,
+  gradeSentenceTranslation,
+  stripTrClarifier,
+  findMatchedTr,
+  closestTrMatch,
+  checkStaticMatch,
+  askDeepSeekJudge,
+  askDeepSeekFree,
+  explainWordContent,
+  lookupWrongAnswerMeaning,
+  explainSentenceContent,
+  generateDictationItem,
+  gradeDictationAnswer,
+  baseWordList,
+  cachedTranslation,
+  canOfferNounSuffixDrill,
+  canOfferVerbSuffixDrill,
+  cefrGuidance,
+  checkSentenceNatural,
+  correctEnglishDisplayFor,
+  dictationTierFor,
+  generateSingleTestItem,
+  getOrFetchTranslation,
+  getProgress,
+  getTopicProgress,
+  grammarTopicByKey,
+  hasKeyFor,
+  inCefrRangeEn,
+  pickSentenceComplexityLevel,
+  preferredModelFor,
+  wordPosOf,
+  wordTransitivityOf,
+  baseEnOf,
+  callClaude,
+  parseAIJson,
+  generateReadingText,
+  generateMoreReadingQuestions,
+  gradeReadingAnswer,
+} from './ai.js';
+
 
 
 // Asynchrone laad-helper voor de externe databestanden (words.json, vocab-lessons.json,
@@ -24,25 +74,18 @@ function loadJSONAsync(url){
     return res.json();
   });
 }
-let EN_WORDS_DATA; // Oxford 3000/5000, {en, cefr} per item — no pre-translated Turkish; wordt gevuld door loadAllData()
+export let EN_WORDS_DATA; // Oxford 3000/5000, {en, cefr} per item — no pre-translated Turkish; wordt gevuld door loadAllData()
 // Voor woorden die zijn gesplitst op woordsoort (bv. "close__v"/"close__adj" voor het werkwoord
 // resp. bijvoeglijk naamwoord "close") bevat words.json een apart "base"-veld met de schone,
 // leesbare tekst ("close"). Voor alle niet-gesplitste woorden is er geen "base"-veld en is het
 // woord zelf al schoon. baseEnOf() geeft ALTIJD de tekst die aan een mens getoond of aan de AI
 // als natuurlijke taal doorgegeven mag worden -- gebruik dit overal waar het woord daadwerkelijk
 // zichtbaar wordt, in tegenstelling tot de kale `en`-sleutel die voor opslag/lookup blijft dienen.
-let _baseEnMap = null;
-function baseEnOf(en){
-  if(!en) return en;
-  if(!_baseEnMap){
-    _baseEnMap = {};
-    for(const w of EN_WORDS_DATA) _baseEnMap[w.en] = w.base || w.en;
-  }
-  return _baseEnMap[en] || en;
-}
 
 
-let VOCAB_LESSON_DATA, EMBEDDED_CURATED_TR, REVERSE_TR_INDEX; // gevuld door loadAllData(); zie commentaar daar voor wat elk bevat
+
+let VOCAB_LESSON_DATA, EMBEDDED_CURATED_TR;
+export let REVERSE_TR_INDEX; // gevuld door loadAllData(); zie commentaar daar voor wat elk bevat
 
 
 /* ===================== OPSLAG ===================== */
@@ -53,19 +96,19 @@ const LS_TR_OVERRIDES = "turks_tr_overrides_v1"; // { [trwordKey]: {tr, en} } �
 // Hoogste sub-niveau-index die daadwerkelijk in de woordenlijst voorkomt (C1 end) -- de "Language
 // level"-sliders/dropdowns (woord-oefening) mogen hier niet overheen; de aparte "Sentence complexity"-
 // sliders (zinsbouw, niet vocabulaire) blijven wél het volledige 0-17-bereik gebruiken.
-const MAX_VOCAB_CEFR_IDX = 14;
+export const MAX_VOCAB_CEFR_IDX = 14;
 const LS_SETTINGS  = "turks_settings_v1";      // { apiKey, sentencePercent, cefrLevel, questionPercent, syncBinId, syncApiKey }
 const LS_HISTORY   = "turks_history_v1";       // array of "word"/"sentence", laatste 20
-const LS_NEWWORDS  = "turks_newwords_v1";      // { [en]: {cefr} } — via zinnen ontdekte Engelse woorden, niet in de Oxford-lijst
+export const LS_NEWWORDS  = "turks_newwords_v1";      // { [en]: {cefr} } — via zinnen ontdekte Engelse woorden, niet in de Oxford-lijst
 const LS_GRAMMAR   = "turks_grammar_v1";       // { [topicKey]: {level, due, reps} } — per grammaticaal onderwerp, zelfde SRS-mechaniek als woorden
-const LS_TRCACHE   = "turks_trcache_v1";       // { [en]: {tr:[...], fetchedAt} } — op-aanvraag gegenereerde Turkse vertaling, 1x per woord
+export const LS_TRCACHE   = "turks_trcache_v1";       // { [en]: {tr:[...], fetchedAt} } — op-aanvraag gegenereerde Turkse vertaling, 1x per woord
 // Stap 7 van het verbeterplan ("gegenereerde uitleg hergebruiken i.p.v. steeds opnieuw genereren"):
 // dezelfde woord-uitleg (explainWordContent) en dezelfde korte fout-antwoord-vertaling
 // (lookupWrongAnswerMeaning) leverden bij elke hernieuwde aanvraag exact dezelfde inhoud op (de content
 // hangt niet af van sessie-specifieke state), maar werden voorheen toch telkens opnieuw (en dus tegen
 // herhaalde kosten/wachttijd) gegenereerd -- vooral merkbaar omdat je via SRS hetzelfde woord keer op
 // keer weer tegenkomt. { [cacheKey]: {uitleg, cachedAt} }.
-const LS_EXPLANATION_CACHE = "turks_explanation_cache_v1";
+export const LS_EXPLANATION_CACHE = "turks_explanation_cache_v1";
 const LS_CURATED_TR = "turks_curated_tr_v1";   // { [en]: {tr:[...], register, note} } — eenmalige, grondige AI-doorloop van de hele woordenlijst incl. registermetadata; heeft voorrang boven trCache
 const LS_LESSONS   = "turks_lessons_v1";       // { [lessonId]: {completed:bool, done:n} } — voortgang door het gestructureerde lespad
 const LS_SKILL_SCORES = "turks_skill_scores_v1"; // { [lessonId]: {correct, total} } — score van de laatst afgeronde "Practice this skill"-ronde
@@ -76,6 +119,11 @@ const LS_ADAPTIVE_WINDOW = "turks_adaptive_v1";        // array van laatste N co
 const LS_COST      = "turks_cost_v1";          // { byModel: {...} } — bevestigd/gesynct totaal
 const LS_COST_PENDING = "turks_cost_pending_v1"; // { byModel: {...} } — lokaal verbruik nog niet samengevoegd met cloud
 const LS_LESSON_GRADE_OVERRIDES = "turks_lesson_grade_overrides_v1"; // { [lessonId]: grade 0-10 } — handmatig ingesteld persoonlijk minimumcijfer per les ("ik beheers dit al")
+// Leesoefening (tekst + begripsvragen, zie generateReadingText/gradeReadingAnswer in ai.js): elke
+// tekst wordt BLIJVEND bewaard, samen met al zijn vragen -- elke vraag heeft een eigen `asked`-vlag
+// zodat een tekst later hergebruikt kan worden zonder dat een vraag ooit twee keer gesteld wordt.
+// { id, tr, level, createdAt, questions: [{q, answerHint, asked, correct}] }[]
+export const LS_READING_TEXTS = "turks_reading_texts_v1";
 const LS_ACTIVE_TAB = "turks_active_tab_v1"; // laatst geopende tabblad (practice/suffixes/course/words/stats/settings) — puur lokale UI-voorkeur, bewust NIET via saveJSON() (dus niet gesynct naar andere apparaten) en niet meegeteld in de cost-triggerende opslagsleutels
 const LS_WORD_MIX_COUNTER = "turks_word_mix_counter_v1"; // simpele oplopende teller (nooit gereset/afgekapt), gebruikt als counter % 5 om exact settings.newWordsPer5 op elke 5 woordoefeningen te garanderen (zie pickNextItem) i.p.v. een schattend gemiddelde
 
@@ -90,20 +138,20 @@ function loadJSON(key, fallback){
 // eenmalige data-opschoning of instellingen-migratie, wat niet bij elke gebruiker even vaak voorkomt,
 // vandaar dat dit niet meteen opviel). `function`-declaraties worden wel volledig gehesen, `let` niet.
 let syncPushTimer = null;
-function saveJSON(key, val){
+export function saveJSON(key, val){
   localStorage.setItem(key, JSON.stringify(val));
-  if(key === LS_PROGRESS || key === LS_CUSTOM || key === LS_OVERRIDES || key === LS_NEWWORDS || key === LS_GRAMMAR || key === LS_TRCACHE || key === LS_EXPLANATION_CACHE || key === LS_LESSONS) syncMaybePush();
+  if(key === LS_PROGRESS || key === LS_CUSTOM || key === LS_OVERRIDES || key === LS_NEWWORDS || key === LS_GRAMMAR || key === LS_TRCACHE || key === LS_EXPLANATION_CACHE || key === LS_LESSONS || key === LS_READING_TEXTS) syncMaybePush();
 }
 
-let progress = loadJSON(LS_PROGRESS, {});
-let custom   = loadJSON(LS_CUSTOM, {});
-let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentencePercent:20, cefrLevel:4, questionPercent:0});
+export let progress = loadJSON(LS_PROGRESS, {});
+export let custom   = loadJSON(LS_CUSTOM, {});
+export let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentencePercent:20, cefrLevel:4, questionPercent:0});
 // EÉN gedeelde override-opslag voor zowel en-tr- als tr-en-correcties (voorheen twee gescheiden
 // systemen: overrides + trOverrides, met elk hun eigen localStorage-sleutel, edit-modal-functie en
 // save/clear-vertakking -- stap 5 van het verbeterplan, "en-tr en tr-en op één gedeelde abstractie").
 // Dit kan veilig samen in 1 object, want en-tr-sleutels (het en-woord zelf) en tr-en-sleutels
 // ("trword:...") zijn per constructie niet-overlappende sleutelruimtes -- geen botsingsrisico.
-let overrides = loadJSON(LS_OVERRIDES, {});
+export let overrides = loadJSON(LS_OVERRIDES, {});
 // Eenmalige migratie: bestaande correcties uit het oude, aparte trOverrides-systeem invoegen in de
 // nieuwe gedeelde opslag. Het oude localStorage-item (LS_TR_OVERRIDES) blijft verder ongewijzigd staan
 // (nooit verwijderd, puur voor rollback-veiligheid) -- er wordt alleen niet meer NAAR geschreven.
@@ -122,10 +170,46 @@ let overrides = loadJSON(LS_OVERRIDES, {});
   }
 }
 
+// ===================== SCHEMA-VERSIE-BOEKHOUDING (stap 10 van het verbeterplan) =====================
+// GEEN nieuwe migratielogica -- de eigenlijke migraties staan (en blijven staan) op hun eigen, meest
+// logische plek (de trOverrides-merge vlak hierboven; migrateLegacyProgress in fsrs.js, die lazy per
+// progress-entry migreert zodra 'ie voor het eerst weer aangeraakt wordt). Dit is PUUR boekhouding: een
+// centraal, chronologisch overzicht van welke wijzigingen aan het opslagformaat een gebruiker met oudere
+// data automatisch doorloopt, plus de afspraak voor toekomstige wijzigingen:
+//   1. Een wijziging die het BETEKENIS of FORMAAT van een bestaand localStorage-veld verandert (niet:
+//      een nieuw, optioneel veld toevoegen -- dat heeft geen migratie nodig, zie hieronder) krijgt hier
+//      een nieuwe regel in SCHEMA_MIGRATIONS, met CURRENT_SCHEMA_VERSION opgehoogd.
+//   2. Data-reads blijven ALTIJD achterwaarts-compatibel: een ontbrekend/verouderd veld krijgt een
+//      zinnig fallback (zie loadJSON's default-parameter-patroon door de hele app heen, en
+//      migrateLegacyProgress) i.p.v. te veronderstellen dat het al in het nieuwe formaat staat. Oude
+//      velden worden nooit stilzwijgend verwijderd bij een migratie (zie ook: LS_TR_OVERRIDES blijft
+//      hierboven gewoon ongebruikt in localStorage staan, puur voor rollback-veiligheid).
+//   3. Zie CHANGELOG.md voor de gebruikersgerichte samenvatting per versie; dit log is de TECHNISCHE
+//      tegenhanger, specifiek voor het opslagformaat.
+const CURRENT_SCHEMA_VERSION = 2;
+// Bewust puur documentatie: dit logboek wordt door een mens gelezen (zie CHANGELOG.md/de toelichting
+// hierboven), niet door de code zelf geraadpleegd.
+// eslint-disable-next-line no-unused-vars
+const SCHEMA_MIGRATIONS = [
+  {version: 1, description: "Uitgangspunt: handgerolde SM-2-achtige score (level/ease/intervalMin), aparte overrides/trOverrides-opslag."},
+  {version: 2, description: "FSRS-scheduling (stability/difficulty, zie fsrs.js/migrateLegacyProgress) i.p.v. de handgerolde SM-2-variant; overrides + trOverrides samengevoegd tot één gedeelde opslag (zie hierboven)."},
+];
+{
+  const LS_SCHEMA_VERSION = "turks_schema_version_v1";
+  const storedVersion = parseInt(localStorage.getItem(LS_SCHEMA_VERSION) || "1", 10);
+  if(storedVersion < CURRENT_SCHEMA_VERSION){
+    // Niets uit te voeren hier -- de daadwerkelijke migraties (zie boven) zijn al toegepast, ongeacht
+    // deze teller. Dit registreert alleen DAT een gebruiker met oudere data deze versiesprong doorloopt,
+    // zodat toekomstige migraties (SCHEMA_MIGRATIONS met version > 2) hier een duidelijke basis hebben
+    // om vanaf te bouwen i.p.v. steeds opnieuw te moeten uitzoeken "had deze gebruiker dit al of niet".
+    localStorage.setItem(LS_SCHEMA_VERSION, String(CURRENT_SCHEMA_VERSION));
+  }
+}
+
 /* Alle netwerkaanroepen naar DeepSeek/Anthropic lopen hierdoorheen: voorkomt dat de app oneindig blijft
    hangen (bv. op "AI is checking your answer...") als de server traag is of niet reageert — na de
    opgegeven tijd wordt de aanvraag afgebroken met een duidelijke foutmelding i.p.v. stil te blijven wachten. */
-async function fetchWithTimeout(url, opts, timeoutMs){
+export async function fetchWithTimeout(url, opts, timeoutMs){
   const controller = new AbortController();
   const timer = setTimeout(()=> controller.abort(), timeoutMs || 30000);
   try{
@@ -158,15 +242,10 @@ if(settings.sentenceComplexityMin !== settings.sentenceComplexityMax){
   settings.sentenceComplexityMin = mid;
   settings.sentenceComplexityMax = mid;
 }
-function pickLevelInRange(min, max){
-  const lo = Math.min(min, max), hi = Math.max(min, max);
-  return lo + Math.floor(Math.random() * (hi - lo + 1));
-}
+
 // Zinscomplexiteit (zinsbouw/lengte/bijzinnen, via cefrGuidance) gebruikt voortaan zijn EIGEN bereik
 // i.p.v. de algemene woord-oefenslider -- zie de nieuwe instellingen-kaart "Sentence generation".
-function pickSentenceComplexityLevel(){
-  return pickLevelInRange(settings.sentenceComplexityMin, settings.sentenceComplexityMax);
-}
+
 if(settings.questionPercent === undefined) settings.questionPercent = 0;
 if(settings.adaptiveEnabled === undefined) settings.adaptiveEnabled = false;
 // Of nieuwe (nog nooit getoonde) woorden meegemengd worden in de reguliere woord-pool op het
@@ -194,6 +273,8 @@ if(settings.proxyUrl === undefined) settings.proxyUrl = "";
 if(settings.proxyToken === undefined) settings.proxyToken = "";
 if(settings.wordModel === undefined) settings.wordModel = "deepseek";       // vertaling + woordbeoordeling
 if(settings.sentenceModel === undefined) settings.sentenceModel = "claude"; // zin/vraag-generatie, -beoordeling, grammatica-oefeningen, taaltoets, "vraag aan AI"
+if(settings.readingModel === undefined) settings.readingModel = "deepseek"; // leesoefening -- goedkoop als standaard, expliciet omschakelbaar op het scherm zelf (niet verstopt in Settings)
+if(settings.readingLevel === undefined) settings.readingLevel = "B2";
 if(settings.sentencePercent === undefined){
   // migratie vanaf de oude "aantal van elke 5"-instelling
   settings.sentencePercent = Math.round(((settings.sentenceRatio || 1) / 5) * 100);
@@ -206,7 +287,7 @@ if(settings.wordsPercent === undefined){
   saveJSON(LS_SETTINGS, settings);
 }
 let history  = loadJSON(LS_HISTORY, []);
-let newWords = loadJSON(LS_NEWWORDS, {});
+export let newWords = loadJSON(LS_NEWWORDS, {});
 {
   // Eenmalige opschoning van eerder al foutief geregistreerde "woorden" (zie looksLikeEnglishWord
   // hieronder) -- deze functie zelf staat verderop gedefinieerd, maar dat is geen probleem: dit blok
@@ -217,10 +298,11 @@ let newWords = loadJSON(LS_NEWWORDS, {});
     saveJSON(LS_NEWWORDS, newWords);
   }
 }
-let grammar = loadJSON(LS_GRAMMAR, {});
-let trCache = loadJSON(LS_TRCACHE, {});
-let explanationCache = loadJSON(LS_EXPLANATION_CACHE, {});
-let curatedTr = loadJSON(LS_CURATED_TR, {}); // basislaag; wordt in loadAllData() aangevuld met EMBEDDED_CURATED_TR (heeft voorrang bij overlap) zodra die geladen is — ingebedde data is de volledige, verse curatie (alle 4932 woorden), de lokale/gesyncte laag was bedoeld voor de oude (inmiddels verwijderde) bulk-translate-knop en dient alleen nog als vangnet voor woorden die de ingebedde data zelf niet kent
+export let grammar = loadJSON(LS_GRAMMAR, {});
+export let trCache = loadJSON(LS_TRCACHE, {});
+export let readingTexts = loadJSON(LS_READING_TEXTS, []);
+export let explanationCache = loadJSON(LS_EXPLANATION_CACHE, {});
+export let curatedTr = loadJSON(LS_CURATED_TR, {}); // basislaag; wordt in loadAllData() aangevuld met EMBEDDED_CURATED_TR (heeft voorrang bij overlap) zodra die geladen is — ingebedde data is de volledige, verse curatie (alle 4932 woorden), de lokale/gesyncte laag was bedoeld voor de oude (inmiddels verwijderde) bulk-translate-knop en dient alleen nog als vangnet voor woorden die de ingebedde data zelf niet kent
 let lessonProgress = loadJSON(LS_LESSONS, {});
 /* Eenmalige reparatie van "gaten" in lesson-voortgang: door eerdere iteraties van de ontgrendellogica
    (deze cursus is meermaals herbouwd) kan het voorkomen dat een latere les als voltooid staat terwijl
@@ -253,13 +335,9 @@ let wordMixCounter = loadJSON(LS_WORD_MIX_COUNTER, 0); // oplopende teller voor 
 // vragen -- meegegeven aan de AI als "vermijd dit" lijst, puur om te voorkomen dat opeenvolgende
 // oefeningen sterk op elkaar lijken. Bewust klein (RECENT_SENTENCES_MAX) en niet opgeslagen: dit is
 // alleen bedoeld om de eerstvolgende paar generaties uit elkaar te trekken, geen lange-termijn-log.
-let recentGeneratedTr = [];
-const RECENT_SENTENCES_MAX = 6;
-function noteRecentSentence(tr){
-  if(!tr) return;
-  recentGeneratedTr.push(tr);
-  if(recentGeneratedTr.length > RECENT_SENTENCES_MAX) recentGeneratedTr.shift();
-}
+
+
+
 // Zelfde idee, maar dan voor de "veilige tegenpool"-woorden uit pickWellKnownWord() -- ook een kleine,
 // niet-persistente pool kan bij pure random-keuze een paar keer na elkaar hetzelfde woord opleveren.
 // Onthoudt de laatst GEKOZEN vulwoorden en sluit ze tijdelijk uit, mits de resterende pool nog bruikbaar is.
@@ -318,193 +396,37 @@ function maxCostUsage(a, b){
    — dat is hoogvolume en simpel genoeg dat het prijsverschil daar niet opweegt tegen de kwaliteitswinst. */
 /* Generieke aanroep naar DeepSeek — analoog aan callClaude() hierboven, zodat beide providers
    via dezelfde soort interface (systeemprompt + gebruikersinhoud, evt. berichtenreeks) bruikbaar zijn. */
-async function callDeepSeek(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt, schema){
-  const attempt = _attempt || 0;
-  const useProxy = proxyConfigured();
-  if(!useProxy && !settings.apiKey) throw new Error("No DeepSeek API key set (Settings).");
-  // DeepSeek krijgt, in tegenstelling tot Claude, geen apart 'tools'-schema dat de structuur afdwingt --
-  // het heeft dus ALLEEN de systeemprompt-tekst om te weten welke velden verwacht worden. Sommige
-  // systeemprompts zijn na het toevoegen van schema-ondersteuning bewust ingekort tot alleen "Antwoord
-  // in JSON" (want voor Claude is het schema zelf voldoende) -- dat liet DeepSeek zonder enige aanwijzing
-  // welke velden/vorm er verwacht wordt, met foutieve/onvolledige JSON tot gevolg. Daarom hier automatisch
-  // een tekstuele veldbeschrijving afleiden UIT hetzelfde schema-object dat Claude ook krijgt: één bron
-  // van waarheid, geen risico dat de twee ooit weer uit elkaar lopen.
-  let effectiveSystemPrompt = systemPrompt;
-  if(schema){
-    const describe = (props, required) => Object.entries(props).map(([name, spec])=>{
-      let type = spec.type;
-      if(type === "array") type = `array of ${spec.items?.type === "object" ? "objects" : (spec.items?.type || "items")}`;
-      const req = (required||[]).includes(name) ? "" : " (optioneel)";
-      const enumStr = spec.enum ? ` [${spec.enum.join("|")}]` : "";
-      const desc = spec.description ? ` -- ${spec.description}` : "";
-      if(spec.type === "array" && spec.items?.type === "object" && spec.items.properties){
-        return `  "${name}": array van objecten${req}, elk met: {${describe(spec.items.properties, spec.items.required)}}`;
-      }
-      return `  "${name}"${req}: ${type}${enumStr}${desc}`;
-    }).join("\n");
-    effectiveSystemPrompt = systemPrompt + "\n\nAntwoord met een JSON-object met exact deze velden:\n" + describe(schema.input_schema.properties, schema.input_schema.required);
-  }
-  const messages = Array.isArray(userContentOrMessages)
-    ? [{role:"system", content:effectiveSystemPrompt}, ...userContentOrMessages]
-    : [{role:"system", content:effectiveSystemPrompt}, {role:"user", content:userContentOrMessages}];
-  const url = useProxy ? (settings.proxyUrl.replace(/\/$/,"") + "/deepseek") : "https://api.deepseek.com/chat/completions";
-  const headers = useProxy
-    ? {"Content-Type":"application/json", "X-Proxy-Token": settings.proxyToken}
-    : {"Content-Type":"application/json", "Authorization":"Bearer " + settings.apiKey};
-  const body = {
-    model: "deepseek-v4-pro", max_tokens: maxTokens || 500, temperature: temperature ?? 0,
-    messages,
-    thinking: {"type":"disabled"}
-  };
-  // DeepSeek kent geen tool-schema-afdwinging zoals Claude's tool_choice -- de systeemprompt moet dus
-  // (in tegenstelling tot bij Claude) wél zelf blijven uitleggen welke velden verwacht worden. Wat
-  // response_format WEL garandeert: altijd geldige, kale JSON (nooit binnen ```json ... ``` verpakt,
-  // nooit met verdwaalde tekst ervoor/erna) -- dus geen losse regex-opschoning meer nodig voor dat deel.
-  if(schema) body.response_format = {type: "json_object"};
-  const res = await fetchWithTimeout(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body)
-  });
-  if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("DeepSeek API error (" + res.status + "): " + txt.slice(0,200)); }
-  const data = await res.json();
-  recordUsage("deepseek-v4-pro", data.usage);
-  // Zelfde afkap-bescherming als bij callClaude: DeepSeek geeft finish_reason:"length" als de
-  // tokenlimiet geraakt werd vóórdat de JSON afgesloten was.
-  if(data.choices?.[0]?.finish_reason === "length" && attempt < 2){
-    const nextBudget = Math.max((maxTokens || 500) * 2, 900);
-    return callDeepSeek(systemPrompt, userContentOrMessages, nextBudget, temperature, attempt + 1, schema);
-  }
-  let raw = data.choices?.[0]?.message?.content || "";
-  raw = raw.replace(/```json|```/g,"").trim();
-  return raw;
-}
+
 
 /* Dispatcher: kiest op basis van de instelling per taakcategorie ("word" = vertaling/woordbeoordeling,
    "sentence" = zin/vraag-generatie, -beoordeling, grammatica-oefeningen, taaltoets, "vraag aan AI")
    welke provider de aanroep daadwerkelijk uitvoert. De aanroepende functies hoeven zelf niets van dit
    onderscheid te weten — die roepen altijd gewoon callAI(categorie, ...) aan. */
-function preferredModelFor(category){
-  const setting = category === "word" ? settings.wordModel : settings.sentenceModel;
-  return setting === "deepseek" || setting === "claude" ? setting : (category === "word" ? "deepseek" : "claude");
-}
-function proxyConfigured(){
+
+export function proxyConfigured(){
   return !!(settings.proxyUrl && settings.proxyToken);
 }
-function hasKeyFor(category){
-  if(proxyConfigured()) return true; // de gedeelde tussenserver dekt beide categorieën, geen eigen sleutel nodig
-  return preferredModelFor(category) === "claude" ? !!settings.anthropicApiKey : !!settings.apiKey;
-}
+
 function keyNameFor(category){
   return preferredModelFor(category) === "claude" ? "Anthropic (Claude)" : "DeepSeek";
 }
-function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
+export function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
 // Wordt aan ELKE systeemprompt toegevoegd, ongeacht welke aanroepplek callAI() gebruikt -- een
 // centrale, niet-te-missen waarborg dat alle vrije/toelichtende tekst in het AI-antwoord (uitleg,
 // feedback, hints, chatberichten, ...) in het Engels is, zelfs als een individuele prompt daar zelf
 // niet expliciet om vraagt. Velden die BEDOELD Turks zijn (een vertaling, een woordenboekvorm, een
 // gegenereerde Turkse zin) blijven hierdoor onaangetast -- die worden hieronder expliciet uitgezonderd.
-const ENGLISH_OUTPUT_GUARD = "\n\nLANGUAGE REQUIREMENT (always applies, regardless of what language this prompt above is written in): any free-text, explanatory, or feedback content you write in your response must be in English. This does NOT apply to fields that are explicitly meant to hold a Turkish word, phrase, sentence, or translation -- those stay in Turkish as instructed above.";
+export const ENGLISH_OUTPUT_GUARD = "\n\nLANGUAGE REQUIREMENT (always applies, regardless of what language this prompt above is written in): any free-text, explanatory, or feedback content you write in your response must be in English. This does NOT apply to fields that are explicitly meant to hold a Turkish word, phrase, sentence, or translation -- those stay in Turkish as instructed above.";
 // Stap 6 van het verbeterplan ("AI-fouten fail-safe i.p.v. fail-closed"): een tijdelijke netwerk-/server-
 // hik mag de gebruiker nooit score kosten. Twee automatische herkansingen met een korte pauze ertussen
 // vangen het gros van zulke fluctuaties op, vóórdat de aanroeper het als een echte mislukking hoeft te
 // behandelen. Een "geen API-key ingesteld"-fout is een configuratieprobleem, geen tijdelijke hik -- een
 // retry lost dat nooit op, dus die meteen laten doorschieten voor een directe, duidelijke foutmelding.
-async function callAI(category, systemPrompt, userContentOrMessages, maxTokens, temperature, schema){
-  const model = preferredModelFor(category);
-  const sysWithLanguageGuard = (systemPrompt || "") + ENGLISH_OUTPUT_GUARD;
-  const call = () => model === "claude"
-    ? callClaude(sysWithLanguageGuard, userContentOrMessages, maxTokens, temperature, 0, schema)
-    : callDeepSeek(sysWithLanguageGuard, userContentOrMessages, maxTokens, temperature, 0, schema);
-  const RETRY_DELAYS_MS = [600, 1500];
-  let lastError = null;
-  for(let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++){
-    try{
-      return await call();
-    }catch(e){
-      lastError = e;
-      if(/No (DeepSeek|Anthropic) API key set/.test(e.message)) throw e; // configuratieprobleem, niet retryen
-      if(attempt < RETRY_DELAYS_MS.length) await sleep(RETRY_DELAYS_MS[attempt]);
-    }
-  }
-  throw lastError; // alle pogingen (1 origineel + 2 herkansingen) faalden -- aanroeper behandelt dit als "AI onbereikbaar", zie gradeCheckupWordAnswer e.a.
-}
 
-async function callClaude(systemPrompt, userContentOrMessages, maxTokens, temperature, _attempt, schema){
-  const attempt = _attempt || 0;
-  const useProxy = proxyConfigured();
-  if(!useProxy && !settings.anthropicApiKey) throw new Error("No Anthropic API key set (Settings).");
-  const messages = Array.isArray(userContentOrMessages)
-    ? userContentOrMessages
-    : [{role:"user", content:userContentOrMessages}];
-  const url = useProxy ? (settings.proxyUrl.replace(/\/$/,"") + "/claude") : "https://api.anthropic.com/v1/messages";
-  const headers = useProxy
-    ? {"content-type": "application/json", "X-Proxy-Token": settings.proxyToken}
-    : {
-        "x-api-key": settings.anthropicApiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-        "anthropic-dangerous-direct-browser-access": "true",
-      };
-  const body = {
-    model: "claude-sonnet-5",
-    max_tokens: maxTokens || 500,
-    // De systeeminstructie is bij elke aanroep woordelijk hetzelfde (alleen het gebruikersbericht
-    // verschilt) -- ideaal voor prompt-caching: cache_control markeert 'm als cachebaar, zodat
-    // herhaalde aanroepen met dezelfde instructie tegen het veel lagere cache-hit-tarief draaien
-    // i.p.v. steeds als nieuwe input te worden gefactureerd.
-    system: [{type: "text", text: systemPrompt, cache_control: {type: "ephemeral"}}],
-    messages,
-    thinking: {"type": "disabled"}, // geen redenering nodig voor gestructureerde JSON-output; voorkomt ook dat de tekst in een 2e blok terechtkomt achter een thinking-blok
-  };
-  // Optioneel: een JSON-schema afdwingen via tool use i.p.v. het schema als platte tekst in de
-  // systeemprompt uit te schrijven ("Antwoord ALLEEN met geldige JSON: {...}"). Dat scheelt tokens
-  // (dus geld, ook al is de systeemprompt zelf al gecached) EN is betrouwbaarder: Claude kan het
-  // schema dan niet meer per ongeluk lichtjes anders invullen (verkeerd aantal array-items, een
-  // object i.p.v. een boolean, etc.) -- precies de klasse fouten waar parseAIJson() nu achteraf
-  // gaten in probeert te repareren.
-  if(schema){
-    body.tools = [{name: schema.name, description: schema.description || "", input_schema: schema.input_schema}];
-    body.tool_choice = {type: "tool", name: schema.name};
-  }
-  const res = await fetchWithTimeout(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body)
-  });
-  if(!res.ok){ const txt = await res.text().catch(()=>""); throw new Error("Claude API error (" + res.status + "): " + txt.slice(0,200)); }
-  const data = await res.json();
-  recordUsage("claude-sonnet-5", {
-    prompt_tokens: data.usage?.input_tokens || 0,
-    completion_tokens: data.usage?.output_tokens || 0,
-    prompt_cache_hit_tokens: data.usage?.cache_read_input_tokens || 0,
-  });
-  // Het antwoord kan afgekapt zijn doordat de tokenlimiet werd geraakt vóórdat de JSON afgesloten was
-  // (herkenbaar aan Claude's eigen stop_reason) -- dan herkansen met flink meer ruimte, i.p.v. de
-  // gebruiker een cryptische "Unexpected end of JSON input"-foutmelding te tonen. Tot 2x herkansen,
-  // want bij sommige (langere) oefeningen bleek 1x verdubbelen soms nog niet genoeg.
-  if(data.stop_reason === "max_tokens" && attempt < 2){
-    const nextBudget = Math.max((maxTokens || 500) * 2, 900);
-    return callClaude(systemPrompt, userContentOrMessages, nextBudget, temperature, attempt + 1, schema);
-  }
-  if(schema){
-    // Bij tool use zit het (al gestructureerde, gegarandeerd geldige) resultaat in een "tool_use"-blok
-    // i.p.v. een tekstblok -- terug-serialiseren naar een JSON-string zodat parseAIJson() bij de
-    // aanroepende functie ongewijzigd kan blijven werken, ongeacht of schema gebruikt werd of niet.
-    const toolBlock = (data.content || []).find(b => b.type === "tool_use");
-    if(toolBlock) return JSON.stringify(toolBlock.input);
-    // Geen tool_use-blok gevonden (zou niet moeten gebeuren bij tool_choice:"tool", maar voor de
-    // zekerheid): val terug op eventuele tekst, net als het niet-schema-pad hieronder.
-  }
-  // Claude kan een "thinking"-blok VOOR het eigenlijke tekstblok plaatsen (interne redenering);
-  // ervan uitgaan dat content[0] altijd het tekstblok is, is dus niet veilig. Zoek expliciet naar
-  // het/de blok(ken) met type "text" en gebruik die, ongeacht hun positie in de array.
-  let raw = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("") || "";
-  raw = raw.replace(/```json|```/g,"").trim();
-  return raw;
-}
 
-function recordUsage(model, usage){
+
+
+export function recordUsage(model, usage){
   if(!usage) return; // sommige/oude responses geven geen usage-object terug
   const m = costPending.byModel[model] || (costPending.byModel[model] = {hit:0, miss:0, output:0});
   const hit = usage.prompt_cache_hit_tokens || 0;
@@ -568,10 +490,10 @@ async function fetchDeepSeekBalance(silent){
 // Elke variant krijgt zijn EIGEN voortgangsteller (opgeslagen onder "<topicKey>::<variantId>"), zodat het
 // systeem per vorm kan zien of die al voldoende geoefend is, i.p.v. één gedeelde teller voor het hele
 // onderwerp die al na de makkelijkste/meest voorkomende vorm "vol" leek te zitten.
-function getTopicVariants(topic){
+export function getTopicVariants(topic){
   return (topic.variants && topic.variants.length) ? topic.variants : [{id:null, hint:topic.hint}];
 }
-function variantProgressKey(topic, variantId){
+export function variantProgressKey(topic, variantId){
   return variantId ? `${topic.key}::${variantId}` : topic.key;
 }
 // Geeft het onderwerp met exact dezelfde vorm terug als voorheen ({key,label,hint,minCefr,...}), maar dan
@@ -579,7 +501,7 @@ function variantProgressKey(topic, variantId){
 // en `hint` wordt de hint van die ene variant. Downstream code (promptopbouw, recordGrammarResult, opslag
 // op het oefen-item) hoeft hierdoor niet te weten dat variants bestaan -- het ziet gewoon een gewoon
 // topic-object, alleen preciezer.
-function effectiveTopicForVariant(topic, variant){
+export function effectiveTopicForVariant(topic, variant){
   return {...topic, key: variantProgressKey(topic, variant.id), hint: variant.hint || topic.hint};
 }
 // Kiest, binnen één onderwerp, de zwakst-beoefende variant (laagste niveau; bij gelijke stand willekeurig)
@@ -597,25 +519,8 @@ function pickWeakestVariant(topic){
 // MINIMUM over alle varianten (dus de bottleneck: pas "voltooid" als ELKE vorm voldoende beheerst wordt,
 // niet zodra de gemakkelijkste vorm vaak genoeg goed ging), `reps`/`correct` zijn de som, `due` is de
 // vroegste due-datum (de eerstvolgende variant die aan herhaling toe is).
-function getTopicProgress(topic){
-  const variants = getTopicVariants(topic);
-  const progresses = variants.map(v => getGrammarProgress(variantProgressKey(topic, v.id)));
-  return {
-    level: Math.min(...progresses.map(p=>p.level)),
-    reps: progresses.reduce((s,p)=>s+p.reps, 0),
-    correct: progresses.reduce((s,p)=>s+(p.correct||0), 0),
-    due: Math.min(...progresses.map(p=>p.due)),
-  };
-}
-function grammarTopicByKey(key){
-  if(!key) return null;
-  const [baseKey, variantId] = key.includes("::") ? key.split("::") : [key, null];
-  const topic = GRAMMAR_TOPICS.find(t=>t.key===baseKey);
-  if(!topic) return null;
-  if(!variantId) return topic;
-  const variant = getTopicVariants(topic).find(v=>v.id===variantId);
-  return variant ? effectiveTopicForVariant(topic, variant) : topic;
-}
+
+
 
 /* ===================== STRUCTURED COURSE (LESSONS) ===================== */
 /* ===================== CEFR TAALNIVEAU (moet vóór GRAMMAR_LESSONS/LESSONS staan, want cefrLabel wordt
@@ -628,7 +533,7 @@ function grammarTopicByKey(key){
 // sub-notitie) -- nodig voor een echt geleidelijke opbouw, met name onderaan: A1-start moet HARD op
 // 2 woorden blijven (znw+ww, niets anders), niet "2-3 woorden, meestal kaal" zoals de vorige versie
 // toestond, want dat liet net genoeg ruimte voor de AI om af te wijken naar iets complexers.
-const CEFR_LEVEL_GUIDANCE = [
+export const CEFR_LEVEL_GUIDANCE = [
   // A1
   "EXACT 2 woorden: een kaal zelfstandig naamwoord + een werkwoord in de tegenwoordige tijd, niets anders. Bijvoorbeeld \"Kedi yürüyor.\" (de kat loopt), \"Adam koşuyor.\" (de man rent), \"Köpek içiyor.\" (de hond drinkt). GEEN lijdend voorwerp, GEEN bijvoeglijk naamwoord/bijwoord, GEEN naamval, GEEN bijzin, GEEN voegwoord. Vereist het opgegeven grammaticale onderwerp per se iets extra's (bv. een naamval): voeg dan precies dat ene woord toe en niets meer (dus 3 woorden max, alleen dan).",
   "3 woorden: zelfstandig naamwoord + werkwoord, met precies ÉÉN toevoeging — óf een kort lijdend voorwerp, óf één simpel bijvoeglijk naamwoord, óf één eenvoudige plaatsbepaling (bv. \"evde\"). Bijvoorbeeld \"Kedi süt içiyor.\" (de kat drinkt melk), \"Büyük köpek koşuyor.\" (de grote hond rent). Uitsluitend tegenwoordige tijd, geen bijzin, geen voegwoord.",
@@ -654,15 +559,12 @@ const CEFR_LEVEL_GUIDANCE = [
   "Zoals hierboven, met spreekwoorden/idiomatische uitdrukkingen waar natuurlijk.",
   "Vrijwel moedertaalniveau: volledig natuurlijke, vloeiende zinsbouw en woordkeuze, geen enkele kunstmatige beperking meer.",
 ];
-const CEFR_SUB_NOTE = {
+export const CEFR_SUB_NOTE = {
   start: "Blijf aan de eenvoudige kant van dit niveau.",
   mid: "Dit is het kernniveau, gemiddeld voor dit niveau.",
   end: "Ga richting de bovenkant van dit niveau, net onder het volgende niveau."
 };
-function cefrGuidance(idx){
-  const major = CEFR_MAJOR[idx], sub = CEFR_SUB[idx];
-  return `Niveau ${major} (${sub}) van het Europese CEFR-referentiekader: ${CEFR_LEVEL_GUIDANCE[idx]} ${CEFR_SUB_NOTE[sub]}`;
-}
+
 
 let GRAMMAR_LESSONS; // gevuld door loadAllData()
 
@@ -900,7 +802,7 @@ function trWordsDataKeyFor(en){
 // Toont het Engelse trefwoord van een tr-en-entry, met "to " ervoor als het een werkwoord is -- gebruikt
 // het EIGEN, al bekende pos-veld van de tr-en-entry zelf i.p.v. te gokken via de (mogelijk afwijkende)
 // en-tr-woordsoort van hetzelfde Engelse trefwoord.
-function displayTrEntryGloss(entry){
+export function displayTrEntryGloss(entry){
   if(!entry) return "";
   return entry.pos === "verb" ? `to ${entry.en}` : entry.en;
 }
@@ -933,7 +835,7 @@ function markLessonComplete(id){
   saveJSON(LS_LESSONS, lessonProgress);
 }
 /* Grammatica-onderwerp kiezen binnen een actieve les (of het normale gedrag als er geen les actief is) */
-function pickLessonGrammarTopic(){
+export function pickLessonGrammarTopic(){
   const cefrCeiling = Math.max(settings.sentenceComplexityMin, settings.sentenceComplexityMax); // grammatica-zwaarte hoort bij zin-complexiteit, niet bij woordmoeilijkheid
   const cur = currentGrammarLesson();
   // voorkeur: het grammaticale onderwerp van de HUIDIGE les (in het grammatica-spoor), zolang dat nog
@@ -1110,7 +1012,7 @@ function wordCefrOf(en){
 }
 /* Cefr van een los Engels woord, inclusief dynamisch-ontdekte woorden (newWords) -- wordCefrOf zelf
    kent alleen de vaste Oxford-lijst. Gedeelde basis voor alle onderstaande CEFR-bereik-filters. */
-function cefrOfEn(en){
+export function cefrOfEn(en){
   const known = wordCefrOf(en);
   return typeof known === "number" ? known : newWords[en]?.cefr;
 }
@@ -1124,13 +1026,7 @@ function cefrOfEn(en){
 // (CEFR_LEVEL_GUIDANCE) en grammatica-onderwerpen (minCefr) blijven wél gewoon per subniveau verschillen
 // -- alleen de onderliggende woordenpool wordt vanaf hier gedeeld.
 
-function inCefrRangeEn(en){
-  const cefr = cefrOfEn(en);
-  if(typeof cefr !== "number") return true;
-  const lo = vocabCefrBand(Math.min(settings.cefrMin, settings.cefrMax));
-  const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
-  return vocabCefrBand(cefr) >= lo && vocabCefrBand(cefr) <= hi;
-}
+
 // Zin-generatie gebruikt nu dezelfde woordmoeilijkheidsslider als de gewone woordoefening (was
 // voorheen een los "sentenceVocab"-bereik, samengevoegd op verzoek -- zie inCefrRangeEn hierboven).
 
@@ -1167,7 +1063,7 @@ function wordDataOf(en){
   return _wordDataByEn[en];
 }
 const POS_ABBR_TO_FULL = Object.fromEntries(Object.entries(WORD_CATEGORY_ABBR).map(([full, abbr]) => [abbr, full]));
-function displayEnglishWord(en){
+export function displayEnglishWord(en){
   if(overrides[en] && overrides[en].en) return overrides[en].en;
   const base = baseEnOf(en);
   const pos = wordCategoryOf(en);
@@ -1267,7 +1163,7 @@ function drillLooksInvalid(drill, baseWords){
    de vaardigheid ISOLEERD maar wel PRAKTISCH TOEGEPAST (in een echt kort zinnetje) getoetst wordt. */
 
 // Welke woordsoort-pool(s) elk onderwerp nodig heeft, en welk framework (zinspatroon) daarbij hoort.
-const GRAMMAR_TOPIC_FRAMEWORK = {
+export const GRAMMAR_TOPIC_FRAMEWORK = {
   // ruimtelijk: naamval-constructies (locatief/datief/ablatief) -> [onderwerp-nw] + [ankernw]+constructie.
   // Deze werken vrijwel altijd met een willekeurig naamwoord als anker, dus puur "spatial" blijft prima.
   bulunma_hali:"spatial", yonelme_hali:"spatial", ayrilma_hali:"spatial",
@@ -1613,37 +1509,19 @@ function drillTurkishText(drill){
 // ingestelde CEFR-bereik mee (voorheen ontbrak die check hier volledig) -- alleen de BOVENgrens: een
 // allang-bekend, "te makkelijk" werkwoord/onderwerp is prima bruikbaar, alleen iets BOVEN je huidige
 // bereik (nog niet relevant/te moeilijk) wordt geweerd.
-function masteredVerbsForSuffixDrill(){
-  const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
-  return EN_WORDS_DATA.filter(w => w.pos === "verb" && vocabCefrBand(w.cefr) <= hi && getProgress(w.en).reps >= 1);
-}
+
 // Zelfde opzet als masteredVerbsForSuffixDrill hierboven, maar dan voor zelfst. naamwoorden -- de
 // suffixtrainer versuffixte voorheen ALLEEN werkwoorden; dit maakt naamwoord-achtervoegsels (meervoud,
 // bezit, naamval, verkleinwoord, copula, ...) even goed oefenbaar.
-function masteredNounsForSuffixDrill(){
-  const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
-  return EN_WORDS_DATA.filter(w => w.pos === "noun" && vocabCefrBand(w.cefr) <= hi && getProgress(w.en).reps >= 1);
-}
+
 // Kiest, binnen de pool van al-tegengekomen werkwoorden, bij VOORKEUR een al goed BEHEERST exemplaar
 // (level >= SUFFIX_DRILL_PREFERRED_VERB_LEVEL) -- dat geeft een prettigere oefening (je hoeft niet ook
 // nog aan het werkwoord zelf te twijfelen, alleen aan het grammaticapatroon). Is er nog geen enkel zo
 // goed beheerst werkwoord, dan valt dit terug op de volledige pool.
-const SUFFIX_DRILL_PREFERRED_VERB_LEVEL = 7;
-function pickSuffixDrillVerb(){
-  const pool = masteredVerbsForSuffixDrill();
-  if(!pool.length) return null;
-  const wellKnown = pool.filter(w => getProgress(w.en).level >= SUFFIX_DRILL_PREFERRED_VERB_LEVEL);
-  const source = wellKnown.length ? wellKnown : pool;
-  return source[Math.floor(Math.random()*source.length)];
-}
+export const SUFFIX_DRILL_PREFERRED_VERB_LEVEL = 7;
+
 // Naamwoord-tegenhanger van pickSuffixDrillVerb() hierboven.
-function pickSuffixDrillNoun(){
-  const pool = masteredNounsForSuffixDrill();
-  if(!pool.length) return null;
-  const wellKnown = pool.filter(w => getProgress(w.en).level >= SUFFIX_DRILL_PREFERRED_VERB_LEVEL);
-  const source = wellKnown.length ? wellKnown : pool;
-  return source[Math.floor(Math.random()*source.length)];
-}
+
 // BUGFIX: hierboven wordt ALTIJD een werkwoord vervoegd, dus alleen grammatica-onderwerpen die
 // daadwerkelijk op een werkwoord toegepast worden (framework "verb"/"verb2" in
 // GRAMMAR_TOPIC_FRAMEWORK) horen hier in aanmerking te komen. Voorheen ontbrak dit filter volledig --
@@ -1651,134 +1529,22 @@ function pickSuffixDrillNoun(){
 // worden en werd vervolgens geforceerd op een werkwoord toegepast, wat taalkundig onzin oplevert (een
 // werkwoord heeft geen meervoud/naamval). Onderwerpen zonder framework-vermelding (de "rest"-categorie
 // onderaan GRAMMAR_TOPIC_FRAMEWORK) worden voorzichtigheidshalve ook uitgesloten.
-const SUFFIX_DRILL_VERB_FRAMEWORKS = new Set(["verb", "verb2"]);
-function masteredTopicsForSuffixDrillVerb(){
-  const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
-  return GRAMMAR_TOPICS.filter(t => SUFFIX_DRILL_VERB_FRAMEWORKS.has(GRAMMAR_TOPIC_FRAMEWORK[t.key])
-    && vocabCefrBand(t.minCefr) <= hi
-    && getTopicProgress(t).reps >= 1);
-}
+export const SUFFIX_DRILL_VERB_FRAMEWORKS = new Set(["verb", "verb2"]);
+
 // Naamwoord-tegenhanger: alleen onderwerpen die daadwerkelijk op een LOS naamwoord landen (framework
 // "noun" -- meervoud, bezit, naamval, verkleinwoord, copula, var/yok, ...), net zoals hierboven alleen
 // "verb"/"verb2" meetelt voor werkwoorden.
-const SUFFIX_DRILL_NOUN_FRAMEWORKS = new Set(["noun"]);
-function masteredTopicsForSuffixDrillNoun(){
-  const hi = vocabCefrBand(Math.max(settings.cefrMin, settings.cefrMax));
-  return GRAMMAR_TOPICS.filter(t => SUFFIX_DRILL_NOUN_FRAMEWORKS.has(GRAMMAR_TOPIC_FRAMEWORK[t.key])
-    && vocabCefrBand(t.minCefr) <= hi
-    && getTopicProgress(t).reps >= 1);
-}
-function canOfferVerbSuffixDrill(){
-  return masteredVerbsForSuffixDrill().length > 0 && masteredTopicsForSuffixDrillVerb().length > 0;
-}
-function canOfferNounSuffixDrill(){
-  return masteredNounsForSuffixDrill().length > 0 && masteredTopicsForSuffixDrillNoun().length > 0;
-}
+export const SUFFIX_DRILL_NOUN_FRAMEWORKS = new Set(["noun"]);
+
+
+
 function canOfferSuffixDrill(){
   return canOfferVerbSuffixDrill() || canOfferNounSuffixDrill();
 }
 // Kiest willekeurig tussen een werkwoord- en een naamwoord-suffixoefening -- alleen uit de soort(en)
 // die daadwerkelijk beschikbaar zijn (zie canOfferVerbSuffixDrill/canOfferNounSuffixDrill).
-async function generateSuffixDrill(){
-  const verbOk = canOfferVerbSuffixDrill();
-  const nounOk = canOfferNounSuffixDrill();
-  if(!verbOk && !nounOk) throw new Error("No exposed word + exposed matching grammar topic combination available yet.");
-  const useNoun = verbOk && nounOk ? Math.random() < 0.5 : nounOk;
-  return useNoun ? generateNounSuffixDrill() : generateVerbSuffixDrill();
-}
-async function generateVerbSuffixDrill(){
-  const verbs = masteredVerbsForSuffixDrill();
-  const topics = masteredTopicsForSuffixDrillVerb();
-  if(!verbs.length || !topics.length) throw new Error("No exposed verb + exposed verb-grammar topic combination available yet.");
-  const verb = pickSuffixDrillVerb();
-  const topic = topics[Math.floor(Math.random()*topics.length)];
-  const verbTr = (await getOrFetchTranslation(verb.en))[0];
-  const verbBaseEn = baseEnOf(verb.en);
 
-  const sys = `Je maakt een "suffix"-oefening: de gebruiker moet ÉÉN Turks woord vormen door het werkwoord "${verbTr}" (Engels: "${verbBaseEn}") toe te passen op het grammaticale patroon "${topic.label}".
-Patroonomschrijving: ${topic.hint}
-Geef een kort, ondubbelzinnig Engels zinnetje dat PRECIES deze ene vervoegde vorm oproept (bv. "he will run", "I couldn't come", "if you read", "while eating") -- geen volledige zin met andere woorden erbij, puur de vervoeging van dit ene werkwoord in dit patroon.
-KRITIEK: sommige Turkse tijden/patronen klinken in kaal Engels bijna identiek aan een ANDER Turks patroon, met name de present continuous (-iyor) versus de aorist/brede tegenwoordige tijd (-ir/-er, gewoonte/algemeen). "Do you drink?" is bijvoorbeeld ECHT dubbelzinnig: het is de natuurlijke Engelse vertaling van zowel "İçer misin?" (aorist, aanbod/gewoonte) als "İçiyor musun?" (present continuous, dit moment) -- zoiets NOOIT als prompt gebruiken. Als het patroon dat je moet oproepen present continuous is, voeg dan ALTIJD een expliciete tijdsaanduiding toe die dat ondubbelzinnig maakt ("right now", "at this moment", "currently", bv. "Are you drinking right now?"). Als het patroon aorist/gewoonte is, voeg dan juist een gewoonte-aanduiding toe ("usually", "in general", "as a rule", bv. "Do you usually drink coffee?"). Pas dezelfde voorzichtigheid toe op elk ander tijden-paar dat in kaal Engels door elkaar zou kunnen lopen (bv. -di vs -miş verleden tijd: voeg toe of het zelf gezien is dan wel gehoord/afgeleid).
-Geef de correcte Turkse vervoeging (normaal gesproken één woord; alleen als het patroon dat grammaticaal vereist -- bv. bij "değil" of een hulpwerkwoord-constructie -- een vaste, korte woordgroep).
-Geef ook een STAP-VOOR-STAP MORFEEM-OPBOUW ("breakdown"): een array van de KALE werkwoordstam (zonder -mek/-mak, bv. "gel" niet "gelmek") tot en met de volledige vervoegde vorm, waarbij ELKE volgende stap EXACT ÉÉN achtervoegsel/morfeem meer bevat dan de vorige. Elke stap krijgt "form" (de Turkse vorm tot en met dat achtervoegsel) en "meaning" (de Engelse betekenis van de vorm OP DIE STAP, zodat de betekenisverandering door dat ene toegevoegde achtervoegsel duidelijk wordt). De eerste stap is altijd de kale stam, maar toon in "form" ERACHTER tussen haakjes het infinitiefachtervoegsel voor de volledigheid (bv. "oyna(mak)", "gel(mek)") -- dat achtervoegsel telt niet mee als een aparte opbouwstap, het is puur ter herkenning van het woordenboek-lemma; "meaning" van die eerste stap is de kale/infinitiefbetekenis (bv. "play"/"to play"). De laatste stap is EXACT gelijk aan "correct" (zonder haakjes-toevoeging). Gebruik zoveel stappen als het patroon daadwerkelijk vereist (meestal 2-4) -- verzin geen kunstmatige tussenstap die geen echte taalkundige eenheid is.
-KRITIEK VOOR DE "meaning" VAN ELKE TIJD/ASPECT-STAP: een Turks tijd-achtervoegsel (met name -dı/-di/-tı/-ti "getuige/zekere verleden tijd" en -mış/-miş "gehoorde/afgeleide verleden tijd", maar ook -ır/-er aorist, -ecek/-acak toekomst, -iyor present continuous) drukt ZELF alleen tijd/aspect uit, NOOIT een grammaticaal persoon -- de persoonsuitgang (ik/jij/hij-zij-het/wij/jullie/zij) is in het Turks een APART, los achtervoegsel dat er eventueel PAS DAARNA bovenop komt (en bij de 3e persoon enkelvoud vaak zelfs helemaal ontbreekt, "onmarked"). Schrijf de "meaning" van een stap die zo'n tijd/aspect-achtervoegsel toevoegt dus NOOIT alsof dat achtervoegsel zelf een persoon aanduidt (fout voorbeeld: "oynadı" -> "he/she played", wat suggereert dat -dı "hij/zij" betekent) -- benoem in plaats daarvan expliciet de tijd/het aspect, bv. "oynadı" -> "played (witnessed past; no personal suffix yet, so this reads as 3rd person by default)". Pas als een LATERE stap er daadwerkelijk een eigen persoonsachtervoegsel aan toevoegt, benoem dat er dan expliciet bij, bv. "oynadım" -> "I played (witnessed past + 1st person singular -m)".
-Antwoord in JSON.`;
-  const schema = {
-    name: "suffix_oefening",
-    description: "Eén woord-vervoegingsoefening op basis van een beheerst werkwoord en een beheerst grammaticapatroon, met stap-voor-stap morfeem-opbouw.",
-    input_schema: {
-      type: "object",
-      properties: {
-        prompt: {type:"string", description:"Kort, ONDUBBELZINNIG Engels zinnetje dat precies deze ene vervoegde vorm oproept -- bij tijden die in kaal Engels door elkaar kunnen lopen (m.n. present continuous vs. aorist/gewoonte) MOET een expliciete tijdsaanduiding ('right now'/'usually'/etc.) worden toegevoegd."},
-        correct: {type:"string", description:"De correcte Turkse vervoegde vorm."},
-        breakdown: {
-          type: "array",
-          description: "Stap-voor-stap morfeem-opbouw: van de kale werkwoordstam (met infinitief-achtervoegsel tussen haakjes, bv. 'oyna(mak)') tot de volledige vorm, elke stap precies 1 achtervoegsel meer dan de vorige. Laatste stap = 'correct'. Een tijd/aspect-achtervoegsel (-dı/-miş/-ır/-ecek/-iyor) is GEEN persoonsuitgang -- benoem in 'meaning' expliciet de tijd/het aspect, nooit een persoon, tenzij er ook daadwerkelijk een eigen persoonsachtervoegsel is toegevoegd.",
-          items: {
-            type: "object",
-            properties: {
-              form: {type:"string", description:"De Turkse vorm tot en met dit achtervoegsel (eerste stap: kale stam + infinitief tussen haakjes, bv. 'oyna(mak)')."},
-              meaning: {type:"string", description:"De Engelse betekenis van de vorm op deze stap. Bij een tijd/aspect-achtervoegsel: noem expliciet de tijd/het aspect (bv. 'played (witnessed past)'), NOOIT alsof het achtervoegsel zelf een persoon aanduidt. Bij een persoonsachtervoegsel: benoem dat expliciet (bv. 'I played (witnessed past + 1st person singular -m)')."},
-            },
-            required: ["form","meaning"],
-          },
-        },
-      },
-      required: ["prompt","correct","breakdown"]
-    }
-  };
-  const raw = await callAI("sentence", sys, `Werkwoord: ${verbBaseEn} (${verbTr}) | Patroon: ${topic.label}`, 700, 0.5, schema);
-  let parsed = parseAIJson(raw);
-  if(!parsed.prompt || !parsed.correct) throw new Error("AI did not return a valid suffix drill.");
-  // BUGFIX: sommige patronen (met name de 2e-persoon-enkelvoud-imperatief) vallen in het Turks samen
-  // met de KALE stam van het werkwoord (bv. "gel!" = gewoon de stam "gel"). Als het patroon dat getest
-  // wordt NIET zelf de imperatief is, maar de AI toch zo'n kale, van de stam niet te onderscheiden vorm
-  // teruggeeft, is de oefening onoplosbaar zonder context. Wordt zo'n dubbelzinnige kale vorm gedetecteerd,
-  // dan wordt één keer opnieuw gevraagd met een expliciete correctienotitie.
-  function looksAmbiguousBareForm(correct){
-    const stem = verbTr.replace(/mek$|mak$/i, "").trim().toLowerCase();
-    return correct.trim().toLowerCase() === stem;
-  }
-  if(looksAmbiguousBareForm(parsed.correct)){
-    const retryUser = `Werkwoord: ${verbBaseEn} (${verbTr}) | Patroon: ${topic.label}\n\nNOTE: your previous attempt gave "${parsed.correct}" as "correct" -- that is EXACTLY equal to the bare stem of the verb itself, so without extra context a user cannot tell this is meant to test the pattern "${topic.label}" rather than just the bare stem. Give a form that is clearly distinguishable from the bare stem (add the required suffix(es)/particle(s) for this pattern, or if the pattern genuinely IS the bare-stem imperative, make that unambiguous in "prompt"), for both "correct" and the last breakdown step, and only then repeat.`;
-    const raw2 = await callAI("sentence", sys, retryUser, 700, 0.5, schema);
-    const parsed2 = parseAIJson(raw2);
-    if(parsed2.prompt && parsed2.correct) parsed = parsed2;
-  }
-  // BUGFIX: "prompt" mag het antwoord niet verklappen (ondanks de instructie hierboven kwam het voor
-  // dat de AI de Turkse vorm toch letterlijk of tussen haakjes in de Engelse aanwijzing zelf zette, of
-  // er een extra instructiezin met een vervoeg-werkwoord als "conjugate"/"form"/"inflect" in stopte).
-  // Detecteert dit via drie signalen en vraagt dan één keer opnieuw met een expliciete notitie.
-  function promptLeaksAnswer(prompt, correct){
-    const p = prompt.toLowerCase();
-    const c = correct.trim().toLowerCase();
-    if(c.length >= 3 && p.includes(c)) return true;
-    if(/\bconjugate|\binflect|\bform the\b/i.test(prompt)) return true;
-    if(prompt.length > 70) return true;
-    return false;
-  }
-  if(promptLeaksAnswer(parsed.prompt, parsed.correct)){
-    const retryUser2 = `Werkwoord: ${verbBaseEn} (${verbTr}) | Patroon: ${topic.label}\n\nNOTE: your previous attempt gave as "prompt": "${parsed.prompt}" -- this leaks the answer (contains the Turkish form itself, literally or in parentheses) and/or contains an extra instruction sentence (e.g. with a verb like "conjugate"/"form"/"inflect" in it). "prompt" must be ONLY the short English cue sentence itself -- nothing more, no parenthetical with the Turkish form, no extra instruction sentence after it. Only then repeat.`;
-    const raw3 = await callAI("sentence", sys, retryUser2, 700, 0.5, schema);
-    const parsed3 = parseAIJson(raw3);
-    if(parsed3.prompt && parsed3.correct && !promptLeaksAnswer(parsed3.prompt, parsed3.correct)) parsed = parsed3;
-  }
-  const breakdown = (Array.isArray(parsed.breakdown) && parsed.breakdown.length)
-    ? parsed.breakdown.filter(s => s && s.form && s.meaning)
-    : [{form: parsed.correct, meaning: parsed.prompt}]; // veiligheidsnet: geen (bruikbare) breakdown terug -> toon tenminste de eindvorm
 
-  // Richting willekeurig kiezen -- de AI levert altijd zowel de Engelse aanwijzing (parsed.prompt) als
-  // de vervoegde Turkse vorm (parsed.correct), dus welke van de twee getoond wordt en welke als
-  // antwoord verwacht wordt, is puur een kwestie van welke kant we omdraaien. Bij "tr-en" moet de
-  // gebruiker de BETEKENIS van de al-getoonde Turkse vorm herkennen en in het Engels vertalen i.p.v.
-  // 'm zelf te produceren -- dus een ander soort vaardigheid (begrip) dan bij "en-tr" (productie).
-  const englishCue = parsed.prompt;
-  const turkishForm = parsed.correct;
-  const direction = Math.random() < 0.5 ? "tr-en" : "en-tr";
-  const prompt = direction === "tr-en" ? turkishForm : englishCue;
-  const correct = direction === "tr-en" ? englishCue : turkishForm;
-  return {type:"suffix", pos:"verb", en: `suffix:${verb.en}:${topic.key}`, direction, prompt, correct, englishCue, turkishForm, verbEn: verb.en, verbTr, topicKey: topic.key, breakdown};
-}
 
 // Naamwoord-tegenhanger van generateVerbSuffixDrill hierboven. Belangrijk verschil: veel naamwoord-
 // patronen (m.n. de copula-groep: var/yok, copula_basic, isaret_zamirleri, ...) kunnen NIET als kaal,
@@ -1787,84 +1553,7 @@ Antwoord in JSON.`;
 // contextzin aan de AI, met het te beoordelen doelwoord expliciet apart benoemd (targetWord +
 // targetMeaning), zodat de gebruiker ALLEEN dat ene woord hoeft te vertalen/produceren -- niet de hele
 // zin -- en dat woord in de UI onderstreept kan worden (zie renderSuffixPractice).
-async function generateNounSuffixDrill(){
-  const nouns = masteredNounsForSuffixDrill();
-  const topics = masteredTopicsForSuffixDrillNoun();
-  if(!nouns.length || !topics.length) throw new Error("No exposed noun + exposed noun-grammar topic combination available yet.");
-  const noun = pickSuffixDrillNoun();
-  const topic = topics[Math.floor(Math.random()*topics.length)];
-  const nounTr = (await getOrFetchTranslation(noun.en))[0];
-  const nounBaseEn = baseEnOf(noun.en);
 
-  const sys = `Je maakt een "suffix"-oefening: de gebruiker moet ÉÉN Turks woord vormen door het zelfstandig naamwoord "${nounTr}" (Engels: "${nounBaseEn}") toe te passen op het grammaticale patroon "${topic.label}".
-Patroonomschrijving: ${topic.hint}
-Geef een kort, ondubbelzinnig Engels zinnetje dat PRECIES deze ene gevormde woordvorm oproept (bv. "my book", "the apples", "to the house", "a little dog") -- puur de vorming van dit ene naamwoord in dit patroon, geen extra's.
-Geef de correcte Turkse vorm ("targetWord"): meestal is dit het KALE, op zichzelf staande gevormde naamwoord (zonder verdere zin eromheen), bv. "kitabım", "elmalar", "eve", "köpekçik".
-SOMMIGE patronen (met name copula/var-yok/aanwijs-achtige constructies) kunnen NIET als een kaal, geïsoleerd woord natuurlijk klinken -- die hebben een minimale zin nodig (bv. "Kitap var.", "Ev büyüktür.", "Bu bir araba."). ALLEEN in dat geval: vul ook "contextSentence" in met een kort, natuurlijk Turks zinnetje (2-4 woorden) waar "targetWord" letterlijk (exact dezelfde spelling) in voorkomt. Als een kaal woord wél volstaat, laat "contextSentence" dan leeg/weg.
-Geef ook een STAP-VOOR-STAP MORFEEM-OPBOUW ("breakdown"): een array van de KALE naamwoordstam tot en met "targetWord", waarbij ELKE volgende stap EXACT ÉÉN achtervoegsel/morfeem meer bevat dan de vorige. Elke stap krijgt "form" (de Turkse vorm tot en met dat achtervoegsel) en "meaning" (de Engelse betekenis op die stap). De eerste stap is de kale naamwoordstam (bv. "kitap" -> "book"). De laatste stap is EXACT gelijk aan "targetWord". Gebruik zoveel stappen als het patroon vereist (meestal 1-3).
-Antwoord in JSON.`;
-  const schema = {
-    name: "suffix_oefening_naamwoord",
-    description: "Eén woordvormingsoefening op basis van een beheerst zelfstandig naamwoord en een beheerst grammaticapatroon, met stap-voor-stap morfeem-opbouw.",
-    input_schema: {
-      type: "object",
-      properties: {
-        prompt: {type:"string", description:"Kort, ondubbelzinnig Engels zinnetje dat precies deze ene gevormde woordvorm oproept."},
-        targetWord: {type:"string", description:"De correcte, KALE Turkse gevormde vorm van het naamwoord (zonder omringende zin)."},
-        contextSentence: {type:"string", description:"ALLEEN invullen als 'targetWord' onmogelijk als geïsoleerd woord kan staan (copula/var-yok/aanwijs-constructies): een kort natuurlijk Turks zinnetje waar 'targetWord' letterlijk in voorkomt. Anders leeg laten."},
-        breakdown: {
-          type: "array",
-          description: "Stap-voor-stap morfeem-opbouw van de kale naamwoordstam tot 'targetWord', elke stap precies 1 achtervoegsel meer dan de vorige.",
-          items: {
-            type: "object",
-            properties: {
-              form: {type:"string", description:"De Turkse vorm tot en met dit achtervoegsel."},
-              meaning: {type:"string", description:"De Engelse betekenis van de vorm op deze stap."},
-            },
-            required: ["form","meaning"],
-          },
-        },
-      },
-      required: ["prompt","targetWord","breakdown"]
-    }
-  };
-  const raw = await callAI("sentence", sys, `Naamwoord: ${nounBaseEn} (${nounTr}) | Patroon: ${topic.label}`, 700, 0.5, schema);
-  let parsed = parseAIJson(raw);
-  if(!parsed.prompt || !parsed.targetWord) throw new Error("AI did not return a valid suffix drill.");
-  // Zelfde lek-detectie als bij de werkwoordvariant: het Engelse aanwijs-zinnetje mag de Turkse
-  // doelvorm niet verklappen.
-  function promptLeaksAnswer(prompt, correct){
-    const p = prompt.toLowerCase();
-    const c = correct.trim().toLowerCase();
-    if(c.length >= 3 && p.includes(c)) return true;
-    if(prompt.length > 70) return true;
-    return false;
-  }
-  if(promptLeaksAnswer(parsed.prompt, parsed.targetWord)){
-    const retryUser = `Naamwoord: ${nounBaseEn} (${nounTr}) | Patroon: ${topic.label}\n\nNOTE: your previous attempt gave as "prompt": "${parsed.prompt}" -- this leaks the answer (contains the Turkish form itself) and/or is too long. "prompt" must be ONLY the short English cue sentence itself. Only then repeat.`;
-    const raw2 = await callAI("sentence", sys, retryUser, 700, 0.5, schema);
-    const parsed2 = parseAIJson(raw2);
-    if(parsed2.prompt && parsed2.targetWord && !promptLeaksAnswer(parsed2.prompt, parsed2.targetWord)) parsed = parsed2;
-  }
-  // Als er een contextSentence is opgegeven maar targetWord er (letterlijk) niet in voorkomt, kunnen we
-  // 'm niet betrouwbaar onderstrepen -- val dan veilig terug op het kale woord zonder context.
-  let contextSentence = (parsed.contextSentence || "").trim();
-  if(contextSentence && !contextSentence.includes(parsed.targetWord)) contextSentence = "";
-  const breakdown = (Array.isArray(parsed.breakdown) && parsed.breakdown.length)
-    ? parsed.breakdown.filter(s => s && s.form && s.meaning)
-    : [{form: parsed.targetWord, meaning: parsed.prompt}];
-
-  const englishCue = parsed.prompt;
-  const turkishForm = parsed.targetWord;
-  const direction = Math.random() < 0.5 ? "tr-en" : "en-tr";
-  // en-tr: gewoon het kale doelwoord produceren (net als bij werkwoorden), geen context nodig.
-  // tr-en: als er een contextSentence is, die tonen (met targetWord onderstreept -- zie
-  // renderSuffixPractice) zodat duidelijk is welk woord vertaald moet worden; het te vertalen antwoord
-  // blijft wel ALLEEN de betekenis van targetWord zelf, niet van de hele zin.
-  const prompt = direction === "tr-en" ? (contextSentence || turkishForm) : englishCue;
-  const correct = direction === "tr-en" ? englishCue : turkishForm;
-  return {type:"suffix", pos:"noun", en: `suffix:${noun.en}:${topic.key}`, direction, prompt, correct, englishCue, turkishForm, contextSentence, targetWordTr: turkishForm, nounEn: noun.en, nounTr, topicKey: topic.key, breakdown};
-}
 
 // Beoordeelt een suffix-antwoord: alleen goed/fout, GEEN algemene uitleg -- bij een fout antwoord
 // specifiek het VERSCHIL met de eigen (foute) invoer, zodat de gebruiker precies ziet welk achtervoegsel
@@ -1873,38 +1562,7 @@ Antwoord in JSON.`;
 // "tr-en" wordt de Turkse vorm al getoond en typt de gebruiker de Engelse betekenis ervan -- dan wordt
 // beoordeeld of de vertaling het juiste tijd/aspect/persoon van díe specifieke vorm correct weergeeft,
 // niet of het exact dezelfde bewoording is als de oorspronkelijke Engelse aanwijzing.
-async function gradeSuffixDrillAnswer(drill, answer){
-  const isNoun = drill.pos === "noun";
-  // Bij een naamwoord-oefening met contextSentence toont "drill.prompt" de HELE zin (voor onderstreping
-  // in de UI), maar de gebruiker hoeft alleen het doelwoord "targetWordTr"/"turkishForm" te vertalen --
-  // die specifieke vorm (niet de hele zin) hoort dus in de beoordelingsprompt, niet drill.prompt zelf.
-  const turkishFormForGrading = isNoun ? (drill.targetWordTr || drill.turkishForm) : drill.prompt;
-  const wordLabel = isNoun ? `het zelfstandig naamwoord "${drill.nounTr}"` : `het werkwoord "${drill.verbTr}"`;
-  const sys = drill.direction === "tr-en"
-    ? `Je beoordeelt of de Engelse vertaling van een gebruiker de betekenis correct weergeeft van de Turkse vorm "${turkishFormForGrading}" (${wordLabel} gevormd met het patroon "${drill.topicKey}"). Een voorbeeldvertaling is "${drill.correct}", maar andere bewoordingen die hetzelfde correct weergeven zijn OOK goed (bv. "he will come" en "he's going to come" zijn beide correct voor een toekomstige tijd).
-BELANGRIJK: het voorbeeld "${drill.correct}" kan een expliciet verduidelijkend woordje bevatten zoals "usually"/"right now"/"in general" -- dat woordje stond er destijds ALLEEN bij om de Engelse aanwijzing zelf ondubbelzinnig te maken (zodat die niet zowel als present continuous als aorist gelezen kon worden). Bij het beoordelen van de vertaling van de gebruiker is zo'n woordje NOOIT verplicht: een kale eenvoudige tegenwoordige tijd ("I hear") is een volledig correcte vertaling van een aorist-vorm, een kale "is/are + -ing" is een volledig correcte vertaling van -iyor, enzovoort. Reken een antwoord dus NOOIT fout omdat het woordje als "usually" of "right now" ontbreekt, zolang de gekozen Engelse tijdsvorm zelf (simple present vs. present continuous vs. simple future, etc.) bij de Turkse vorm past.
-Reken het antwoord alleen FOUT als het daadwerkelijk een ANDERE tijd/aspect/persoon weergeeft dan de Turkse vorm uitdrukt (bv. tegenwoordige tijd i.p.v. toekomstige tijd, of de verkeerde persoon) -- niet om ontbrekende nuance-woordjes of stilistische verschillen.
-Als het antwoord daadwerkelijk FOUT is: leg in het Engels (max 2 zinnen, geen tegenstrijdige redenering), rechtstreeks tegen de gebruiker gericht ("you"), BEKNOPT uit wat er mis is met hun vertaling "${answer}" t.o.v. wat "${turkishFormForGrading}" daadwerkelijk betekent. Als het antwoord GOED is, laat "diff" leeg.
-Antwoord in JSON.`
-    : `Je beoordeelt of het Turkse antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (gebruiker moest deze Engelse frase naar de correct vervoegde Turkse vorm vertalen). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat het antwoord fout wordt. Reken dit soort verschil dus NOOIT fout. NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en reken kleine tikfouten met een ondubbelzinnige bedoeling goed.
-LET OP OP EEN MOGELIJK DUBBELZINNIGE PROMPT: als het Engelse zinnetje "${drill.prompt}" zelf, in kaal Engels, EIGENLIJK op meer dan één Turkse tijd/patroon zou kunnen slaan (het klassieke geval: een Engelse zin zonder expliciete tijdsaanduiding kan zowel de present continuous ALS de aorist/gewoonte-lezing dekken, bv. "Do you drink?" kan zowel "İçer misin?" als "İçiyor musun?" betekenen) -- en het antwoord van de gebruiker is een grammaticaal correcte vervoeging van HETZELFDE werkwoord die bij die ANDERE, even legitieme lezing hoort, reken dat dan GOED, ook al wijkt het af van "${drill.correct}". Dit is de dubbelzinnigheid van de prompt, niet een fout van de gebruiker.
-Als het antwoord daadwerkelijk FOUT is: leg in het Engels (max 2 zinnen), rechtstreeks tegen de gebruiker gericht ("you"), PRECIES uit wat het verschil is tussen hun antwoord "${answer}" en de correcte vorm "${drill.correct}" -- welk achtervoegsel ontbreekt, verkeerd is, in de verkeerde volgorde staat, of welke klinkerharmonie-/medeklinkerverzachtingsfout er is. Als het antwoord GOED is, laat "diff" leeg.
-Antwoord in JSON.`;
-  const schema = {
-    name: "beoordeel_suffix_antwoord",
-    description: "Beoordeling van een suffix-oefening: correct/fout plus, bij fout, een precieze uitleg van het verschil met het eigen antwoord.",
-    input_schema: {
-      type: "object",
-      properties: {
-        correct: {type:"boolean"},
-        diff: {type:"string", description:"Bij een fout antwoord: korte, precieze uitleg van het verschil met de correcte vorm. Leeg bij een correct antwoord."},
-      },
-      required: ["correct","diff"]
-    }
-  };
-  const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 400, 0, schema);
-  return parseAIJson(raw);
-}
+
 
 async function generateGrammarDrill(topic, avoidEn){
   // BUGFIX: topic.key kan variant-gescoped zijn (bv. "hitap_bicimleri::titel", "ce_eki::gorus" --
@@ -1951,24 +1609,7 @@ async function generateGrammarDrill(topic, avoidEn){
   return drill;
 }
 
-async function gradeGrammarDrillAnswer(drill, answer){
-  const isTrEn = drill.direction === "tr-en";
-  const sys = `Je beoordeelt of het ${isTrEn ? "Engelse" : "Turkse"} antwoord van een gebruiker correct is voor de opdracht "${drill.prompt}" (${isTrEn ? "gebruiker moest de Turkse vorm naar het Engels vertalen" : "gebruiker moest de Engelse frase naar het Turks vertalen"}). Het verwachte antwoord was "${drill.correct}", maar er kunnen legitieme alternatieve correcte vormen/synoniemen bestaan. BELANGRIJK: Turks is een pro-drop-taal — het onderwerp-voornaamwoord (ben/sen/o/biz/siz/onlar) mag vrijwel altijd weggelaten OF expliciet toegevoegd worden zonder dat de zin fout wordt (bv. "et" en "O et" zijn beide correct voor "it is meat"). Reken dit soort verschil dus NOOIT fout. ${isTrEn ? "" : "NEGEER Turkse diakritische tekens volledig (ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c zijn onderling uitwisselbaar) en"} kleine tikfouten met een ondubbelzinnige bedoeling reken je goed. Geef ook een korte (max 2 zinnen) uitleg in het Engels, rechtstreeks tegen de gebruiker gericht (spreek de gebruiker aan met "you") — vooral nuttig als het antwoord fout is, om te laten zien waarom. Antwoord in JSON.`;
-  const schema = {
-    name: "beoordeel_antwoord",
-    description: "Beoordeling van een grammatica-oefening.",
-    input_schema: {
-      type: "object",
-      properties: {
-        correct: {type:"boolean"},
-        uitleg: {type:"string", description:"Korte uitleg in het Engels, rechtstreeks tegen de gebruiker gericht."},
-      },
-      required: ["correct","uitleg"]
-    }
-  };
-  const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 300, 0, schema);
-  return parseAIJson(raw);
-}
+
 
 // Klik op het kale checkup/skill-practice-woord (alleen onderstreept als de vertaling lokaal bekend is):
 // zelfde progressieve letterhint als peekCurrentWord() op het hoofdscherm -- 1e klik toont de eerste
@@ -2145,55 +1786,7 @@ async function nextCheckupQuestion(){
 // de daadwerkelijke beoordeling zelf is gedeeld. `cur.wordSource === "tr"` (een rechtstreeks tr-en-item
 // uit de gemengde weak-words-pool) komt alleen via skill-practice voor, maar hoort inhoudelijk bij deze
 // gedeelde beoordelingslogica, niet bij sessie-specifieke afhandeling.
-async function gradeCheckupWordAnswer(cur, answer){
-  let correct = false, correctAnswerTxt = "", deviation = "", uitleg = "", spokenTr = null, aiUnavailable = false;
-  if(cur.sentenceDrill){
-    correctAnswerTxt = cur.sentenceDrill.correct;
-    if(answer && normalize(answer) === normalize(correctAnswerTxt)){
-      correct = true;
-    } else if(answer){
-      try{ const v = await gradeGrammarDrillAnswer(cur.sentenceDrill, answer); correct = !!v.correct; uitleg = v.uitleg || ""; }catch(e){ aiUnavailable = true; }
-    }
-  } else if(cur.wordSource === "tr"){
-    // Rechtstreeks tr-en-item -- zelfde beoordelingslogica als het hoofd-oefenscherm (checkStaticMatch/
-    // askDeepSeekJudge), NIET de en-tr-specifieke tak hieronder (die neemt cur.en als brontaal aan,
-    // terwijl hier cur.tr de brontaal is).
-    correctAnswerTxt = correctEnglishDisplayFor(cur);
-    if(cur.peeked){
-      correct = !!(answer && normalize(answer) === normalize(correctAnswerTxt));
-    } else if(answer && checkStaticMatch(cur, answer)){
-      correct = true;
-    } else if(answer){
-      try{ const v = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:"tr-en"}, answer, false); correct = !!v.correct; uitleg = v.uitleg || ""; deviation = v.afwijking || ""; }catch(e){ aiUnavailable = true; }
-    }
-  } else {
-    correctAnswerTxt = cur.direction === "tr-en" ? baseEnOf(cur.en) : (cur.tr || (cachedTranslation(cur.en)||[]).join(", "));
-    if(!correctAnswerTxt && cur.direction !== "tr-en"){
-      // De vertaling kon bij het tonen van de vraag niet worden opgehaald (bv. een tijdelijke AI-hik) --
-      // cur.tr bleef toen null en de feedback zou dus een lege "Correct answer:" tonen. Nu de gebruiker
-      // toch al aan het antwoorden is, alsnog één keer proberen op te halen, zodat de vertaling niet
-      // blijvend onzichtbaar blijft.
-      try{ const tr = await getOrFetchTranslation(cur.en); correctAnswerTxt = tr[0]; cur.tr = tr[0]; cur.senseTr = tr; }catch(e){ /* nog steeds niks -- feedback toont dan geen vertaling, het antwoord wordt wel gewoon beoordeeld */ }
-    }
-    if(cur.peeked){
-      // Dit woord is deze beurt al gepiept (zie peekCheckupWord) -- telt sowieso als fout voor de score
-      // (zie scoreCorrect bij de aanroeper), maar de WEERGAVE mag gewoon "Correct!" tonen als het
-      // getypte antwoord toch letterlijk klopt (bv. met behulp van de hint-letters).
-      correct = !!(answer && normalize(answer) === normalize(correctAnswerTxt));
-    } else if(answer && normalize(answer) === normalize(correctAnswerTxt)){
-      correct = true;
-    } else if(answer){
-      try{
-        const verdict = await askDeepSeekJudge({en:cur.en, tr:cur.tr, direction:cur.direction, senseTr:cur.senseTr, gloss:cur.gloss}, answer, false);
-        correct = !!verdict.correct;
-        deviation = verdict.afwijking || "";
-        uitleg = verdict.uitleg || "";
-        if(correct) spokenTr = /typo|tikfout/i.test(deviation) ? (closestTrMatch(cur, answer) || cur.tr) : answer;
-      }catch(e){ aiUnavailable = true; }
-    }
-  }
-  return {correct, correctAnswerTxt, deviation, uitleg, spokenTr, aiUnavailable};
-}
+
 
 // Stap 6 van het verbeterplan ("AI-fouten fail-safe i.p.v. fail-closed"): bij een AI-infrastructuurfout
 // (na callAI's eigen 2 automatische herkansingen nog steeds mislukt) telt deze beurt NIET mee -- geen
@@ -2214,13 +1807,12 @@ async function submitCheckupAnswer(){
   const cur = checkupState.current;
   let correct = false;
   let correctAnswerTxt = "";
-  let deviation = "";
 
   let spokenTr = null; // welk specifiek Turks synoniem uitgesproken moet worden -- null = val terug op cur.tr
   if(cur.type === "word"){
     const g = await gradeCheckupWordAnswer(cur, answer);
     if(g.aiUnavailable){ handleAIUnavailableRetry(); return; }
-    correct = g.correct; correctAnswerTxt = g.correctAnswerTxt; deviation = g.deviation; spokenTr = g.spokenTr;
+    correct = g.correct; correctAnswerTxt = g.correctAnswerTxt; spokenTr = g.spokenTr;
     const scoreCorrect = cur.peeked ? false : correct;
     recordResult(cur.progressKey || cur.en, scoreCorrect, (cur.peeked && correct) ? hintPenaltySeverity(cur) : 1); // telt gewoon mee voor je normale voortgang op dat woord
     if(cur.direction === "en-tr" && cur.tr) setCheckupSpeakableTr(spokenTr || cur.tr);
@@ -2574,13 +2166,12 @@ async function submitSkillPracticeAnswer(){
   let correct = false;
   let correctAnswerTxt = "";
   let uitleg = "";
-  let deviation = "";
   let spokenTr = null; // welk specifiek Turks synoniem uitgesproken moet worden -- null = val terug op cur.tr
 
   if(cur.type === "word"){
     const g = await gradeCheckupWordAnswer(cur, answer);
     if(g.aiUnavailable){ handleAIUnavailableRetry(); return; }
-    correct = g.correct; correctAnswerTxt = g.correctAnswerTxt; deviation = g.deviation; uitleg = g.uitleg; spokenTr = g.spokenTr;
+    correct = g.correct; correctAnswerTxt = g.correctAnswerTxt; uitleg = g.uitleg; spokenTr = g.spokenTr;
     const scoreCorrect = cur.peeked ? false : correct;
     recordResult(cur.progressKey || cur.en, scoreCorrect, (cur.peeked && correct) ? hintPenaltySeverity(cur) : 1);
     if(cur.direction === "en-tr" && cur.tr) setCheckupSpeakableTr(spokenTr || cur.tr);
@@ -2797,7 +2388,7 @@ function recordAdaptiveResult(correct){
 
 
 
-function getGrammarProgress(key){
+export function getGrammarProgress(key){
   if(!grammar[key]) grammar[key] = {level:0, due:Date.now(), reps:0};
   return migrateLegacyProgress(grammar[key]);
 }
@@ -3015,10 +2606,7 @@ function easeOf(en){
 // Elke toegang tot een progress-entry migreert 'm (idempotent) van de oude SM-2-achtige velden
 // (level/ease/intervalMin) naar de nieuwe FSRS-velden (stability/difficulty) -- zie migrateLegacyProgress
 // in fsrs.js. De oude velden blijven gewoon staan (nooit verwijderd), alleen de SCHEDULING zelf stapt over.
-function getProgress(tr){
-  if(!progress[tr]) progress[tr] = {level:0, due:Date.now(), reps:0, ease:EASE_START};
-  return migrateLegacyProgress(progress[tr]);
-}
+
 
 // Voorkomt dat een woord binnen een paar minuten na de vorige beurt alwéér wordt voorgelegd: zonder
 // deze afkoeltijd bleef een net fout beantwoord woord het "zwakste" (laagste niveau) en kwam het via
@@ -3036,16 +2624,7 @@ function markShown(en){
   saveJSON(LS_PROGRESS, progress);
 }
 
-function baseWordList(){
-  // BEWUST alleen de Oxford-kernlijst: newWords-ontdekking staat uit (zie ensureWordExists) en oude,
-  // her en der nog aanwezige newWords-items uit vóór die beslissing mogen niet meer meetellen -- die
-  // zaten eerder WEL in deze lijst (dus zichtbaar in de Woorden-tab, met een score als ze ooit geoefend
-  // zijn) maar NIET in unlockedWordSet() (dat blijft uitsluitend EN_WORDS_DATA), waardoor zulke woorden
-  // permanent als "not yet translated" bleven staan én nooit meer als opgave gekozen konden worden, ook
-  // niet met een lage score. Door ze hier ook te laten vallen is er nergens meer een mismatch: een woord
-  // staat óf helemaal (zichtbaar + selecteerbaar), óf helemaal niet in de actieve woordenlijst.
-  return EN_WORDS_DATA;
-}
+
 
 function allWords(){
   // basislijst (Engels + cefr); de Turkse vertaling zit NIET hier — die wordt pas
@@ -3108,7 +2687,7 @@ function getIntroducibleWords(){
    Turks grammaticaal patroon zoals "ya ... ya da" in plaats van een vertaling) -- zonder deze check
    belanden zulke strings alsnog als "nieuw Engels woord" in de trackinglijst, waar ze nooit een
    zinnige vertaling krijgen en dus voor altijd op "nog niet vertaald" blijven staan. */
-function looksLikeEnglishWord(en){
+export function looksLikeEnglishWord(en){
   if(!en || typeof en !== "string") return false;
   if(en.includes("...") || en.includes("…")) return false; // grammaticaal patroon, geen los woord
   if(en.includes("/")) return false; // AI die meerdere opties/vertalingen in één "woord" samenperst
@@ -3119,123 +2698,30 @@ function looksLikeEnglishWord(en){
 }
 
 /* Voegt een nieuw Engels woord toe aan de lijst (ontdekt via een zin), tenzij het al bestaat. */
-function ensureWordExists(en, cefr){
-  if(!en || !looksLikeEnglishWord(en)) return false;
-  if(EN_WORDS_DATA.some(w=>w.en===en) || newWords[en]) return false;
-  newWords[en] = {cefr: typeof cefr === "number" ? cefr : Math.round(((settings.cefrMin ?? 3) + (settings.cefrMax ?? 5)) / 2)};
-  saveJSON(LS_NEWWORDS, newWords);
-  return true;
-}
+
 
 /* ===================== VERTALING OP AANVRAAG ===================== */
 // Kern van de nieuwe opzet: de Turkse vertaling van een Engels woord wordt pas opgevraagd
 // bij de AI op het moment dat dat woord daadwerkelijk aan de beurt is — niet vooraf voor
 // alle ~5000 woorden. Eenmaal opgehaald wordt het resultaat lokaal gecached (en gesynct),
 // zodat elk woord maar 1x per apparaat-cluster vertaald hoeft te worden.
-function cachedTranslation(en){
-  // Handmatige correctie heeft ALTIJD voorrang -- vervangt de vertaling volledig (i.t.t. custom,
-  // dat een extra geaccepteerd antwoord TOEVOEGT zonder de primair getoonde vertaling te wijzigen).
-  if(overrides[en] && overrides[en].tr && overrides[en].tr.length) return overrides[en].tr;
-  const curated = curatedTr[en];
-  let baseTr = null;
-  if(curated){
-    // Nieuwe vorm: {senses:[{gloss,tr,register}, ...]} -- voor "geef me een geldige vertaling"-doel-
-    // einden (bv. Woorden-tab, vulwoord-weergave) alle zinnen platgeslagen tot één lijst; welke exacte
-    // zin bedoeld is voor een SPECIFIEKE oefening wordt apart bepaald door pickWordSense() hieronder.
-    if(Array.isArray(curated.senses)) baseTr = [...new Set(curated.senses.flatMap(s=>s.tr||[]))];
-    else if(curated.tr) baseTr = curated.tr; // oude vlakke vorm (veiligheidsnet, zou niet meer moeten voorkomen)
-  }
-  const c = baseTr ? {tr: baseTr} : trCache[en];
-  const extra = custom[en];
-  if(!c) return null;
-  const tr = extra && extra.tr ? [...new Set([...c.tr, ...extra.tr])] : c.tr;
-  return tr;
-}
+
 // Kiest, voor een NIEUWE oefening met dit woord, welke specifieke betekenis getest wordt (bij een
 // homoniem/polyseem woord zoals "mine" of "light" zijn dat er meerdere) -- de gekozen zin (incl. gloss
 // en de bijbehorende Turkse vertaling(en)) wordt op het oefening-item zelf bewaard, zodat weergave EN
 // beoordeling binnen diezelfde oefening consistent naar dezelfde betekenis verwijzen.
-let _wordPosMap = null;
 // Volledige woordsoort ("verb", "noun", ...) zoals in words.json/REVERSE_TR_INDEX, in tegenstelling
 // tot wordCategoryOf() dat de afgekorte weergavevorm ("v.", "n.") teruggeeft. Nodig om bij een
 // gesplitst woord (bv. "fly__v"/"fly__n") de juiste tr-en-tegenhanger te kiezen uit REVERSE_TR_INDEX,
 // dat zelf niet gesplitst is en per basiswoord soms meerdere, verschillende-woordsoort opties bevat.
-function wordPosOf(en){
-  if(!_wordPosMap){
-    _wordPosMap = {};
-    for(const w of EN_WORDS_DATA) if(w.pos) _wordPosMap[w.en] = w.pos;
-  }
-  return _wordPosMap[en] || null;
-}
-let _wordTransitivityMap = null;
+
 // Voor de zeldzame gevallen waarin twee entries van hetzelfde basiswoord dezelfde woordsoort delen
 // maar taalkundig toch echt verschillend zijn (bv. "change__v"=değiştirmek/overgankelijk vs
 // "change__vi"=değişmek/onovergankelijk, allebei "verb") -- wordPosOf alleen kan die twee dan niet
 // uit elkaar houden bij het kiezen van de juiste tr-en-tegenhanger. Voor woorden zonder dit onderscheid
 // (verreweg de meeste) geeft dit null en heeft het geen effect op de bestaande pos-matching.
-function wordTransitivityOf(en){
-  if(!_wordTransitivityMap){
-    _wordTransitivityMap = {};
-    for(const w of EN_WORDS_DATA) if(w.transitivity) _wordTransitivityMap[w.en] = w.transitivity;
-  }
-  return _wordTransitivityMap[en] || null;
-}
-function pickWordSense(en, direction){
-  if(overrides[en] && overrides[en].tr && overrides[en].tr.length){
-    return {tr: overrides[en].tr, gloss: null, register: "neutral"};
-  }
-  // tr-en richting: gebruik de ECHTE tr-en-gebaseerde tegenhanger (reverse-lookup in de apart
-  // gecureerde tr-en-lijst), NIET de en-tr-vertaalkolom "achterstevoren" gelezen -- de twee richtingen
-  // zijn onafhankelijk gecureerd (elk met hun eigen disambiguatie/register) en moeten dat ook blijven.
-  if(direction === "tr-en"){
-    const trEnOptions = REVERSE_TR_INDEX[baseEnOf(en)];
-    if(trEnOptions && trEnOptions.length){
-      // Bij een op woordsoort gesplitst woord (bv. "fly__v" vs "fly__n") kan REVERSE_TR_INDEX onder
-      // hetzelfde basiswoord meerdere, qua woordsoort VERSCHILLENDE opties bevatten (sinek=noun vs
-      // uçmak=verb) -- dan moet de optie horend bij DEZE specifieke woordsoort gekozen worden, niet
-      // zomaar de eerste. Als GEEN ENKELE optie de gevraagde woordsoort heeft (bv. "call" had ooit
-      // alleen een noun-optie terwijl de verb-vorm getest werd), mag er NOOIT een optie van een
-      // andere woordsoort als vervanging getoond worden -- dat toont dan een woord dat feitelijk niet
-      // bij de geteste betekenis hoort. In dat geval geldt dit net als "geen tr-en-tegenhanger bekend"
-      // (zie hieronder): null teruggeven, oefening valt terug op en-tr. Alleen als het woord ZELF geen
-      // woordsoort-info heeft (niet gesplitst) is de eerste optie een redelijke standaardkeuze.
-      const wantedPos = wordPosOf(en);
-      const wantedTransitivity = wordTransitivityOf(en);
-      if(wantedPos){
-        const candidates = trEnOptions.filter(o => o.pos === wantedPos);
-        // Als er meerdere kandidaten met dezelfde woordsoort zijn ÉN dit woord een transitivity-
-        // onderscheid heeft, moet die ook matchen (bv. değiştirmek vs değişmek, allebei "verb").
-        // Zonder zo'n onderscheid (verreweg de meeste woorden) is de eerste woordsoort-match voldoende.
-        const posMatch = (wantedTransitivity && candidates.length > 1)
-          ? candidates.find(o => o.transitivity === wantedTransitivity)
-          : candidates[0];
-        if(!posMatch) return null;
-        return {tr: [posMatch.tr], gloss: posMatch.gloss || null, note: posMatch.note || null, register: posMatch.register || "neutral"};
-      }
-      const chosen = trEnOptions[0];
-      return {tr: [chosen.tr], gloss: chosen.gloss || null, note: chosen.note || null, register: chosen.register || "neutral"};
-    }
-    // Geen echte tr-en-tegenhanger bekend voor dit woord -> BEWUST geen terugval meer op de en-tr-data:
-    // de twee richtingen delen geen brondata. null teruggeven zodat de aanroeper (renderPractice) de
-    // oefening voor dit woord gewoon als en-tr afhandelt in plaats van een tr-en-oefening te tonen die
-    // stiekem toch uit de en-tr-lijst put.
-    return null;
-  }
-  const curated = curatedTr[en];
-  if(curated && Array.isArray(curated.senses) && curated.senses.length){
-    const senses = curated.senses;
-    // altijd de EERSTE (primaire) betekenis, geen willekeurige keuze -- voorkomt dat een vage, minder
-    // gangbare betekenis als opgave voorgelegd wordt in plaats van de meest voor de hand liggende.
-    const chosen = senses[0];
-    // gloss/note alleen tonen als er ook daadwerkelijk iets te disambigueren valt (>1 zin). "note" is
-    // een korte, ALTIJD zichtbare Engelse betekenis-hint (bv. "(approximately)" vs "(concerning)") --
-    // in tegenstelling tot "gloss", dat alleen aan de AI-beoordelaar werd doorgegeven en de gebruiker
-    // zelf dus nooit vooraf kon zien welke van de meerdere losstaande betekenissen bedoeld was.
-    return {tr: chosen.tr, gloss: chosen.gloss || null, note: chosen.note || null, register: chosen.register || "neutral"};
-  }
-  const tr = cachedTranslation(en);
-  return tr ? {tr, gloss: null, note: null, register: (curated && curated.register) || "neutral"} : null;
-}
+
+
 // Gedeelde resolutie-stap voor alle drie de plekken die een los woord tonen (hoofdscherm, kennischeck,
 // skill-practice): probeert eerst synchroon een zin te kiezen uit de gecureerde data (per richting, zie
 // hierboven), en haalt alleen bij een écht nog niet gecureerd woord (zeldzaam) alsnog live iets op.
@@ -3342,31 +2828,7 @@ Antwoord in JSON. De volgorde en het aantal items in "words" moet EXACT overeenk
   bulkTranslateRunning = false;
 }
 
-async function getOrFetchTranslation(en){
-  const cached = cachedTranslation(en);
-  if(cached && cached.length) return cached;
-  if(!hasKeyFor("word")) throw new Error(`No ${preferredModelFor("word") === "claude" ? "Anthropic" : "DeepSeek"} API key (or shared proxy) set — needed to generate Turkish translations.`);
 
-  const sys = `Je bent een Engels-Turks vertaler voor een taalleerapp. Geef de meest gangbare Turkse vertaling(en) van een Engels woord, in de basisvorm (infinitief bij werkwoorden, bv. "gitmek" niet "gider"). Geef 1-3 veelgebruikte vertalingen (synoniemen/varianten). Antwoord in JSON.`;
-  const user = `Engels woord: "${baseEnOf(en)}"`;
-  const schema = {
-    name: "vertaling",
-    description: "Turkse vertaling(en) van een Engels woord.",
-    input_schema: {
-      type: "object",
-      properties: {
-        tr: {type:"array", items:{type:"string"}, minItems:1, maxItems:3, description:"1-3 Turkse vertalingen, basisvorm."},
-      },
-      required: ["tr"]
-    }
-  };
-  const raw = await callAI("word", sys, user, 400, 0, schema);
-  const parsed = parseAIJson(raw);
-  const tr = Array.isArray(parsed.tr) && parsed.tr.length ? parsed.tr : [String(parsed.tr || "")];
-  trCache[en] = {tr, fetchedAt: Date.now()};
-  saveJSON(LS_TRCACHE, trCache);
-  return tr;
-}
 
 // Aantal woorden dat binnen het ingestelde CEFR-bereik daadwerkelijk "due" is (al eerder getoond ÉN
 // het herhalingsmoment is verstreken) -- puur informatief label op het hoofdscherm, telt bewust GEEN
@@ -3701,54 +3163,9 @@ function pickNextItem(){
 
 /* ===================== CEFR TAALNIVEAU ===================== */
 
-async function generateSingleTestItem(niveauIdx){
-  const sys = `Je maakt één item voor een Turkse taaltoets, CEFR-niveau ${cefrLabel(niveauIdx)}. ${cefrGuidance(niveauIdx)}
-Bij lagere niveaus (A1/A2): een los, hoogfrequent Turks woord. Bij hogere niveaus (B1 en hoger): een korte tot langere Turkse zin, met toenemende complexiteit/idiomatiek naarmate het niveau stijgt.
-Antwoord in JSON.`;
-  const schema = {
-    name: "toets_item",
-    description: "Eén item voor een adaptieve Turkse taaltoets.",
-    input_schema: {
-      type: "object",
-      properties: {
-        tr: {type:"string", description:"Turks woord of zin."},
-        type: {type:"string", enum:["word","sentence"]},
-        correct_en: {type:"string", description:"De meest gangbare, correcte Engelse vertaling."},
-      },
-      required: ["tr","type","correct_en"]
-    }
-  };
-  const raw = await callAI("sentence", sys, `Niveau: ${cefrLabel(niveauIdx)} (niveau_index ${niveauIdx})`, 400, 0.5, schema);
-  let parsed = parseAIJson(raw);
-  if(!parsed.tr){
-    // Eén stille herkansing i.p.v. meteen een foutmelding tonen -- een enkele lege/onvolledige AI-respons
-    // (bv. DeepSeek's json_object-modus garandeert alleen geldige JSON, geen specifieke velden) hoeft de
-    // gebruiker niet te raken; pas als het twee keer op rij misgaat is er echt iets aan de hand.
-    const raw2 = await callAI("sentence", sys, `Niveau: ${cefrLabel(niveauIdx)} (niveau_index ${niveauIdx})`, 400, 0.5, schema);
-    parsed = parseAIJson(raw2);
-  }
-  if(!parsed.tr) throw new Error("AI did not return a test item.");
-  return parsed;
-}
 
-async function gradeSingleTestItem(item, answer){
-  if(!answer) return false;
-  if(normalize(answer) === normalize(item.correct_en || "")) return true;
-  const sys = `Je beoordeelt of het Engelse antwoord van een gebruiker een acceptabele vertaling is van het Turkse item "${item.tr}". De meest gangbare vertaling is "${item.correct_en}", maar legitieme synoniemen/kleine varianten mogen ook goed zijn. Antwoord in JSON.`;
-  const schema = {
-    name: "toets_antwoord",
-    description: "Of een Engels antwoord een acceptabele vertaling is.",
-    input_schema: {
-      type: "object",
-      properties: { correct: {type:"boolean"} },
-      required: ["correct"]
-    }
-  };
-  try{
-    const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 150, 0, schema);
-    return !!(parseAIJson(raw).correct);
-  }catch(e){ return false; }
-}
+
+
 
 /* ===================== ZIN LATEN GENEREREN DOOR AI (niet in spaced repetition) ===================== */
 function pickEnglishWordForSentence(){
@@ -3798,7 +3215,7 @@ function pickEnglishWordForSentence(){
 }
 
 /* Kiest een Engels doelwoord en zorgt dat de Turkse vorm bekend is (op aanvraag opgehaald indien nog niet gecached). */
-async function pickTurkishTargetForSentence(){
+export async function pickTurkishTargetForSentence(){
   // Tot 3 verschillende woorden proberen: als de vertaling van het eerst-gekozen woord toevallig
   // mislukt (tijdelijke netwerk-/API-hik, of een parse-foutje), moet dat niet de HELE zin-generatie
   // laten crashen -- probeer gewoon een ander woord in plaats van de fout door te laten borrelen.
@@ -3820,15 +3237,7 @@ async function pickTurkishTargetForSentence(){
 /* Steekproef van woorden die de gebruiker daadwerkelijk al goed beheerst (binnen het ontgrendelde deel
    van de cursus) -- gebruikt om aan de AI expliciet mee te geven welke "vulwoorden" veilig zijn, zodat
    een zin niet stiekem onbekende woorden binnensmokkelt enkel omdat ze "bij het niveau passen". */
-function pickKnownVocabSample(count, minLevel){
-  const threshold = minLevel ?? 7;
-  const allMastered = baseWordList().map(w=>w.en).filter(en => getProgress(en).level >= threshold);
-  const mastered = allMastered.filter(inCefrRangeEn);
-  const pool = mastered.length ? mastered : allMastered;
-  const shuffled = [...pool];
-  for(let i=shuffled.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]; }
-  return shuffled.slice(0, count);
-}
+
 
 /* De AI geeft naast de zin zelf ook een lijst van "betekenisvolle woorden" terug (voor de klikbare
    woord-chips in het oefenscherm) -- af en toe komt het voor dat die lijst een woord bevat dat de AI
@@ -3848,7 +3257,7 @@ function softenedStemVariant(w){
 // stam-prefix (achtervoegsels plakken altijd ACHTERAAN, dus de eerste paar letters blijven vrijwel
 // altijd staan, op de allerlaatste letter na) -- dit voorkomt dat een woord onterecht als "spookwoord"
 // uit de lijst verdwijnt puur omdat het in de zin een suffix heeft gekregen.
-function turkishWordLikelyInSentence(normSentence, trWord){
+export function turkishWordLikelyInSentence(normSentence, trWord){
   const w = String(trWord || "").toLocaleLowerCase("tr").trim();
   if(!w) return false;
   if(normSentence.includes(w)) return true;
@@ -3861,117 +3270,12 @@ function turkishWordLikelyInSentence(normSentence, trWord){
   }
   return false;
 }
-function filterWordsActuallyInSentence(sentenceTr, words){
-  if(!Array.isArray(words) || !words.length) return words || [];
-  const normSentence = sentenceTr.toLocaleLowerCase("tr");
-  const filtered = words.filter(w => w.tr && turkishWordLikelyInSentence(normSentence, w.tr));
-  // Vangnet: mocht dit alsnog te streng blijken voor een specifieke zin, dan liever een spookwoord
-  // laten staan dan per ongeluk de hele woordenlijst leegvegen.
-  const result = filtered.length ? filtered : words;
-  // BUGFIX: de AI gaf soms hetzelfde woord twee keer terug in "words" (bv. omdat het twee keer in de
-  // zin voorkomt, of gewoon een AI-inconsistentie) -- dat toonde dan een dubbel chip'je onder de zin.
-  // Dedupliceren op de kale, diakritisch-platgevouwen basisvorm (net als de typo-tolerantie elders).
-  const seen = new Set();
-  return result.filter(w=>{
-    const key = foldTurkishDiacritics(normalize(w.tr || ""));
-    if(!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
 
-async function generateSentenceCandidate(targetWord, grammarTopic, _levelOverride, _correctionNote, _vocabLevelOverride){
-  const level = _levelOverride ?? pickSentenceComplexityLevel();
-  // Apart woordniveau-plafond, losgekoppeld van de zinscomplexiteit -- dit was voorheen impliciet
-  // gelijk aan "level" (complexiteit), waardoor bv. complexiteit=max + woordniveau=min de check nooit
-  // liet falen (elk woord ligt onder complexiteit-17). Nu expliciet uit de eigen sentenceVocab-slider.
-  const vocabLevel = _vocabLevelOverride ?? pickLevelInRange(settings.cefrMin, settings.cefrMax); // zelfde bereik als de gewone woordoefening (samengevoegd)
-  const knownSample = pickKnownVocabSample(35);
-  // Systeeminstructie bevat GEEN enkele per-aanroep-variabele meer (geen niveau, geen woord, geen
-  // willekeurige woordsteekproef) -- dat is precies wat prompt-caching effectief maakt: deze tekst is
-  // bij ELKE aanroep van deze functie letterlijk identiek, dus na de allereerste keer draait vrijwel
-  // elke volgende aanroep tegen het veel lagere cache-hit-tarief i.p.v. steeds als nieuwe input te tellen.
-  const sys = `Je maakt korte, natuurlijke Turkse oefenzinnen voor een taalleerapp, afgestemd op een specifiek taalniveau dat per aanroep wordt meegegeven.
-De zin moet vooral grammaticaal correct en natuurlijk klinken voor een moedertaalspreker — dat weegt zwaarder dan het geforceerd verwerken van het opgegeven doelwoord.
-Vermijd zinnen die zichzelf tegenspreken of onlogisch klinken (bv. een vraag en het antwoord daarop in één zin proppen).
-Let op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Is een naamwoord in de zin bedoeld als lijdend voorwerp van een overgankelijk werkwoord, geef het dan de juiste accusatief-uitgang (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü) — anders verandert de betekenis van de zin ongemerkt (bv. "Kitaplar tanıyor" betekent "de boeken kennen [iets]", niet "hij/zij kent de boeken"; dat laatste vereist "Kitapları tanıyor").
-Let ook op bezittelijkheid-consistentie: gebruik je een bezittelijk voornaamwoord (benim/senin/onun/bizim/sizin/onların) vóór een zelfstandig naamwoord, dan moet dat naamwoord ALTIJD ook zijn eigen bezittelijke uitgang dragen — het voornaamwoord alleen is in het Turks nooit voldoende, in tegenstelling tot het Engels waar "my house" zonder extra uitgang werkt (bv. "benim ev" is FOUT, het moet "benim evim" zijn: ev + -im; "Benim inek çok süt veriyor" is om dezelfde reden fout, het moet "Benim ineğim çok süt veriyor" zijn: inek + -im, met k→ğ verzachting).
-Als een grammaticaal onderwerp is opgegeven: bouw de zin zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft. Gebruik het onderwerp op een gevarieerde manier: wissel bijvoorbeeld af tussen het woord/de vorm los als onderwerp/lijdend voorwerp, vlak vóór een zelfstandig naamwoord, en (waar van toepassing) in een vraagzin — verzin niet steeds hetzelfde soort zin (bv. niet steeds een simpele "X is van mij"-bezitszin).
-Varieer ook actief in zinsstructuur over aanroepen heen: wissel af tussen bevestigende zinnen, ontkennende zinnen, vragen (waar dat past bij het onderwerp), en verschillende werkwoorden/situaties — vermijd een vast sjabloon dat je telkens herhaalt.
-BELANGRIJK: zinscomplexiteit (zinsbouw, lengte, aantal bijzinnen) en woordmoeilijkheid (welke woorden je gebruikt) zijn TWEE APARTE dingen die je per aanroep los te horen krijgt. Een complexe zinsbouw kan en moet met simpele woorden gebouwd worden als het opgegeven woordniveau laag is — een lang, formeel, ambtelijk-klinkend of literair register is dan GEEN excuus om toch moeilijke woorden te gebruiken. Bouw liever een langere zin met alleen eenvoudige woorden en veel herhaling/omschrijving dan een kortere zin met één moeilijk woord.
-Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde woordniveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de zin buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven WOORDNIVEAU (niet het zinscomplexiteitsniveau — die twee kunnen ver uit elkaar liggen). Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger woordniveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken of beter bij het formele register past -- eenvoud van woordkeuze weegt hier zwaarder dan een verfraaiing.
-Geef ook een lijst van alle betekenisvolle woorden in de zin (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm (bv. "yedim" -> "yemek", "elmayı" -> "elma"), met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele zin. Controleer deze lijst zelf nog eens tegen de zin voordat je antwoordt: ELK betekenisvol woord uit de zin moet er precies ÉÉN keer in staan — geen enkele overslaan, en geen woord dubbel opnemen ook al komt het meerdere keren in de zin voor.
-Antwoord in JSON.`;
-  const user = `Zinscomplexiteit: ${cefrLabel(level)}. ${cefrGuidance(level)}
-Woordniveau-plafond (apart van de complexiteit hierboven): ${cefrLabel(vocabLevel)} — ELK woord in de zin (behalve het doelwoord en simpele functiewoorden) moet op of onder dit niveau liggen, ongeacht hoe complex de zinsbouw zelf moet zijn.
-Doelwoord: "${targetWord}" (vervoegd/verbogen mag, ook in een complexere vorm als de zinscomplexiteit dat vraagt).
-${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
-${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}
-${recentGeneratedTr.length ? `Vermijd een zin die qua opbouw/structuur sterk lijkt op deze recent gegenereerde zinnen (ander doelwoord is niet genoeg — verzin een andere zinsvorm/situatie): ${recentGeneratedTr.map(s=>`"${s}"`).join(" / ")}` : ""}
-${_correctionNote || ""}`;
-  const schema = {
-    name: "zin_kandidaat",
-    description: "Een Turkse oefenzin plus de betekenisvolle woorden erin.",
-    input_schema: {
-      type: "object",
-      properties: {
-        tr: {type:"string", description:"De Turkse zin."},
-        words: {
-          type:"array",
-          items: {
-            type:"object",
-            properties: {
-              tr: {type:"string", description:"Woordenboek-basisvorm."},
-              en: {type:"string", description:"Meest gangbare Engelse vertaling."},
-              cefr: {type:"integer", minimum:0, maximum:17},
-            },
-            required: ["tr","en","cefr"]
-          }
-        },
-      },
-      required: ["tr","words"]
-    }
-  };
-  // Temperature was 0.3 -- samen met de vaste systeemprompt (bewust identiek voor prompt-caching, zie
-  // hierboven) en een instructie die eenvoud boven alles stelde, duwde dat het model structureel naar
-  // dezelfde "veiligste" zinsvorm. 0.6 geeft meer variatie zonder de striktere eisen (naamval, woordniveau)
-  // los te laten -- die worden hierna nog steeds los gecontroleerd (checkSentenceNatural, vocab-check).
-  const raw = await callAI("sentence", sys, user, 4000, 0.6, schema);
-  let parsed = parseAIJson(raw);
-  if(!parsed.tr){
-    // Zelfde stille-herkansing-redenering als bij generateSingleTestItem/generateQuestionCandidate.
-    const raw2 = await callAI("sentence", sys, user, 4000, 0.6, schema);
-    parsed = parseAIJson(raw2);
-  }
-  if(!parsed.tr) throw new Error("AI did not return a sentence.");
-  parsed.words = filterWordsActuallyInSentence(parsed.tr, parsed.words);
-  parsed._level = level; // complexiteitsniveau -- nodig om dezelfde complexiteit aan te houden bij herkansing
-  parsed._vocabLevel = vocabLevel; // woordniveau-plafond -- nodig voor de vocab-check in generateSentence()
-  return parsed;
-}
+
+
 
 /* Aparte, gerichte controle: zou een moedertaalspreker deze zin echt zo zeggen? */
-async function checkSentenceNatural(sentenceTr){
-  const sys = `Je bent een kritische moedertaalspreker Turks. Beoordeel of onderstaande zin grammaticaal correct is EN natuurlijk klinkt — dus niet geforceerd, niet zichzelf tegensprekend, geen rare combinatie van woorden die een moedertaalspreker nooit zo zou zeggen.
-Let hierbij SPECIFIEK op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Als de zin een naamwoord kennelijk als lijdend voorwerp bedoelt (bv. bij een overgankelijk werkwoord met maar één passend naamwoord in de zin), moet dat naamwoord de accusatief-uitgang dragen (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü); ontbreekt die waar hij nodig is, dan verandert het onderwerp/lijdend-voorwerp van de zin en is dat een echte fout, ook al is de zin op zichzelf (met de ANDERE, onbedoelde lezing) grammaticaal geldig Turks. Reken dit soort naamvalfout net zo hard aan als een overduidelijke spelfout.
-Let ook op bezittelijkheid-consistentie: staat er een bezittelijk voornaamwoord (benim/senin/onun/bizim/sizin/onların) vóór een zelfstandig naamwoord, dan moet dat naamwoord ook zijn eigen bezittelijke uitgang dragen (bv. "benim evim", nooit kaal "benim ev"). Ontbreekt die uitgang, reken dat net zo hard aan als een naamvalfout.
-Antwoord in JSON.`;
-  const user = `Zin: "${sentenceTr}"`;
-  const schema = {
-    name: "natuurlijkheid_check",
-    description: "Of een Turkse zin grammaticaal correct en natuurlijk klinkt.",
-    input_schema: {
-      type: "object",
-      properties: { natuurlijk: {type:"boolean"} },
-      required: ["natuurlijk"]
-    }
-  };
-  try{
-    const raw = await callAI("sentence", sys, user, 150, 0, schema);
-    const parsed = parseAIJson(raw);
-    return parsed.natuurlijk !== false;
-  }catch(e){ return true; } // check zelf mislukt -> kandidaat gewoon accepteren, niet blokkeren
-}
+
 
 /* Een redelijk bekend woord binnen wat ontgrendeld is — gebruikt als "veilige" tegenpool wanneer een
    oefening juist gericht is op een zwak grammatica-onderwerp, zodat niet twee onbekende dingen tegelijk
@@ -3982,7 +3286,7 @@ Antwoord in JSON.`;
    zonder de voorkeur voor beter-beheerste woorden helemaal los te laten wanneer die pool wél groot genoeg is.
    Sluit daarnaast de laatst gekozen woorden (recentWellKnownWords) tijdelijk uit: ook een pool van pak 'm
    beet 8 woorden kan bij kale random-keuze een paar keer op rij hetzelfde woord opleveren. */
-function pickWellKnownWord(){
+export function pickWellKnownWord(){
   const unlocked = [...unlockedWordSet()];
   const MIN_POOL = 5; // onder dit aantal proberen we een soepelere drempel
   let words = [];
@@ -4004,7 +3308,7 @@ function pickWellKnownWord(){
 }
 /* Zelfde idee, maar dan een goed beheerst grammatica-onderwerp — gebruikt als "veilige" grammatica
    wanneer een oefening juist gericht is op een nog niet goed gekend woord. */
-function pickWellKnownGrammarTopic(){
+export function pickWellKnownGrammarTopic(){
   const cefrCeiling = Math.max(settings.sentenceComplexityMin, settings.sentenceComplexityMax); // grammatica-zwaarte hoort bij zin-complexiteit, niet bij woordmoeilijkheid
   const unlockedKeys = [...unlockedGrammarTopicSet()];
   const keys = unlockedKeys.length ? unlockedKeys : GRAMMAR_TOPICS.map(t=>t.key);
@@ -4021,179 +3325,16 @@ function pickWellKnownGrammarTopic(){
    grammatica-onderwerp (met een woord dat al goed beheerst wordt erbij), ofwel een nog niet goed
    gekend woord (met een grammatica-onderwerp dat al goed beheerst wordt erbij) — nooit allebei
    tegelijk onbekend, en zwakkere grammatica-onderdelen komen zo vanzelf vaker aan de beurt. */
-async function pickSentenceFocus(){
-  const grammarTopic = pickLessonGrammarTopic(); // bestaande logica: huidige-les-onderwerp, anders zwakste ontgrendelde
-  const weakGrammar = getGrammarProgress(grammarTopic.key).level < 7;
 
-  if(weakGrammar){
-    const knownWord = pickWellKnownWord();
-    if(knownWord){
-      try{
-        const tr = await getOrFetchTranslation(knownWord);
-        return {target: {en:knownWord, tr:tr[0]}, grammarTopic};
-      }catch(e){ /* vertaling van dit ene woord mislukte -> val terug op de normale, robuustere selectie */ }
-    }
-    // nog geen enkel woord goed beheerst (of de vertaling ervan lukte niet): val terug op de normale woordselectie
-    return {target: await pickTurkishTargetForSentence(), grammarTopic};
-  }
 
-  // grammatica-onderwerp is hier al goed beheerst -> ruimte om juist op een zwak/nieuw woord te focussen
-  const target = await pickTurkishTargetForSentence();
-  const safeGrammarTopic = pickWellKnownGrammarTopic() || grammarTopic;
-  return {target, grammarTopic: safeGrammarTopic};
-}
 
-async function generateSentence(){
-  const {target, grammarTopic} = await pickSentenceFocus();
-  if(grammarTopic && grammarTopic.recognitionStyle){
-    // Stilistisch/pragmatisch onderwerp (devrik_cumle, ikileme): geen verplichte constructie, dus een
-    // vertaal-/productieoefening test niet of de gebruiker 'm herkent. Route daarom altijd via de
-    // herkennings-vraag-opzet (buildQuestionItem + de isRecognition-tak in generateQuestionCandidate),
-    // ook al koos de planner toevallig "sentence" i.p.v. "question" als oefentype.
-    return buildQuestionItem(target, grammarTopic);
-  }
-  const targetWord = target ? target.tr : "ev"; // veiligheidsnet, zou niet moeten voorkomen
-
-  let parsed = await generateSentenceCandidate(targetWord, grammarTopic);
-  try{
-    const natural = await checkSentenceNatural(parsed.tr);
-    if(!natural){
-      parsed = await generateSentenceCandidate(targetWord, grammarTopic, parsed._level, undefined, parsed._vocabLevel); // één herkansing, zelfde niveaus, daarna gewoon accepteren
-    }
-  }catch(e){
-    // controle mislukt: geen probleem, ga door met de eerste kandidaat
-  }
-
-  // Vocab-niveau-check: ondanks de (nu harde) instructie kan de AI alsnog een te zwaar woord verzinnen
-  // voor iets anders dan het doelwoord (bv. "köylüler" in een A1-zin) -- dat repareert de instructie
-  // zelf niet altijd, dus hier een code-level controle met één gerichte herkansing. Toetst tegen het
-  // APARTE woordniveau-plafond (_vocabLevel), niet tegen de zinscomplexiteit (_level) -- die twee lagen
-  // voorheen door elkaar, waardoor bv. complexiteit=max de check altijd liet slagen ongeacht woordniveau.
-  if(Array.isArray(parsed.words)){
-    const targetEnLower = target ? baseEnOf(target.en).toLowerCase() : null;
-    const violations = parsed.words.filter(w =>
-      w.en && w.en.toLowerCase() !== targetEnLower &&
-      typeof w.cefr === "number" && w.cefr > parsed._vocabLevel
-    );
-    if(violations.length){
-      const note = `LET OP: je vorige poging bevatte ${violations.length > 1 ? "woorden" : "een woord"} die te zwaar zijn voor het gevraagde WOORDNIVEAU (niet de zinscomplexiteit): ${violations.map(v=>`"${v.tr}" (${v.en}, niveau ${cefrLabel(v.cefr)})`).join(", ")}. De zin mag qua zinsbouw nog steeds complex zijn, maar vervang deze woorden door eenvoudiger alternatieven op het opgegeven woordniveau (of laat ze weg als het niet strikt nodig is voor de zin).`;
-      const retried = await generateSentenceCandidate(targetWord, grammarTopic, parsed._level, note, parsed._vocabLevel);
-      if(retried.tr) parsed = retried; // bij een tweede mislukking (geen tr): gewoon de eerste kandidaat behouden
-    }
-  }
-
-  const wordList = Array.isArray(parsed.words) ? parsed.words : [];
-  const items = [];
-  for(const w of wordList){
-    if(!w.tr || !w.en) continue;
-    const en = w.en.toLowerCase().trim();
-    const isOfficialWord = EN_WORDS_DATA.some(x=>baseEnOf(x.en)===en);
-    // ensureWordExists() hier NIET meer aanroepen: de gebruiker wil geen groei van de woordenlijst
-    // meer buiten de al-gecureerde ~4932 kernwoorden om. Een woord dat de AI binnen een zin gebruikt
-    // maar niet in de kernlijst zit, krijgt hieronder nog wel een tijdelijke vertaling gecached zodat
-    // het tap-to-peek-chipje in DEZE ene zin werkt, maar wordt niet blijvend aan newWords toegevoegd
-    // (dus ook niet als losse oefening opnieuw geoefend later).
-    if(!isOfficialWord && !cachedTranslation(en)){
-      trCache[en] = {tr: [w.tr], fetchedAt: Date.now()};
-      saveJSON(LS_TRCACHE, trCache);
-    }
-    items.push({en, tr: w.tr});
-  }
-  // zorg dat het doelwoord altijd meetelt, ook als de AI het om wat voor reden niet in "words" zette
-  if(target && !items.some(it=>baseEnOf(it.en)===baseEnOf(target.en))) items.push({en: target.en, tr: target.tr});
-
-  const seen = new Set();
-  const words = items.filter(it=>{ if(seen.has(it.en)) return false; seen.add(it.en); return true; });
-
-  noteRecentSentence(parsed.tr);
-  return {tr: parsed.tr, type:"sentence", words, grammarTopic: grammarTopic.key};
-}
 
 /* ===================== TR-VRAAG / TR-ANTWOORD (begrip zonder vertaling) ===================== */
-async function generateQuestionCandidate(targetWord, grammarTopic, _levelOverride, _correctionNote, _vocabLevelOverride){
-  const level = _levelOverride ?? pickSentenceComplexityLevel();
-  const vocabLevel = _vocabLevelOverride ?? pickLevelInRange(settings.cefrMin, settings.cefrMax); // zelfde bereik als de gewone woordoefening (samengevoegd)
-  const knownSample = pickKnownVocabSample(35);
-  const isRecognition = !!(grammarTopic && grammarTopic.recognitionStyle);
-  // Herkennings-vorm: voor stilistische/pragmatische onderwerpen (devrik_cumle, ikileme) is er geen
-  // "foute" neutrale zin -- die is ook gewoon correct Turks. Testen door de gebruiker de constructie te
-  // laten PRODUCEREN test dus niet of hij/zij 'm HERKENT. Deze branch vraagt in plaats daarvan: welke
-  // van twee voorbeeldzinnen gebruikt de constructie? Zelfde infrastructuur (Turkse vraag + Turks
-  // antwoord, gradeQuestionAnswer), dus geen nieuwe UI/schema nodig -- alleen een ander soort vraag.
-  const sys = isRecognition ? `Je maakt een HERKENNINGSVRAAG voor een taalleerapp, over het stilistische/pragmatische onderwerp "${grammarTopic.label}". Dit is GEEN verplichte constructie — het neutrale alternatief is ook gewoon correct Turks. Een gewone productie-/vertaaloefening test daarom niet of de gebruiker de constructie herkent; deze vraag doet dat wel.
-Verzin TWEE korte, natuurlijke Turkse zinnen over eenzelfde soort situatie, gelabeld A en B:
-- Precies ÉÉN van de twee (verdeel willekeurig over A/B, niet altijd dezelfde kant) gebruikt de opgegeven constructie duidelijk en correct: ${grammarTopic.hint}.
-- De ANDERE zin is een gewoon, neutraal, even correct alternatief ZONDER die constructie — geen typefout, geen onzin, gewoon een andere natuurlijke manier om iets vergelijkbaars te zeggen.
-Bouw daaromheen, in het Turks, een vraag die vraagt welke van de twee (A of B) de constructie gebruikt — bijvoorbeeld in de trant van: "A: [zin A] B: [zin B] Hangi cümlede [korte Turkse omschrijving van de constructie] var, A mı B mi?"
-KRITIEK: het resultaat MOET eindigen op een vraagteken.
-Probeer het doelwoord er waar natuurlijk in te verwerken, maar dit is ONDERGESCHIKT aan het duidelijk demonstreren van de constructie in precies één van de twee zinnen.
-Geef ook een lijst van alle betekenisvolle woorden uit BEIDE voorbeeldzinnen samen (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — geen losse achtervoegsels), in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling en een schatting van het CEFR-niveau (0-17). Controleer deze lijst zelf nog eens tegen de zinnen voordat je antwoordt: ELK betekenisvol woord moet er precies ÉÉN keer in staan — geen enkele overslaan, en geen woord dubbel opnemen ook al komt het in beide zinnen of meerdere keren voor.
-Antwoord in JSON.` : `Je maakt korte Turkse vragen voor een taalleerapp, waarbij de gebruiker in het TURKS moet antwoorden (geen vertaling — dit traint direct begrijpen).
-Maak ofwel een FEITELIJKE vraag met een min of meer eenduidig juist antwoord (bv. rekenen, geografie, een feit uit de zin zelf), ofwel een PERSOONLIJKE/OPEN vraag waarop elk contextueel passend Turks antwoord goed is (bv. "Bugün ne yaptın?").
-KRITIEK: het resultaat MOET een echte vraag zijn, GEEN mededelende stelling. Eindig ALTIJD met een vraagteken, en gebruik een vraagwoord (ne, nasıl, kim, nerede, kaç, hangi, neden, niçin, ...) of het vraagpartikel (mi/mı/mu/mü). Een zin als "Hava soğuktu ama dışarı çıktık." is FOUT (dat is een stelling); "Hava soğuk olmasına rağmen neden dışarı çıktınız?" is GOED (dat is een echte vraag).
-Als een grammaticaal onderwerp is opgegeven: bouw de vraag zodanig dat die daar duidelijk en natuurlijk gebruik van maakt — dat is het onderdeel waar de gebruiker extra oefening nodig heeft. Wissel af in hoe je dat onderwerp verwerkt (bv. als onderwerp, lijdend voorwerp, of vlak vóór een zelfstandig naamwoord) en in het soort vraag (feitelijk vs. persoonlijk/open) — verzin niet steeds hetzelfde vraagpatroon.
-De vraag moet grammaticaal correct en natuurlijk klinken voor een moedertaalspreker.
-Let op naamval-consistentie: een kaal (naamvalloos) zelfstandig naamwoord vlak vóór het werkwoord wordt in het Turks standaard gelezen als ONDERWERP, niet als lijdend voorwerp. Is een naamwoord bedoeld als lijdend voorwerp van een overgankelijk werkwoord, geef het dan de juiste accusatief-uitgang (-ı/-i/-u/-ü of -yı/-yi/-yu/-yü) — anders verandert de betekenis van de zin ongemerkt.
-Let ook op bezittelijkheid-consistentie: gebruik je een bezittelijk voornaamwoord (benim/senin/onun/bizim/sizin/onların) vóór een zelfstandig naamwoord, dan moet dat naamwoord ALTIJD ook zijn eigen bezittelijke uitgang dragen (bv. "benim evim", nooit kaal "benim ev") — het voornaamwoord alleen is in het Turks nooit voldoende.
-BELANGRIJK: zinscomplexiteit (zinsbouw, lengte, aantal bijzinnen) en woordmoeilijkheid (welke woorden je gebruikt) zijn TWEE APARTE dingen die je per aanroep los te horen krijgt. Een complexe zinsbouw kan en moet met simpele woorden gebouwd worden als het opgegeven woordniveau laag is — een lang, formeel of literair register is dan GEEN excuus om toch moeilijke woorden te gebruiken.
-Als een lijst van bekende woorden is opgegeven: de gebruiker kent nog niet alle Turkse woorden op het gevraagde woordniveau. Dit is een HARDE eis, geen voorkeur: voor ELK woord in de vraag buiten het doelwoord geldt dat het OF letterlijk uit die bekende-woordenlijst komt, OF een simpel functiewoord is (voornaamwoord, is/zijn, veelvoorkomend bijwoord), OF zelf niet zwaarder is dan het opgegeven WOORDNIVEAU (niet het zinscomplexiteitsniveau). Verzin nooit een onnodig zelfstandig naamwoord/werkwoord/bijvoeglijk naamwoord van een hoger woordniveau dan gevraagd, ook niet als dat "natuurlijker" zou klinken -- eenvoud van woordkeuze weegt hier zwaarder dan een verfraaiing.
-Geef ook een lijst van alle betekenisvolle woorden in de vraag (zelfstandige naamwoorden, werkwoorden, bijvoeglijke naamwoorden, bijwoorden, telwoorden, voornaamwoorden — GEEN losse achtervoegsels), elk in hun woordenboek-basisvorm, met de meest gangbare Engelse vertaling (één woord/uitdrukking, geen lijst) van die basisvorm, en een schatting van het CEFR-niveau van dat basiswoord zelf op de schaal 0-17 (0-2=A1, 3-5=A2, 6-8=B1, 9-11=B2, 12-14=C1, 15-17=C2), ongeacht het niveau van de hele vraag. Controleer deze lijst zelf nog eens tegen de vraag voordat je antwoordt: ELK betekenisvol woord moet er precies ÉÉN keer in staan — geen enkele overslaan, en geen woord dubbel opnemen ook al komt het meerdere keren in de vraag voor.
-Antwoord in JSON.`;
-  const user = isRecognition ? `Zinscomplexiteit: ${cefrLabel(level)}. ${cefrGuidance(level)}
-Woordniveau-plafond: ${cefrLabel(vocabLevel)} — elk woord in beide voorbeeldzinnen (behalve het doelwoord en simpele functiewoorden) moet op of onder dit niveau liggen.
-Doelwoord (ondergeschikt, zie hierboven): "${targetWord}".
-Te herkennen constructie: "${grammarTopic.label}" (${grammarTopic.hint}).
-${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}
-${recentGeneratedTr.length ? `Vermijd een opzet die qua voorbeeldzinnen sterk lijkt op deze recent gegenereerde zinnen/vragen: ${recentGeneratedTr.map(s=>`"${s}"`).join(" / ")}` : ""}
-${_correctionNote || ""}` : `Zinscomplexiteit: ${cefrLabel(level)}. ${cefrGuidance(level)}
-Woordniveau-plafond (apart van de complexiteit hierboven): ${cefrLabel(vocabLevel)} — ELK woord in de vraag (behalve het doelwoord en simpele functiewoorden) moet op of onder dit niveau liggen, ongeacht hoe complex de zinsbouw zelf moet zijn.
-Doelwoord: "${targetWord}" (vervoegd/verbogen mag).
-${grammarTopic ? `Grammaticaal onderwerp om te verwerken: "${grammarTopic.label}" (${grammarTopic.hint}).` : ""}
-${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}
-${recentGeneratedTr.length ? `Vermijd een vraag die qua opbouw/structuur sterk lijkt op deze recent gegenereerde zinnen/vragen: ${recentGeneratedTr.map(s=>`"${s}"`).join(" / ")}` : ""}
-${_correctionNote || ""}`;
-  const schema = {
-    name: "vraag_kandidaat",
-    description: "Een Turkse oefenvraag plus de betekenisvolle woorden erin.",
-    input_schema: {
-      type: "object",
-      properties: {
-        tr: {type:"string", description:"De Turkse vraag (eindigt op een vraagteken)."},
-        feitelijk: {type:"boolean", description:"Feitelijke vraag (true) of open/persoonlijke vraag (false)."},
-        words: {
-          type:"array",
-          items: {
-            type:"object",
-            properties: {
-              tr: {type:"string", description:"Woordenboek-basisvorm."},
-              en: {type:"string", description:"Meest gangbare Engelse vertaling."},
-              cefr: {type:"integer", minimum:0, maximum:17},
-            },
-            required: ["tr","en","cefr"]
-          }
-        },
-      },
-      required: ["tr","feitelijk","words"]
-    }
-  };
-  const raw = await callAI("sentence", sys, user, 4000, 0.6, schema); // 0.4 -> 0.6, zelfde reden als generateSentenceCandidate
-  let parsed = parseAIJson(raw);
-  if(!parsed.tr){
-    // Zelfde stille-herkansing-redenering als bij generateSingleTestItem/generateSentenceCandidate --
-    // dit is precies de plek die eerder "AI did not return a question" liet zien zonder herkansing.
-    const raw2 = await callAI("sentence", sys, user, 4000, 0.6, schema);
-    parsed = parseAIJson(raw2);
-  }
-  if(!parsed.tr) throw new Error("AI did not return a question.");
-  parsed.words = filterWordsActuallyInSentence(parsed.tr, parsed.words);
-  parsed._level = level;
-  parsed._vocabLevel = vocabLevel;
-  return parsed;
-}
+
 
 // Lokale, snelle check (geen extra AI-call) of een zin daadwerkelijk een vraag is —
 // vangt het geval af waarin de AI per ongeluk een mededelende stelling maakt.
-function looksLikeQuestion(tr){
+export function looksLikeQuestion(tr){
   const clean = tr.trim();
   if(/\?\s*$/.test(clean)) return true; // eindigt op vraagteken
   const qWords = new Set(["ne","nasıl","niçin","neden","kim","kime","kimi","kimin","nerede","nereye",
@@ -4204,179 +3345,16 @@ function looksLikeQuestion(tr){
   return tokens.some(t=>qWords.has(t));
 }
 
-async function generateQuestion(){
-  const {target, grammarTopic} = await pickSentenceFocus(); // zelfde gecombineerde vocab/grammatica-logica als bij zinnen
-  return buildQuestionItem(target, grammarTopic);
-}
+
 
 // Losgetrokken uit generateQuestion() zodat generateSentence() hetzelfde pad kan hergebruiken voor
 // recognitionStyle-onderwerpen (zie daar) -- zonder pickSentenceFocus() twee keer aan te roepen.
-async function buildQuestionItem(target, grammarTopic){
-  const targetWord = target ? target.tr : "ev";
 
-  let parsed = await generateQuestionCandidate(targetWord, grammarTopic);
-  if(!looksLikeQuestion(parsed.tr)){
-    parsed = await generateQuestionCandidate(targetWord, grammarTopic, parsed._level, undefined, parsed._vocabLevel); // herkansing: AI maakte een stelling i.p.v. een vraag
-  }
-  if(!looksLikeQuestion(parsed.tr)){
-    // nog steeds geen echte vraag na de herkansing: forceer een vraagteken zodat het UI-onderscheid
-    // (badge "vraag" + instructie "beantwoord in het Turks") niet misleidend blijft
-    parsed.tr = parsed.tr.replace(/[.!]+\s*$/, "") + "?";
-  }
-  try{
-    const natural = await checkSentenceNatural(parsed.tr); // generieke check, werkt ook prima voor vragen
-    if(!natural){
-      parsed = await generateQuestionCandidate(targetWord, grammarTopic, parsed._level, undefined, parsed._vocabLevel); // één herkansing
-      if(!looksLikeQuestion(parsed.tr)) parsed.tr = parsed.tr.replace(/[.!]+\s*$/, "") + "?";
-    }
-  }catch(e){ /* controle mislukt: gewoon doorgaan met de eerste kandidaat */ }
 
-  // Vocab-niveau-check: zelfde redenering als bij generateSentence -- toetst tegen het APARTE
-  // woordniveau-plafond (_vocabLevel), niet tegen de zinscomplexiteit (_level).
-  if(Array.isArray(parsed.words)){
-    const targetEnLower = target ? baseEnOf(target.en).toLowerCase() : null;
-    const violations = parsed.words.filter(w =>
-      w.en && w.en.toLowerCase() !== targetEnLower &&
-      typeof w.cefr === "number" && w.cefr > parsed._vocabLevel
-    );
-    if(violations.length){
-      const note = `LET OP: je vorige poging bevatte ${violations.length > 1 ? "woorden" : "een woord"} die te zwaar zijn voor het gevraagde WOORDNIVEAU (niet de zinscomplexiteit): ${violations.map(v=>`"${v.tr}" (${v.en}, niveau ${cefrLabel(v.cefr)})`).join(", ")}. De vraag mag qua zinsbouw nog steeds complex zijn, maar vervang deze woorden door eenvoudiger alternatieven op het opgegeven woordniveau.`;
-      const retried = await generateQuestionCandidate(targetWord, grammarTopic, parsed._level, note, parsed._vocabLevel);
-      if(retried.tr && looksLikeQuestion(retried.tr)) parsed = retried;
-    }
-  }
 
-  const wordList = Array.isArray(parsed.words) ? parsed.words : [];
-  const items = [];
-  for(const w of wordList){
-    if(!w.tr || !w.en) continue;
-    const en = w.en.toLowerCase().trim();
-    const isOfficialWord = EN_WORDS_DATA.some(x=>baseEnOf(x.en)===en);
-    // zelfde redenering als in generateSentence(): geen groei van de woordenlijst meer via ensureWordExists().
-    if(!isOfficialWord && !cachedTranslation(en)){
-      trCache[en] = {tr: [w.tr], fetchedAt: Date.now()};
-      saveJSON(LS_TRCACHE, trCache);
-    }
-    items.push({en, tr: w.tr});
-  }
-  if(target && !items.some(it=>baseEnOf(it.en)===baseEnOf(target.en))) items.push({en: target.en, tr: target.tr});
-
-  const seen = new Set();
-  const words = items.filter(it=>{ if(seen.has(it.en)) return false; seen.add(it.en); return true; });
-
-  noteRecentSentence(parsed.tr);
-  return {tr: parsed.tr, type:"question", words, grammarTopic: grammarTopic.key};
-}
-
-async function gradeQuestionAnswer(item, answer, isRecheck){
-  const gTopic = item.grammarTopic ? grammarTopicByKey(item.grammarTopic) : null;
-  const sys = `Je bent een taaldocent Turks. Je krijgt een Turkse vraag en het Turkstalige antwoord van de gebruiker (GEEN vertaling — de gebruiker moet in het Turks antwoorden).
-Beoordeel of het antwoord een gepast, correct Turks antwoord op de vraag is:
-- Bij een FEITELIJKE vraag: is het antwoord feitelijk juist en logisch een antwoord op de vraag?
-- Bij een OPEN/PERSOONLIJKE vraag: is het antwoord contextueel passend en grammaticaal begrijpelijk Turks (de inhoud mag vrij zijn, elk zinnig antwoord telt)?
-NEGEER Turkse diakritische tekens volledig bij de beoordeling: behandel ı/i, ş/s, ğ/g, ü/u, ö/o, ç/c als volledig uitwisselbaar — een antwoord getypt zonder Turkse speciale tekens (bv. "tesekkur" i.p.v. "teşekkür") is qua spelling NOOIT fout.
-BELANGRIJK OVER TYPEFOUTEN: duidelijke tikfouten (verwisselde letters e.d.) met een ondubbelzinnig duidelijke bedoeling reken je gewoon goed — dit is een taaltoets, geen typetoets.
-Beoordeel ook voor ELK genummerd woord uit de vraag, ONAFHANKELIJK EN KRITISCH, of de gebruiker begrip daarvan toont in zijn antwoord.
-BELANGRIJK ONDERSCHEID: "correct" gaat over of het antwoord een GEPAST ANTWOORD op de vraag is (vorm/pragmatiek); "words" gaat puur over WOORDBEGRIP. Die twee lopen NIET altijd gelijk op. Als "correct" false is omdat de gebruiker bijvoorbeeld reageert op de inhoud in plaats van de vraag direct te beantwoorden (maar wél overduidelijk laat zien dat hij/zij elk woord begrijpt, via een taalkundig kloppende en inhoudelijk relevante reactie), moeten de afzonderlijke woorden in "words" gewoon op true staan — bestraf woordbegrip niet voor een vorm-/pragmatiekfout.
-CONSISTENTIE-EIS geldt alleen andersom: als "correct" false is SPECIFIEK doordat de gebruiker een woord verkeerd heeft opgevat (bijvoorbeeld verward met een ander Turks woord, of totaal genegeerd), moet dát woord in "words" op false staan.
-Als een grammaticaal onderwerp is opgegeven waar de vraag bewust rond gebouwd is: beoordeel apart, in "grammar_correct", of de gebruiker specifiek dat grammaticale aspect correct begrijpt/gebruikt (in de vraag zelf herkend, en/of correct toegepast in het eigen antwoord) — los van of de rest verder klopt. Is er geen onderwerp opgegeven, zet "grammar_correct" dan op true.
-Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je"), in het Engels. Structuur: begin met het oordeel, en bij fout kort en concreet wat er niet klopte.
-Geef ook altijd een Engelse vertaling van de Turkse vraag, EN een Engelse vertaling van wat de gebruiker met zijn Turkse antwoord daadwerkelijk heeft gezegd (ook als dat inhoudelijk niet klopt — vertaal gewoon wat er staat, zodat de gebruiker kan zien wat hij eigenlijk zei).
-Als vermeld staat dat de gebruiker het niet eens is met een eerder oordeel: kijk extra kritisch of het antwoord (of delen ervan) toch correct kunnen zijn.
-Geef terug: correct (bool), uitleg (tekst), referentie (tekst), vraag_en (tekst), antwoord_en (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
-  const user = `Turkse vraag: "${item.tr}"
-Genummerde woorden in de vraag (basisvorm, ${item.words.length} in totaal): ${item.words.map((w,i)=>`${i+1}. ${w.tr} (${baseEnOf(w.en)})`).join(", ")}
-Antwoord van gebruiker (in het Turks): "${answer}"
-${gTopic ? `Deze vraag is bewust gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}).` : ""}
-${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling." : ""}`;
-  const schema = {
-    name: "beoordeel_vraag",
-    description: "Beoordeling van een Turks antwoord op een Turkse oefenvraag, inclusief per-woord score.",
-    input_schema: {
-      type: "object",
-      properties: {
-        correct: {type:"boolean", description:"Is het antwoord een gepast, correct Turks antwoord op de vraag?"},
-        uitleg: {type:"string", description:"Korte uitleg in het Engels, rechtstreeks tegen de gebruiker gericht."},
-        referentie: {type:"string", description:"Een voorbeeld van een goed Turks antwoord op deze vraag."},
-        vraag_en: {type:"string", description:"Engelse vertaling van de Turkse vraag."},
-        antwoord_en: {type:"string", description:"Engelse vertaling van wat de gebruiker letterlijk heeft geantwoord."},
-        grammar_correct: {type:"boolean", description:"Of het specifiek opgegeven grammaticale aspect correct is toegepast (true als er geen onderwerp is opgegeven)."},
-        words: {
-          type:"array", items:{type:"boolean"},
-          minItems: item.words.length, maxItems: item.words.length,
-          description:"Per genummerd woord (zelfde volgorde als de lijst), of de gebruiker begrip daarvan toont.",
-        },
-      },
-      required: ["correct","uitleg","referentie","vraag_en","antwoord_en","grammar_correct","words"]
-    }
-  };
-  const raw = await callAI("sentence", sys, user, 3000, 0, schema);
-  const parsed = parseAIJson(raw);
-  if(!Array.isArray(parsed.words)) parsed.words = [];
-  while(parsed.words.length < item.words.length) parsed.words.push(!!parsed.correct);
-  parsed.words = parsed.words.slice(0, item.words.length).map(v=>{
-    if(typeof v === "object" && v !== null) return !!v.correct;
-    return !!v;
-  });
-  return parsed;
-}
 
 /* Laat de AI de vertaling van de hele zin beoordelen, EN per doelwoord aangeven of dat woord goed vertaald is. */
-async function gradeSentenceTranslation(item, answer, isRecheck){
-  const wordContext = item.words.map((w, i)=> `${i+1}. ${w.tr} (${baseEnOf(w.en)})`).join("\n");
-  const gTopic = item.grammarTopic ? grammarTopicByKey(item.grammarTopic) : null;
-  const sys = `Je bent een taaldocent Turks. Je krijgt een Turkse zin, een GENUMMERDE lijst van alle betekenisvolle woorden uit die zin (in basisvorm, met hun Engelse vertaling), en de Engelse vertaling die de gebruiker van de HELE zin gaf.
-Beoordeel of de vertaling van de HELE zin correct is, en beoordeel voor ELK genummerd woord apart, ONAFHANKELIJK EN KRITISCH, of de gebruiker dat specifieke woord (in welke vorm dan ook) correct heeft verwerkt — ga niet ervan uit dat een woord goed is enkel omdat de zin er ergens op lijkt.
-CONSISTENTIE-EIS: als de vertaling als geheel fout is doordat de gebruiker een specifiek woord verkeerd heeft begrepen (bijvoorbeeld verward met een ander, vergelijkbaar klinkend Turks woord), MOET dat woord in "words" op false staan. Het mag nooit zo zijn dat "correct" false is vanwege woord X, terwijl woord X zelf in "words" op true staat — controleer dit zelf voordat je antwoordt.
-Geef ook altijd een correcte Engelse referentievertaling van de hele zin.
-Als een grammaticaal onderwerp is opgegeven waar de zin bewust rond gebouwd is: beoordeel apart, in "grammar_correct", of de gebruiker specifiek DAT grammaticale aspect correct heeft begrepen/verwerkt in zijn vertaling — los van of de rest van de zin verder klopt. Is er geen onderwerp opgegeven, zet "grammar_correct" dan op true.
-BELANGRIJK OVER TYPEFOUTEN: als een woord duidelijk een tikfout is (bv. verwisselde letters zoals "eht" i.p.v. "het", een ontbrekende/dubbele letter) en de bedoelde vertaling ondubbelzinnig duidelijk is, reken dit dan GOED — dit is een taaltoets, geen typetoets. Vermeld de tikfout dan wel kort in "uitleg", zodat de gebruiker het weet, maar laat dit "correct" niet naar false zetten. Wees hierin coulanter dan bij een woord dat écht een andere/verkeerde vertaling is.
-Schrijf "uitleg" ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"). Structuur: begin met het oordeel (goed/fout), en bij fout kort en concreet wat er niet klopte — de correcte vertaling zelf hoeft niet in de uitleg herhaald te worden, die staat al apart in "referentie".
-Als vermeld staat dat de gebruiker het niet eens is met een eerder oordeel: kijk extra kritisch of het antwoord (of delen ervan) toch correct kunnen zijn.
-Geef terug: correct (bool), uitleg (tekst), referentie (tekst), grammar_correct (bool), en words — een platte lijst van exact ${item.words.length} true/false-waarden, in dezelfde volgorde als de genummerde woordenlijst. Antwoord in JSON.`;
-  const user = `Turkse zin: "${item.tr}"
-Genummerde woorden in de zin (basisvorm, ${item.words.length} in totaal):
-${wordContext}
-Vertaling van gebruiker: "${answer}"
-${gTopic ? `Deze zin is bewust gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}).` : ""}
-${isRecheck ? "De gebruiker is het NIET eens met een eerder oordeel en vraagt om een extra kritische herbeoordeling." : ""}`;
-  // Schema wordt via tool use aan Claude meegegeven (dwingt de structuur af, i.p.v. erop te vertrouwen
-  // dat het model de tekstuele JSON-beschrijving hierboven exact volgt) -- scheelt zowel tokens
-  // (de uitgeschreven voorbeeld-JSON die hier vroeger stond) als parse-fouten. Dit schema-object zelf
-  // is GEEN onderdeel van de gecachte systeemprompt (het gaat via een apart "tools"-veld in de
-  // aanroep), dus het per-aanroep-variabele item.words.length hierin breekt de prompt-cache niet.
-  const schema = {
-    name: "beoordeel_zin",
-    description: "Beoordeling van de vertaling van een Turkse zin naar het Engels, inclusief per-woord score.",
-    input_schema: {
-      type: "object",
-      properties: {
-        correct: {type:"boolean", description:"Is de vertaling van de hele zin correct?"},
-        uitleg: {type:"string", description:"Korte uitleg in het Engels, max 2 zinnen, rechtstreeks tegen de gebruiker gericht."},
-        referentie: {type:"string", description:"Correcte Engelse referentievertaling van de hele zin."},
-        grammar_correct: {type:"boolean", description:"Of het specifiek opgegeven grammaticale aspect correct is toegepast (true als er geen onderwerp is opgegeven)."},
-        words: {
-          type:"array", items:{type:"boolean"},
-          minItems: item.words.length, maxItems: item.words.length,
-          description:"Per genummerd woord (zelfde volgorde als de lijst), of de gebruiker dat woord correct heeft verwerkt."
-        },
-      },
-      required: ["correct","uitleg","referentie","grammar_correct","words"]
-    }
-  };
-  const raw = await callAI("sentence", sys, user, 3000, 0, schema);
-  const parsed = parseAIJson(raw);
-  // Verwacht: parsed.words = [true, false, ...] met exact item.words.length entries, op volgorde.
-  // Bij Claude dwingt het schema dit al af; deze robuustheid blijft als vangnet voor DeepSeek (dat
-  // alleen "geldige JSON" garandeert, geen exacte lengte/vorm) en voor eventuele toekomstige afwijkingen.
-  if(!Array.isArray(parsed.words)) parsed.words = [];
-  while(parsed.words.length < item.words.length) parsed.words.push(!!parsed.correct);
-  parsed.words = parsed.words.slice(0, item.words.length).map(v=>{
-    if(typeof v === "object" && v !== null) return !!v.correct; // vangnet als AI toch het oude object-formaat gebruikt
-    return !!v;
-  });
-  return parsed;
-}
+
 
 function recordResult(tr, correct, severity){
   const p = getProgress(tr);
@@ -4422,60 +3400,6 @@ function recordHistory(type){
    afgekapt (ontbrekende sluithaakjes/-aanhalingsteken) en wordt die afsluiting alsnog toegevoegd,
    als allerlaatste redmiddel ná de herkansingen die callClaude/callDeepSeek zelf al doen. Zo verlies
    je in het ergste geval alleen het allerlaatste, half afgemaakte veld, in plaats van de hele oefening. */
-function parseAIJson(raw){
-  try{ return JSON.parse(raw); }catch(e){ /* val hieronder terug op reparatie */ }
-
-  // Scenario 1: het antwoord is eigenlijk al compleet en geldig, maar heeft nog wat overtollige tekens
-  // ACHTERAAN hangen (bv. een dwalend extra aanhalingsteken) -- zoek het punt waar de buitenste
-  // haak/accolade voor het eerst weer op "helemaal gesloten" uitkomt, en knip alles daarna gewoon weg.
-  {
-    let depth = 0, inStr = false, esc = false, endIdx = -1;
-    for(let i=0;i<raw.length;i++){
-      const ch = raw[i];
-      if(esc){ esc = false; continue; }
-      if(ch === "\\"){ esc = true; continue; }
-      if(ch === '"'){ inStr = !inStr; continue; }
-      if(inStr) continue;
-      if(ch === "{" || ch === "[") depth++;
-      else if(ch === "}" || ch === "]"){
-        depth--;
-        if(depth === 0){ endIdx = i; break; }
-      }
-    }
-    if(endIdx !== -1 && endIdx < raw.length - 1){
-      try{ return JSON.parse(raw.slice(0, endIdx + 1)); }catch(e){ /* val verder terug op onderstaande strategie */ }
-    }
-  }
-
-  // Scenario 2: het antwoord is juist AFGEKAPT (mist iets aan het einde) -- probeer net zo lang steeds
-  // een stukje van het einde af te knippen (tot aan de laatste komma of openende haak) en dan de nog
-  // openstaande haken/aanhalingstekens te sluiten, tot het weer geldige JSON oplevert — zo verlies je
-  // in het ergste geval alleen het laatste, half afgemaakte element, i.p.v. de hele oefening.
-  let s = raw;
-  for(let i=0; i<6; i++){
-    let attempt = s;
-    const quoteCount = (attempt.match(/(?<!\\)"/g) || []).length;
-    if(quoteCount % 2 === 1) attempt += `"`;
-    const stack = [];
-    for(const ch of attempt){
-      if(ch === "{" || ch === "[") stack.push(ch);
-      else if(ch === "}" && stack[stack.length-1] === "{") stack.pop();
-      else if(ch === "]" && stack[stack.length-1] === "[") stack.pop();
-    }
-    while(stack.length){ attempt += stack.pop() === "{" ? "}" : "]"; }
-    try{ return JSON.parse(attempt); }catch(e){ /* nog steeds ongeldig -> verder terugsnijden */ }
-    const lastBreak = Math.max(s.lastIndexOf(","), s.lastIndexOf("{"), s.lastIndexOf("["));
-    if(lastBreak <= 0) break;
-    s = s.slice(0, lastBreak);
-  }
-  try{
-    return JSON.parse(raw);
-  }catch(e){
-    // alle reparatiepogingen mislukt -> gooi een duidelijkere fout met wat er daadwerkelijk binnenkwam,
-    // zodat een eventuele volgende keer meteen zichtbaar is of het om afkapping ging of iets anders
-    throw new Error(`Unparseable AI response (${raw.length} chars, ends with: "${raw.slice(-60)}")`);
-  }
-}
 
 
 // Een deel van de en-tr-curatie plakt een verduidelijkende context-noot ACHTER de eigenlijke vertaling,
@@ -4484,159 +3408,27 @@ function parseAIJson(raw){
 // gewoon "grup" typt (een prima, volledig antwoord) afgekeurd worden puur omdat de opgeslagen string ook
 // de haakjes-toevoeging bevat. Strip daarom bij het BEOORDELEN een eventuele losse "(...)" aan het einde
 // -- de volledige, ongestripte tekst blijft intact voor weergave (cachedTranslation/correctAnswer etc.).
-function stripTrClarifier(s){
-  return String(s || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
-}
+
 // Zoekt, binnen de bekende vertalingen van dit woord, de specifieke (correct geaccentueerde) Turkse
 // tekst die overeenkomt met wat de gebruiker typte -- een en-tr-woord kan meerdere geldige Turkse
 // synoniemen hebben (bv. "çağrı" EN "arama" voor "call"), en zonder deze check werd bij het uitspreken
 // altijd de eerste/standaard vertaling gepakt, ongeacht welke van de synoniemen de gebruiker had getypt.
-function findMatchedTr(item, answer){
-  const norm = normalize(answer);
-  if(!norm) return null;
-  const tr = (item.senseTr && item.note) ? item.senseTr : (cachedTranslation(item.en) || []);
-  for(const t of tr){
-    if(normalize(t) === norm || normalize(stripTrClarifier(t)) === norm) return stripTrClarifier(t);
-  }
-  return null;
-}
+
 
 // Bij een door de AI als TIKFOUT goedgekeurd antwoord (verdict.afwijking bevat "typo"/"tikfout") mag niet
 // de getypte tekst zelf uitgesproken worden (dat is per definitie verkeerd gespeld) -- zoek in plaats
 // daarvan de dichtstbijzijnde bekende, correct gespelde vertaling op (Levenshtein, net als de tikfout-
 // tolerantie zelf al gebruikt).
-function closestTrMatch(item, answer){
-  const tr = (item.senseTr && item.note) ? item.senseTr : (cachedTranslation(item.en) || []);
-  if(!tr.length) return null;
-  const answerFolded = foldTurkishDiacritics(normalize(answer));
-  let best = null, bestDist = Infinity;
-  for(const raw of tr){
-    const cleaned = stripTrClarifier(raw);
-    const dist = levenshteinDistance(answerFolded, foldTurkishDiacritics(normalize(cleaned)));
-    if(dist < bestDist){ bestDist = dist; best = cleaned; }
-  }
-  return best;
-}
 
-function matchesTrList(norm, trList){
-  if(!Array.isArray(trList) || !trList.length) return false;
-  if(trList.map(normalize).includes(norm)) return true;
-  return trList.map(t => normalize(stripTrClarifier(t))).includes(norm);
-}
 
-function checkStaticMatch(item, answer){
-  const norm = normalize(answer);
-  if(!norm) return false;
-  if(item.direction === "tr-en"){
-    // Turks getoond, Engels gevraagd: het bekende Engelse trefwoord is de primaire juiste vorm...
-    if(normalize(baseEnOf(item.en)) === norm) return true;
-    if(item.note) return false; // dit woord heeft een altijd-zichtbare disambiguatie-hint gekregen -> alleen het exacte trefwoord telt nog voor DEZE betekenis
-    // ...MAAR zonder bekeken hint zijn sommige Turkse woorden zelf ambigu (bv. "ay" = zowel "month" als "moon" —
-    // geen vertaalfout, gewoon hetzelfde woord met 2 losstaande betekenissen, hier zonder context
-    // getoond). Check daarom ook: is het antwoord van de gebruiker zelf een bekend Engels woord
-    // waarvan de (gecachte) Turkse vertaling overlapt met die van het GETOONDE woord? Dan is het
-    // een even geldige, alternatieve lezing van hetzelfde Turkse woord.
-    // Fix: dit vergelijkt uitsluitend binnen de tr-en-curatie zelf (REVERSE_TR_INDEX), nooit meer
-    // via de (gecachte) en-tr-vertaling -- de twee richtingen mogen elkaars brondata niet raadplegen.
-    const shownTr = normalize(item.tr);
-    const answerWordData = EN_WORDS_DATA.find(w => normalize(baseEnOf(w.en)) === norm);
-    if(answerWordData){
-      const answerTrEnOptions = (REVERSE_TR_INDEX[baseEnOf(answerWordData.en)] || []).map(o => normalize(o.tr));
-      if(answerTrEnOptions.includes(shownTr)) return true;
-    }
-    return false;
-  }
-  // en-tr: Engels getoond, Turks gevraagd -> check tegen de specifiek voor DEZE oefening gekozen
-  // betekenis (senseTr) ALLEEN als de gebruiker de disambiguatie-hint heeft bekeken (die verklapt
-  // welke betekenis getest wordt, dus dan mag er ook streng op die ene betekenis beoordeeld worden).
-  // Is de hint niet bekeken, dan is er geen eerlijke manier om te weten welke betekenis bedoeld was --
-  // dan telt elke geldige betekenis van het woord als correct (de brede, platgeslagen lijst).
-  const tr = (item.senseTr && item.note) ? item.senseTr : (cachedTranslation(item.en) || []);
-  return matchesTrList(norm, tr);
-}
+
+
+
 
 /* ===================== DEEPSEEK API ===================== */
-async function askDeepSeekJudge(item, answer, isRecheck){
-  const isTrEn = item.direction === "tr-en";
-  // Specifiek voor DEZE oefening gekozen betekenis heeft voorrang (zie pickWordSense) -- bij een
-  // homoniem/polyseem woord (bv. "mine") mag de AI niet zomaar een antwoord goedrekenen dat bij een
-  // ANDERE betekenis hoort dan de getoonde gloss, ook al is dat woord op zichzelf ook een geldige
-  // vertaling van iets. Zonder senseTr (oude/niet-gecureerde woorden) blijft de brede lijst het redelijke alternatief.
-  const tr = (item.senseTr && item.note) ? item.senseTr : (cachedTranslation(item.en) || (item.tr ? [item.tr] : []));
-  const glossLine = (item.gloss && item.note) ? `\nBedoelde betekenis in deze oefening: "${item.gloss}" (dit woord heeft meerdere losstaande betekenissen; beoordeel ALLEEN tegen deze specifieke betekenis, niet tegen de andere).` : "";
-  const sys = `Je bent een strenge maar faire docent Turks voor Engelstalige gebruikers.
-${isTrEn
-  ? `Je krijgt een Turks woord en het (correcte) Engelse trefwoord, en het Engelse antwoord dat de gebruiker gaf. Beoordeel of het antwoord een acceptabele Engelse vertaling is — accepteer synoniemen en kleine spelfouten. BELANGRIJK: sommige Turkse woorden zijn zelf ambigu/polyseem (bv. "ay" betekent zowel "month" als "moon" — geen vertaalfout, gewoon twee losstaande betekenissen van hetzelfde woord). Als het gegeven Turkse woord ZELF, onafhankelijk van het "verwachte" trefwoord, daadwerkelijk ook de betekenis heeft die de gebruiker gaf, reken dit dan GOED — ook als het een heel ander woord is dan het verwachte trefwoord. Is er hieronder een specifieke "bedoelde betekenis" vermeld, houd je daar dan wél strikt aan (dat is de betekenis die in DEZE oefening getest wordt, niet een andere betekenis van hetzelfde woord).`
-  : `Je krijgt een Engels woord, de reeds bekende Turkse vertaling(en), en het Turkse antwoord dat de gebruiker gaf. Beoordeel of het antwoord een acceptabele Turkse vertaling is — accepteer synoniemen, alternatieve (correcte) vervoegingen en kleine spelfouten. Is er hieronder een specifieke "bedoelde betekenis" vermeld (dit Engelse woord heeft meerdere losstaande betekenissen): beoordeel dan ALLEEN tegen die ene betekenis, ook al zou het antwoord bij een ANDERE betekenis van hetzelfde Engelse woord wel correct zijn.`}
-BELANGRIJK OVER TYPEFOUTEN: reken een antwoord GOED als het een tikfout bevat van de bedoelde vertaling, maar alleen als dat woord daadwerkelijk grotendeels dezelfde letters in vrijwel dezelfde volgorde bevat -- bv. één letter verwisseld, één letter te veel/te weinig, of twee letters omgewisseld (voorbeeld: "geliyor" i.p.v. "geliyour", of "tesekkur" i.p.v. "teşekkür"). Dit is GEEN tikfout en moet NIET als zodanig goedgekeurd worden: een kort/anders gespeld woord dat toevallig ergens op lijkt of er een beetje Turks/Engels uitziet, maar in werkelijkheid een ander of niet-bestaand woord is (voorbeeld: "çart" is GEEN tikfout van "grafik" -- die twee delen bijna geen letters, ook al lijkt "çart" fonetisch op het Engelse "chart"). Twijfel je of iets een tikfout is, ga dan uit van NEE (fout antwoord) tenzij de overeenkomst in spelling overduidelijk is. Zet een geaccepteerde tikfout dan wel kort en concreet in "afwijking" (zie hieronder), en zet "correct" niet op false enkel vanwege zo'n duidelijke, geringe tikfout.
-ALS HET ANTWOORD GOED IS MAAR NIET EXACT DE MEEST GANGBARE VORM: vul dan "afwijking" in met een korte, concrete Engelse zin die zegt WAT er afwijkt -- een tikfout (en wat het verschil is), een minder gebruikelijk/formeel synoniem, een andere (maar correcte) vervoeging/vorm, of iets dergelijks. Dit is de tekst die de gebruiker DIRECT bij het resultaat te zien krijgt (niet pas in het uitklapbare uitleg-paneel), dus hou het kort (één zin volstaat meestal). Was het antwoord exact de standaard/meest gangbare vorm, of is het antwoord fout, laat "afwijking" dan leeg ("").
-ALS HET ANTWOORD FOUT IS: geef in "betekenis_antwoord" aan wat het door de gebruiker ingevoerde woord ZELF betekent, VERTAALD NAAR ${isTrEn ? "het Turks" : "het Engels"} (dus NIET in dezelfde taal als het antwoord zelf — dat zou zinloos zijn, bv. nooit "great means great"), mits het een bestaand, betekenisvol woord is — dit helpt de gebruiker begrijpen welk ander woord hij in gedachten had. Is het antwoord geen bestaand woord, laat "betekenis_antwoord" dan leeg (""). Bij een GOED antwoord laat je "betekenis_antwoord" ook leeg.
-"uitleg" is de tekst voor een apart, uitklapbaar "Explanation"-paneel dat de gebruiker vrijwillig opent -- hier mag en moet je ruim de tijd/ruimte voor nemen, dit hoeft GEEN korte tekst te zijn. Schrijf hem ALTIJD rechtstreeks tegen de gebruiker (spreek diegene aan met "je", NOOIT in de derde persoon zoals "de student"), in het Engels, en behandel in aparte, korte alinea's (gescheiden door een lege regel):
-1) De betekenis van het TURKSE woord (${isTrEn ? `"${item.tr}"` : `"${tr[0] || baseEnOf(item.en)}"`}) zelf -- ALTIJD focussen op het Turkse woord, NOOIT op het Engelse woord op zich (de gebruiker spreekt al vloeiend Engels en heeft daar geen uitleg bij nodig -- leg dus bijvoorbeeld nooit uit wat een "pencil" is of waarvoor je 'm gebruikt, behandel alleen de Turkse kant): een heldere uitleg met relevante nuance of gebruikscontext.
-2) ALLEEN als het Turkse woord duidelijk uit meerdere herkenbare delen bestaat (een samenstelling van twee woorden, zoals "kurşun kalem" = "kurşun" (lood) + "kalem" (pen/schrijfstok), of een duidelijke stam+achtervoegsel-opbouw): benoem die delen en wat elk deel apart betekent, en hoe ze samen tot de uiteindelijke betekenis komen. Geen duidelijke, betekenisvolle opsplitsing mogelijk? Sla dit punt dan gewoon over.
-3) ALLEEN als het echt relevant is: het (nuance)verschil met aangrenzende/verwante Turkse begrippen waar dit woord makkelijk mee te verwarren is, EN/OF -- indien relevant voor de Turkse woordkeuze -- het nuanceverschil met een aangrenzend Engels begrip (bv. "pencil" vs "pen"). Sla dit punt over als er niets noemenswaardigs is.
-4) ALLEEN als het echt iets toevoegt: een korte, interessante etymologie van het woord, EN/OF -- als het woord meerdere losstaande betekenissen heeft -- die andere betekenissen kort genoemd (dit mag je overslaan of leeg laten als er niets noemenswaardigs is, forceer het niet).
-5) Bij een FOUT antwoord: wat het door de gebruiker gegeven woord zelf betekent (mag beknopt hetzelfde zeggen als "betekenis_antwoord", dat is geen probleem). Lag die betekenis dicht bij de bedoelde betekenis (bv. een verwant begrip, een deel-synoniem, een andere vorm/vervoeging, of een betekenis die overlapt maar net niet past)? Benoem dat dan expliciet en maak scherp wat het verschil/de nuance precies is, zodat de gebruiker leert wanneer je het ene woord gebruikt en wanneer het andere. Was het antwoord gewoon een heel ander/onverwant woord, dan hoeft dit punt niet uitgebreid; een enkele zin volstaat.
-Bij een GOED antwoord vervalt punt 5 vanzelf (er is dan geen "fout" antwoord om te bespreken).
-${isRecheck ? "De gebruiker is het NIET eens met een eerder 'onjuist'-oordeel en vraagt om een extra kritische herbeoordeling. Kijk nog eens goed of het antwoord toch (gedeeltelijk) correct kan zijn, bijvoorbeeld als minder gangbaar synoniem of alternatieve vorm." : ""}
-Antwoord in JSON.`;
-  const user = (isTrEn
-    ? `Turks woord: "${item.tr}"\nCorrecte Engelse vertaling: "${baseEnOf(item.en)}"\nAntwoord van gebruiker: "${answer}"`
-    : `Engels woord: "${baseEnOf(item.en)}"\nBekende Turkse vertaling(en): ${tr.join(", ") || "(geen)"}\nAntwoord van gebruiker: "${answer}"`) + glossLine;
-  const schema = {
-    name: "woord_oordeel",
-    description: "Beoordeling van een los vertaal-antwoord.",
-    input_schema: {
-      type: "object",
-      properties: {
-        correct: {type:"boolean"},
-        afwijking: {type:"string", description:"ALLEEN bij een GOED antwoord dat niet exact de standaardvorm was: korte Engelse zin die zegt wat afwijkt (tikfout, minder gebruikelijk synoniem, andere correcte vervoeging, ...). Leeg bij een exact antwoord of een fout antwoord."},
-        uitleg: {type:"string", description:"Rijkere uitleg in het Engels voor het uitklapbare Explanation-paneel: betekenis van het geteste woord, evt. etymologie/deelbetekenissen, en bij een fout antwoord de betekenis van het gegeven woord plus (indien van toepassing) het verschil met de bedoelde betekenis. Meerdere zinnen/alinea's mogen, mag leeg zijn."},
-        betekenis_antwoord: {type:"string", description:"Betekenis van het antwoord van de gebruiker (vertaald naar de andere taal), indien fout en een bestaand woord; anders leeg."},
-      },
-      required: ["correct","afwijking","uitleg","betekenis_antwoord"]
-    }
-  };
-  const raw = await callAI("word", sys, user, 2500, 0, schema);
-  try{
-    const verdict = parseAIJson(raw);
-    // Vangnet: promptaanpassingen alleen zijn kansrekening, geen garantie -- de AI kan een antwoord
-    // toch nog als "tikfout" bestempelen terwijl het structureel een compleet ander woord is (bv.
-    // "çart" goedgekeurd als tikfout van "grafik", terwijl die woorden bijna geen letters delen). Als
-    // de AI zelf "correct"+een tikfout-achtige "afwijking" teruggeeft, controleer dat hier nog eens
-    // deterministisch met dezelfde Levenshtein-tolerantie als de suffixtrainer, tegen ALLE bekende
-    // geldige vertalingen -- ligt de kleinste afstand daarboven, dan overrulen we naar fout. Legitieme
-    // maar structureel heel andere SYNONIEMEN (bv. "iyi" vs "güzel") worden door de AI nooit als
-    // "tikfout" gelabeld, dus die blijven hierdoor gewoon buiten schot.
-    if(verdict && verdict.correct && /typo|tikfout/i.test(verdict.afwijking || "")){
-      const candidates = isTrEn ? [baseEnOf(item.en)] : tr;
-      const answerFolded = foldTurkishDiacritics(normalize(answer));
-      const isCloseToAny = candidates.some(c => {
-        const cFolded = foldTurkishDiacritics(normalize(c));
-        const dist = levenshteinDistance(answerFolded, cFolded);
-        return dist <= typoTolerance(cFolded.length);
-      });
-      if(!isCloseToAny){
-        return {correct:false, afwijking:"", uitleg:`Your answer, "${answer}," isn't actually a typo of the expected word — it's a different word.`, betekenis_antwoord: verdict.betekenis_antwoord || ""};
-      }
-    }
-    return verdict;
-  }catch(e){
-    return {correct:false, uitleg:"(kon AI-antwoord niet verwerken: " + raw.slice(0,150) + ")"};
-  }
-}
 
-async function askDeepSeekFree(item, question, chatHistoryMsgs){
-  const context = (item.type === "sentence" || item.type === "question")
-    ? `Turkse oefen${item.type === "question" ? "vraag" : "zin"}: "${item.tr}" (doelwoorden: ${item.words.map(w=>`${w.tr} (${baseEnOf(w.en)})`).join(", ")}).`
-    : `Woord: Turks "${item.tr || "?"}" = Engels "${baseEnOf(item.en)}" (richting van deze oefening: ${item.direction === "tr-en" ? "Turks -> Engels" : "Engels -> Turks"}).`;
-  const sys = `Je bent een behulpzame docent Turks. Je gebruiker oefent het volgende:
-${context}
-Beantwoord vragen kort, duidelijk, rechtstreeks tegen de gebruiker gericht (spreek diegene aan met "je") en in het Engels.`;
-  const messages = [...chatHistoryMsgs, {role:"user", content: question}];
-  const raw = await callAI("sentence", sys, messages, 3000, 0.3);
-  return raw || "(geen antwoord)";
-}
+
+
 
 /* ===================== UI STATE ===================== */
 let currentItem = null;
@@ -5151,10 +3943,7 @@ function answerCompareLine(userAnswer, correctAnswer, wasCorrect, wrongMeaning, 
 // Toont het correcte Engelse antwoord bij een tr-en-oefening -- voor een tr-en-item afkomstig uit de
 // EIGEN tr-en-lijst (TR_WORDS_DATA) gebruikt dit het EIGEN pos-veld van die entry (displayTrEntryGloss),
 // i.p.v. te gokken via de mogelijk afwijkende woordsoort van hetzelfde Engelse trefwoord in de en-tr-lijst.
-function correctEnglishDisplayFor(item){
-  if(item.wordSource === "tr" && item.trData) return displayTrEntryGloss(item.trData);
-  return displayEnglishWord(item.en);
-}
+
 
 // Masking-helper voor de progressieve letterhint: toont de eerste `revealCount` letters, de rest als
 // puntjes -- spaties (bij een meerwoordig antwoord, bv. "diş hekimi") blijven altijd zichtbaar en tellen
@@ -5261,55 +4050,7 @@ function finalizeCorrectDisplayButScoredWrong(message){
    entered", "you used a hint", ...) i.p.v. daadwerkelijke inhoud over het Turkse/Engelse woord. Deze
    functie dekt precies die gevallen: ALTIJD punt 1 (betekenis van het woord), en -- als er een
    antwoord van de gebruiker is meegegeven -- ook het verschil daarmee. */
-async function explainWordContent(item, userAnswer){
-  if(!hasKeyFor("word")) return "";
-  const isTrEnDir = item.direction === "tr-en";
-  const given = (userAnswer || "").trim();
-  const tr = (item.senseTr && item.note) ? item.senseTr : (cachedTranslation(item.en) || (item.tr ? [item.tr] : []));
-  // Het Turkse woord dat uitgelegd moet worden -- bij tr-en is dat het getoonde woord zelf, bij en-tr
-  // de (eerste) bekende Turkse vertaling van het getoonde Engelse woord.
-  const trWord = isTrEnDir ? item.tr : (tr[0] || "");
-  // Hergebruik (stap 7): punten 1-4 hangen alleen af van het woord zelf, niet van sessie-specifieke
-  // state -- dezelfde combinatie van woord+richting+(evt.) het gegeven foute antwoord levert dus altijd
-  // exact dezelfde uitleg op. Via SRS kom je hetzelfde woord keer op keer weer tegen, dus 1x genereren
-  // en daarna hergebruiken bespaart herhaalde kosten/wachttijd voor identieke content.
-  const cacheKey = item.direction + "::" + normalize(trWord) + "::" + normalize(given);
-  const cachedEntry = explanationCache[cacheKey];
-  if(cachedEntry && cachedEntry.uitleg) return cachedEntry.uitleg;
-  const sys = `Je bent een docent Turks voor Engelstalige gebruikers. Schrijf een inhoudelijke uitleg over het Turkse woord "${trWord}" (Engelse betekenis: "${baseEnOf(item.en)}") voor een uitklapbaar "Explanation"-paneel. Schrijf ALTIJD rechtstreeks tegen de gebruiker (spreek "je" aan, NOOIT in de derde persoon), in het Engels, in aparte korte alinea's (gescheiden door een lege regel):
-1) De betekenis van het TURKSE woord "${trWord}" zelf -- ALTIJD invullen, ook als er verder niets bijzonders te melden is. Focus op het Turkse woord, NIET op het Engelse woord op zich (de gebruiker spreekt al vloeiend Engels en heeft daar geen uitleg bij nodig -- leg dus nooit uit wat een "pencil" is of waar het voor gebruikt wordt, behandel alleen de Turkse kant).
-2) ALLEEN als het Turkse woord duidelijk uit meerdere herkenbare delen bestaat (een samenstelling van twee woorden, zoals "kurşun kalem" = "kurşun" (lood) + "kalem" (pen/schrijfstok), of een duidelijke stam+achtervoegsel-opbouw): benoem die delen en wat elk deel apart betekent, en hoe ze samen tot de uiteindelijke betekenis komen. Is er geen duidelijke, betekenisvolle opsplitsing mogelijk, sla dit punt dan gewoon over (forceer het niet).
-3) ALLEEN als het echt relevant is: het (nuance)verschil met aangrenzende/verwante Turkse begrippen waar de gebruiker dit woord makkelijk mee kan verwarren, EN/OF -- indien relevant voor de Turkse woordkeuze -- het nuanceverschil met een aangrenzend Engels begrip (bv. "pencil" vs "pen"). Sla dit punt over als er niets noemenswaardigs is.
-4) ALLEEN als het echt iets toevoegt: een korte, interessante etymologie, EN/OF -- als het woord meerdere losstaande betekenissen heeft -- die kort genoemd (mag overgeslagen worden als er niets noemenswaardigs is).
-${given ? `5) De gebruiker typte "${given}" (niet het verwachte antwoord). Leg uit wat dit door de gebruiker gegeven woord zelf betekent (als het een bestaand, betekenisvol woord is) en wat het verschil/de nuance precies is met de bedoelde betekenis van het geteste woord. Is "${given}" geen bestaand/betekenisvol woord, sla dit punt dan over.` : ""}
-Punt 1 mag NOOIT leeg blijven; punten 2-4 mogen overgeslagen worden als ze niets toevoegen. Antwoord in JSON.`;
-  const user = isTrEnDir
-    ? `Turks woord: "${item.tr}"\nEngelse vertaling: "${baseEnOf(item.en)}"` + (given ? `\nAntwoord van gebruiker: "${given}"` : "")
-    : `Engels woord: "${baseEnOf(item.en)}"\nBekende Turkse vertaling(en): ${tr.join(", ") || "(geen)"}` + (given ? `\nAntwoord van gebruiker: "${given}"` : "");
-  const schema = {
-    name: "woord_uitleg",
-    description: "Inhoudelijke uitleg van het geteste woord voor het uitklapbare Explanation-paneel.",
-    input_schema: {
-      type: "object",
-      properties: {
-        uitleg: {type:"string", description:"Uitleg in het Engels, rechtstreeks tegen de gebruiker gericht. Punt 1 (betekenis van het woord) mag nooit leeg zijn."},
-      },
-      required: ["uitleg"]
-    }
-  };
-  try{
-    const raw = await callAI("word", sys, user, 1200, 0, schema);
-    const parsed = parseAIJson(raw);
-    const uitleg = parsed.uitleg || "";
-    if(uitleg){
-      explanationCache[cacheKey] = {uitleg, cachedAt: Date.now()};
-      saveJSON(LS_EXPLANATION_CACHE, explanationCache);
-    }
-    return uitleg;
-  }catch(e){
-    return "";
-  }
-}
+
 // Registreert de uitleg als "op verzoek" (lazy): de knop is meteen zichtbaar, maar er gebeurt GEEN
 // automatische AI-call -- pas als de gebruiker de knop daadwerkelijk indrukt (zie toggleExplanation)
 // wordt explainWordContent() aangeroepen. Zo kost een simpel goed/leeg antwoord geen ongevraagde
@@ -5318,42 +4059,7 @@ Punt 1 mag NOOIT leeg blijven; punten 2-4 mogen overgeslagen worden als ze niets
 // de automatische "Wrong: 'X' means Y" regel direct onder het antwoord. Los van explainWordContent()
 // (die blijft lazy/op-verzoek voor de volledige uitleg) -- dit is bewust minimaal, zodat een fout
 // antwoord altijd meteen deze korte duiding krijgt zonder te wachten op de zwaardere uitleg.
-async function lookupWrongAnswerMeaning(item, answer){
-  if(!answer || !hasKeyFor("word")) return "";
-  const isTrEnDir = item.direction === "tr-en";
-  // Hergebruik (stap 7): dit is puur een woordvertaling naar de andere taal -- hangt alleen af van de
-  // richting en de gegeven tekst zelf, niet van welk item/welke sessie het was. Dezelfde tikfout/hetzelfde
-  // verkeerd-geraden woord komt met een beetje pech vaker voor (vooral bij een klein aantal veelvoorkomende
-  // verwarringen), dus 1x vertalen en hergebruiken is hier goedkoop en zonder nadeel.
-  const cacheKey = "wronglookup::" + (isTrEnDir ? "to-en" : "to-tr") + "::" + normalize(answer);
-  const cachedEntry = explanationCache[cacheKey];
-  if(cachedEntry && typeof cachedEntry.uitleg === "string") return cachedEntry.uitleg;
-  const sys = `Je bent een vertaler ${isTrEnDir ? "Engels-Turks" : "Turks-Engels"}. De gebruiker gaf een fout antwoord op een vertaalvraag. Vertaal ALLEEN het door de gebruiker gegeven woord/de gegeven tekst naar ${isTrEnDir ? "het Engels" : "het Turks"}, als het een bestaand, betekenisvol woord is. Is het geen bestaand/betekenisvol woord (bv. een tikfout die nergens op lijkt, of onzin), geef dan een lege string terug. Kort en bondig, geen verdere uitleg. Antwoord in JSON.`;
-  const user = `Door de gebruiker gegeven (foute) antwoord: "${answer}"`;
-  const schema = {
-    name: "betekenis_antwoord",
-    description: "Korte betekenis/vertaling van het door de gebruiker gegeven foute woord.",
-    input_schema: {
-      type: "object",
-      properties: {
-        betekenis: {type:"string", description:"Vertaling van het gegeven woord naar de andere taal, of lege string als het geen bestaand/betekenisvol woord is."},
-      },
-      required: ["betekenis"]
-    }
-  };
-  try{
-    const raw = await callAI("word", sys, user, 150, 0, schema);
-    const parsed = parseAIJson(raw);
-    const betekenis = parsed.betekenis || "";
-    // OOK een lege uitkomst cachen ("geen bestaand woord") -- dat antwoord is voor dezelfde tekst
-    // net zo herbruikbaar, en voorkomt dat een bekende onzin-tikfout toch iedere keer opnieuw nagevraagd wordt.
-    explanationCache[cacheKey] = {uitleg: betekenis, cachedAt: Date.now()};
-    saveJSON(LS_EXPLANATION_CACHE, explanationCache);
-    return betekenis;
-  }catch(e){
-    return "";
-  }
-}
+
 
 function registerWordExplanation(item, userAnswer){
   if(!hasKeyFor("word")){ setExplanation(""); return; }
@@ -5530,41 +4236,7 @@ async function handleCheckSuffix(answer){
    duiding van de zin zelf. BEWUST kort en gericht op precies 3 dingen (zie prompt) i.p.v. een brede,
    altijd-verplichte grammatica-uitleg -- en grammaticale constructies die de gebruiker al beheerst
    (blijkend uit zijn eigen cursus-voortgang op dat exacte onderwerp) worden niet meer herhaald. */
-async function explainSentenceContent(item){
-  if(!hasKeyFor("sentence")) return "";
-  const gTopic = item.grammarTopic ? grammarTopicByKey(item.grammarTopic) : null;
-  let masteryNote = "";
-  if(gTopic){
-    const level = getTopicProgress(gTopic).level;
-    masteryNote = level >= 7
-      ? `\nDeze zin is gebouwd rond het grammaticale onderwerp "${gTopic.label}", maar de gebruiker beheerst dat al (niveau ${level}/10) -- leg dat onderwerp dus NIET (opnieuw) uit.`
-      : `\nDeze zin is gebouwd rond het grammaticale onderwerp "${gTopic.label}" (${gTopic.hint}), dat de gebruiker nog aan het leren is (niveau ${level}/10) -- dit mag je wél kort noemen als het relevant is voor punt 3.`;
-  }
-  const sys = `Je bent een taaldocent Turks. Schrijf een KORTE, compacte toelichting bij de Turkse ${item.type === "question" ? "oefenvraag" : "zin"} "${item.tr}" voor een uitklapbaar "Explanation"-paneel, gericht op een Engelstalige leerder die al een tijd Turks leert. Schrijf ALTIJD rechtstreeks tegen de gebruiker (spreek "you" aan, NOOIT in de derde persoon), in het Engels. Behandel PRECIES deze 3 punten, elk in hooguit 1-2 korte zinnen (geen lange alinea's, geen opsomming van losse woordbetekenissen die de gebruiker al kent uit de woordenlijst):
-1) Wat betekent de zin/vraag, kort en natuurlijk geparafraseerd (geen woord-voor-woord vertaling, dat heeft de gebruiker al gezien).
-2) Klinkt dit als natuurlijk, gebruikelijk Turks zoals een moedertaalspreker het daadwerkelijk zou zeggen -- of is het (in deze specifieke, gegenereerde vorm) wat gekunsteld/schools/ongebruikelijk? Wees eerlijk als het laatste het geval is, en zeg dan kort hoe een moedertaalspreker het WEL zou zeggen.
-3) Wordt er idioom, een vaste uitdrukking, of een niet-letterlijke betekenis gebruikt? Zo ja, leg kort het verschil tussen de letterlijke en figuurlijke betekenis uit. Zo nee, zeg gewoon kort dat er geen idioom in zit -- verzin er niets bij.
-BELANGRIJK: leg GEEN grammaticale constructie/regel uit die niet expliciet in punt 3 relevant is, en zeker niet als de gebruiker die al beheerst (zie hieronder) -- dit is geen grammaticales, de gebruiker kent de basis al vanuit zijn cursus.${masteryNote}
-Dit is GEEN herhaling van de correctheidsbeoordeling (die heeft de gebruiker al apart gezien) -- ga niet in op of het antwoord van de gebruiker goed of fout was. Antwoord in JSON.`;
-  const user = `Turkse ${item.type === "question" ? "vraag" : "zin"}: "${item.tr}"`;
-  const schema = {
-    name: "zin_uitleg",
-    description: "Compacte toelichting (betekenis, natuurlijkheid, idioom) bij de geoefende Turkse zin/vraag voor het uitklapbare Explanation-paneel.",
-    input_schema: {
-      type: "object",
-      properties: {
-        uitleg: {type:"string", description:"Korte toelichting in het Engels (max 3 korte punten/zinnen), rechtstreeks tegen de gebruiker gericht."},
-      },
-      required: ["uitleg"]
-    }
-  };
-  try{
-    const raw = await callAI("sentence", sys, user, 500, 0, schema);
-    return parseAIJson(raw).uitleg || "";
-  }catch(e){
-    return "";
-  }
-}
+
 // Registreert de Explanation-knop lazy: toont de al-bekende (gratis) korte correctheids-uitleg meteen
 // zodra de gebruiker 'm opent, aangevuld met de taalkundige duiding (die WEL een aparte AI-call kost,
 // dus pas bij het daadwerkelijk openen opgehaald wordt).
@@ -5938,7 +4610,7 @@ function promptAddTranslation(item, answer){
    niveau 1 is GEEN AI-generatie maar een rechtstreeks uit de eigen woordenlijst getrokken, al beheerst
    (niveau 8+) woord -- sneller, goedkoper, en garandeert dat het woord ook echt bekend is. Niveau 2-7
    laat de AI een zin met ongeveer het gevraagde aantal woorden bouwen. */
-const DICTATION_LEVELS = [
+export const DICTATION_LEVELS = [
   {n:1, label:"1 word (mastered)", min:1, max:1},
   {n:2, label:"2 words", min:2, max:2},
   {n:3, label:"3 words", min:3, max:3},
@@ -5950,76 +4622,19 @@ const DICTATION_LEVELS = [
 let currentDictationItem = null;
 let dictationAnswered = false;
 
-function dictationTierFor(level){
-  return DICTATION_LEVELS[Math.max(1, Math.min(7, level||1)) - 1];
-}
+
 
 // Niveau 1: rechtstreeks een al beheerst (niveau 8+) woord uit de eigen en-tr-lijst, geen AI-call nodig.
-async function pickMasteredWordForDictation(){
-  const mastered = baseWordList().map(w=>w.en).filter(en => getProgress(en).level >= 8);
-  const poolInRange = mastered.filter(inCefrRangeEn);
-  const pool = poolInRange.length ? poolInRange : mastered;
-  if(!pool.length) return null;
-  const en = pool[Math.floor(Math.random()*pool.length)];
-  const tr = await getOrFetchTranslation(en);
-  if(!tr || !tr.length) return null;
-  return {tr: tr[0], en: baseEnOf(en), wordCount: 1};
-}
+
 
 // Niveau 2-7: AI bouwt een zin van ongeveer het gevraagde aantal woorden, uit bekende woordenschat --
 // dit is een LUISTEROEFENING (kunnen volgen/verstaan), geen woordenschat-uitbreiding, dus bewust geen
 // nieuwe/moeilijke woorden erin.
-function countTrWords(tr){
-  return (tr || "").trim().split(/\s+/).filter(Boolean).length;
-}
 
-async function generateDictationSentence(tier, _retry){
-  const knownSample = pickKnownVocabSample(35, 8); // liefst al beheerst (niveau 8+), niet alleen "redelijk bekend" (7+)
-  const exact = tier.min === tier.max;
-  const sys = `Je maakt korte, natuurlijke Turkse luister-dictee-zinnen voor een taalleerapp: de gebruiker HOORT de zin (audio) en moet 'm naar het Engels vertalen, zonder de Turkse tekst te zien.
-${exact
-  ? `De zin moet PRECIES het opgegeven aantal woorden hebben, niet meer en niet minder -- tel elk los, spatie-gescheiden woord mee, INCLUSIEF vraagpartikels als "mi/mı/mu/mü" (die worden in het Turks apart geschreven en tellen dus gewoon als een eigen woord). Tel je eigen zin na voordat je antwoordt, en herschrijf 'm als het aantal niet precies klopt.`
-  : `De zin moet BINNEN het opgegeven bereik vallen (functiewoorden en vraagpartikels als "mi/mı/mu/mü" meegeteld als apart woord) en grammaticaal correct + natuurlijk klinken voor een moedertaalspreker.`}
-Dit is een LUISTEROEFENING (kunnen volgen/verstaan van gesproken Turks), GEEN woordenschat-uitbreiding: gebruik daarom ALLEEN eenvoudige, hoogfrequente woorden, bij voorkeur letterlijk uit de meegegeven bekende-woordenlijst van de gebruiker, aangevuld met simpele functiewoorden (voornaamwoorden, is/zijn, veelvoorkomende bijwoorden) waar nodig. Verzin geen nieuw/moeilijk woord puur om op het gevraagde aantal woorden uit te komen.
-Bij 2 woorden: bouw een minimale maar volledige, natuurlijke zin (bv. onderwerp+werkwoord, bijvoeglijk naamwoord+zelfstandig naamwoord, werkwoord+lijdend voorwerp) -- geen twee losse woorden zonder samenhang.
-Geef ook een natuurlijke, vloeiende Engelse referentievertaling van de hele zin.
-Antwoord in JSON.`;
-  const user = `Gevraagd aantal woorden: ${exact ? tier.min : `${tier.min}-${tier.max}`}${tier.n===7 ? " (mag ook iets meer zijn)" : ""}.
-${knownSample.length ? `Bekende woorden van de gebruiker: ${knownSample.map(en=>`"${cachedTranslation(en)?.[0]||en}"`).join(", ")}` : ""}`;
-  const schema = {
-    name: "dictee_zin",
-    description: "Een Turkse luister-dictee-zin met Engelse referentievertaling.",
-    input_schema: {
-      type: "object",
-      properties: {
-        tr: {type:"string", description:"De Turkse zin (of het Turkse woord bij 1-2 woorden)."},
-        en: {type:"string", description:"Natuurlijke, vloeiende Engelse vertaling van de hele zin."},
-      },
-      required: ["tr","en"]
-    }
-  };
-  const raw = await callAI("sentence", sys, user, 600, 0.6, schema);
-  const parsed = parseAIJson(raw);
-  if(!parsed.tr || !parsed.en) throw new Error("AI did not return a dictation sentence.");
-  const n = countTrWords(parsed.tr);
-  // BUGFIX: "ongeveer" gaf de AI bij EXACTE niveaus (bv. "3 woorden") te veel speelruimte -- die kon dan
-  // gewoon 4 afleveren. Eén stille herpoging als het bij een exact niveau toch niet klopt, vóórdat de
-  // (mogelijk nog steeds net-niet-kloppende) zin alsnog gebruikt wordt.
-  if(exact && n !== tier.min && !_retry){
-    return generateDictationSentence(tier, true);
-  }
-  return {tr: parsed.tr, en: parsed.en, wordCount: tier.n};
-}
 
-async function generateDictationItem(){
-  const tier = dictationTierFor(settings.dictationLevel);
-  if(tier.n === 1){
-    const item = await pickMasteredWordForDictation();
-    if(item) return item;
-    return null; // geen mastered woord beschikbaar -- renderDictationPractice toont dan een melding
-  }
-  return generateDictationSentence(tier);
-}
+
+
+
 
 function renderDictationLevelLabel(){
   const tier = dictationTierFor(settings.dictationLevel);
@@ -6057,22 +4672,7 @@ async function renderDictationPractice(){
   speakTurkish(currentDictationItem.tr);
 }
 
-async function gradeDictationAnswer(item, answer){
-  if(normalize(answer) === normalize(item.en)) return {correct:true};
-  if(!hasKeyFor("sentence")) return {correct:false, noKey:true};
-  const sys = `Je beoordeelt of de Engelse vertaling van een gebruiker de betekenis correct weergeeft van het Turkse ${item.wordCount===1?"woord":"zinnetje"} "${item.tr}". De referentievertaling is "${item.en}", maar andere bewoordingen die hetzelfde correct weergeven zijn OOK goed (parafrasering, synoniemen, een andere maar even correcte woordvolgorde). Kleine tikfouten met een ondubbelzinnige bedoeling reken je gewoon goed.${item.wordCount===1 ? ` LET OP: dit is een LOS woord zonder context -- Turkse woorden zijn vaak op zichzelf al ambigu (bv. "sonra" = zowel "then" als "after"). Is het antwoord van de gebruiker een ANDERE, ECHT BESTAANDE Engelse betekenis van "${item.tr}" dan de gekozen referentie "${item.en}", reken dat dan OOK gewoon goed -- niet alleen parafraseringen van de referentie zelf.` : ""} Antwoord in JSON.`;
-  const schema = {
-    name: "beoordeel_dictee",
-    description: "Of de Engelse vertaling van de gebruiker een acceptabele weergave van de Turkse zin is.",
-    input_schema: { type:"object", properties: { correct: {type:"boolean"} }, required: ["correct"] }
-  };
-  try{
-    const raw = await callAI("sentence", sys, `Antwoord van gebruiker: "${answer}"`, 150, 0, schema);
-    return {correct: !!parseAIJson(raw).correct};
-  }catch(e){
-    return {correct:false, error:e.message};
-  }
-}
+
 
 function finalizeDictationAnswer(correct, extraNote){
   dictationAnswered = true;
@@ -7093,11 +5693,200 @@ function startLessonAction(){
   renderCourseTab();
 }
 
+/* ===================== READING TAB (leestekst + begripsvragen) =====================
+   UI-laag voor generateReadingText/generateMoreReadingQuestions/gradeReadingAnswer (ai.js). De
+   AI-functies zelf muteren niets aan readingTexts -- dat gebeurt hier, zodat opslaan/synchroniseren
+   op dezelfde plek blijft als bij alle andere opslagsleutels. */
+let readingState = null; // { item, queue: [indices in item.questions die nog niet gesteld zijn], pos }
+
+// Ruwe prijsindicatie per gegenereerde ronde (1 tekst+vragen + de beoordeling van alle antwoorden) --
+// gebaseerd op een schatting van ~1800 input- + ~1050 output-tokens per ronde, tegen de prijzen die de
+// app zelf al gebruikt voor de kostenteller (MODEL_PRICING hierboven). Puur informatief, geen exacte
+// afrekening -- de daadwerkelijke lengte van tekst/vragen/antwoorden varieert vanzelfsprekend.
+function estimatedReadingCostPerRound(model){
+  const p = MODEL_PRICING[model === "claude" ? "claude-sonnet-5" : "deepseek-v4-pro"];
+  const cost = (1800/1e6)*p.miss + (1050/1e6)*p.output;
+  return cost < 0.01 ? `~$${cost.toFixed(4)}/text` : `~$${cost.toFixed(3)}/text`;
+}
+
+function renderReadingModelButtons(){
+  el("reading-model-cheap").classList.toggle("btn-primary", settings.readingModel !== "claude");
+  el("reading-model-cheap").classList.toggle("btn-secondary", settings.readingModel === "claude");
+  el("reading-model-best").classList.toggle("btn-primary", settings.readingModel === "claude");
+  el("reading-model-best").classList.toggle("btn-secondary", settings.readingModel !== "claude");
+  const hintModel = settings.readingModel === "claude" ? "claude" : "deepseek";
+  el("reading-model-price-hint").textContent = `Selected: ${hintModel === "claude" ? "Claude (best quality)" : "DeepSeek (cheap)"} — ${estimatedReadingCostPerRound(hintModel)}`;
+}
+
+function renderReadingTab(){
+  el("reading-level-select").value = settings.readingLevel;
+  renderReadingModelButtons();
+  el("reading-saved-list-card").classList.add("hidden");
+  if(readingState){
+    el("reading-session-card").classList.remove("hidden");
+    renderReadingQuestion();
+  } else {
+    el("reading-session-card").classList.add("hidden");
+  }
+}
+
+function unaskedIndices(item){
+  const out = [];
+  item.questions.forEach((q,i)=>{ if(!q.asked) out.push(i); });
+  return out;
+}
+
+async function startNewReading(){
+  if(!hasKeyFor("reading")){
+    alert("A " + keyNameFor("reading") + " API key (or shared proxy) is needed for the reading exercise (Settings).");
+    return;
+  }
+  el("btn-reading-new").disabled = true;
+  el("btn-reading-new").textContent = "🤖 Generating…";
+  try{
+    const level = settings.readingLevel;
+    const { tr, questions } = await generateReadingText(level, 4);
+    const item = {
+      id: "r_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+      tr, level, createdAt: Date.now(),
+      questions: questions.map(q => ({q: q.q, answerHint: q.answerHint, asked: false, correct: null})),
+    };
+    readingTexts.push(item);
+    saveJSON(LS_READING_TEXTS, readingTexts);
+    readingState = { item, queue: unaskedIndices(item), pos: 0 };
+    el("reading-session-card").classList.remove("hidden");
+    renderReadingQuestion();
+  }catch(e){
+    alert("⚠️ Could not generate a reading text: " + e.message);
+  }
+  el("btn-reading-new").disabled = false;
+  el("btn-reading-new").textContent = "📰 New text";
+}
+
+function renderReadingQuestion(){
+  const { item, queue, pos } = readingState;
+  el("reading-level-badge").textContent = item.level;
+  el("reading-text-box").textContent = item.tr;
+  el("reading-feedback-box").innerHTML = "";
+  el("reading-answer-input").value = "";
+  if(pos >= queue.length){
+    el("reading-question-text").textContent = "";
+    el("reading-answer-input").classList.add("hidden");
+    el("btn-reading-check").classList.add("hidden");
+    el("btn-reading-skip").classList.add("hidden");
+    el("reading-question-progress").textContent = "";
+    el("reading-round-done-box").classList.remove("hidden");
+    return;
+  }
+  el("reading-answer-input").classList.remove("hidden");
+  el("btn-reading-check").classList.remove("hidden");
+  el("btn-reading-check").disabled = false;
+  el("btn-reading-check").textContent = "Check";
+  el("btn-reading-skip").classList.remove("hidden");
+  el("reading-round-done-box").classList.add("hidden");
+  el("reading-answer-input").disabled = false;
+  const q = item.questions[queue[pos]];
+  el("reading-question-text").textContent = q.q;
+  el("reading-question-progress").textContent = `Question ${pos+1} of ${queue.length}`;
+  if(hasLikelyPhysicalKeyboard()) el("reading-answer-input").focus();
+}
+
+async function checkReadingAnswer(){
+  const { item, queue, pos } = readingState;
+  if(pos >= queue.length) return;
+  const answer = el("reading-answer-input").value.trim();
+  el("btn-reading-check").disabled = true;
+  el("reading-answer-input").disabled = true;
+  const q = item.questions[queue[pos]];
+  if(!answer){
+    el("reading-feedback-box").innerHTML = `<div class="feedback wrong">❌ No answer entered.<br>Reference: ${escapeHtml(q.answerHint)}</div>`;
+    q.asked = true; q.correct = false;
+    saveJSON(LS_READING_TEXTS, readingTexts);
+    el("btn-reading-check").textContent = "Next ▶";
+    el("btn-reading-check").disabled = false;
+    return;
+  }
+  try{
+    const verdict = await gradeReadingAnswer(item, q, answer);
+    q.asked = true; q.correct = verdict.correct;
+    saveJSON(LS_READING_TEXTS, readingTexts);
+    el("reading-feedback-box").innerHTML = `<div class="feedback ${verdict.correct ? "correct" : "wrong"}">${verdict.correct ? "✅" : "❌"}${verdict.feedback ? "<br>" + escapeHtml(verdict.feedback) : ""}</div>`;
+    el("btn-reading-check").textContent = "Next ▶";
+    el("btn-reading-check").disabled = false;
+  }catch(e){
+    // Stap 6-patroon: een AI-infrastructuurfout telt niet mee, gewoon opnieuw proberen -- geen `asked`-mutatie.
+    el("reading-feedback-box").innerHTML = `<div class="feedback pending">⚠️ Could not reach the AI to check your answer after retrying. Nothing was scored — please try Check again.</div>`;
+    el("btn-reading-check").disabled = false;
+    el("reading-answer-input").disabled = false;
+  }
+}
+
+function advanceReadingQuestion(){
+  if(!readingState) return;
+  readingState.pos++;
+  renderReadingQuestion();
+}
+
+async function generateMoreForCurrentReading(){
+  const item = readingState.item;
+  el("btn-reading-more-questions").disabled = true;
+  el("btn-reading-more-questions").textContent = "🤖 Generating…";
+  try{
+    const newQs = await generateMoreReadingQuestions(item, 3);
+    const startIdx = item.questions.length;
+    newQs.forEach(q => item.questions.push({q: q.q, answerHint: q.answerHint, asked: false, correct: null}));
+    saveJSON(LS_READING_TEXTS, readingTexts);
+    readingState.queue = readingState.queue.concat(newQs.map((_,i)=>startIdx+i));
+    renderReadingQuestion();
+  }catch(e){
+    alert("⚠️ Could not generate more questions: " + e.message);
+  }
+  el("btn-reading-more-questions").disabled = false;
+  el("btn-reading-more-questions").textContent = "➕ Generate more questions for this text";
+}
+
+function closeReadingRound(){
+  readingState = null;
+  el("reading-session-card").classList.add("hidden");
+}
+
+function renderSavedReadingList(){
+  const card = el("reading-saved-list-card");
+  const showing = !card.classList.contains("hidden");
+  if(showing){ card.classList.add("hidden"); return; }
+  card.classList.remove("hidden");
+  if(!readingTexts.length){
+    el("reading-saved-list").innerHTML = `<div class="muted" style="padding:8px 0;">No saved texts yet — generate one with "New text" above.</div>`;
+    return;
+  }
+  const rows = [...readingTexts].reverse().map(item => {
+    const remaining = unaskedIndices(item).length;
+    const snippet = escapeHtml(item.tr.slice(0, 70)) + (item.tr.length > 70 ? "…" : "");
+    return `<div class="word-row" style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);">
+      <div style="font-size:.78rem;" class="muted">${item.level} · ${item.questions.length} question${item.questions.length===1?"":"s"} · ${remaining} unasked</div>
+      <div style="margin:4px 0;">${snippet}</div>
+      <button class="btn-ghost btn-small resume-reading-btn" data-id="${item.id}">▶️ ${remaining ? "Continue" : "Open (all asked)"}</button>
+    </div>`;
+  }).join("");
+  el("reading-saved-list").innerHTML = rows;
+  el("reading-saved-list").querySelectorAll(".resume-reading-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const item = readingTexts.find(r => r.id === btn.dataset.id);
+      if(!item) return;
+      readingState = { item, queue: unaskedIndices(item), pos: 0 };
+      card.classList.add("hidden");
+      el("reading-session-card").classList.remove("hidden");
+      renderReadingQuestion();
+    });
+  });
+}
+
 function switchTab(tab){
   localStorage.setItem(LS_ACTIVE_TAB, tab); // onthouden zodat een refresh niet terugspringt naar "practice"
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
   el("screen-practice").classList.toggle("hidden", tab!=="practice");
   el("screen-suffixes").classList.toggle("hidden", tab!=="suffixes");
+  el("screen-reading").classList.toggle("hidden", tab!=="reading");
   el("screen-course").classList.toggle("hidden", tab!=="course");
   el("screen-words").classList.toggle("hidden", tab!=="words");
   el("screen-stats").classList.toggle("hidden", tab!=="stats");
@@ -7105,6 +5894,7 @@ function switchTab(tab){
   if(tab==="stats") renderStats();
   if(tab==="course") renderCourseTab();
   if(tab==="words") renderWordsTab();
+  if(tab==="reading") renderReadingTab();
   if(tab==="suffixes"){
     renderSpecialTab();
   }
@@ -7790,6 +6580,37 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     el("weak-words-count-custom").classList.toggle("hidden", el("weak-words-count").value !== "custom");
   });
   el("btn-show-weak-words").addEventListener("click", toggleWeakWordsList);
+  el("reading-level-select").addEventListener("change", ()=>{
+    settings.readingLevel = el("reading-level-select").value;
+    saveJSON(LS_SETTINGS, settings);
+  });
+  el("reading-model-cheap").addEventListener("click", ()=>{
+    settings.readingModel = "deepseek";
+    saveJSON(LS_SETTINGS, settings);
+    renderReadingModelButtons();
+  });
+  el("reading-model-best").addEventListener("click", ()=>{
+    settings.readingModel = "claude";
+    saveJSON(LS_SETTINGS, settings);
+    renderReadingModelButtons();
+  });
+  el("btn-reading-new").addEventListener("click", startNewReading);
+  el("btn-reading-saved").addEventListener("click", renderSavedReadingList);
+  el("btn-reading-check").addEventListener("click", ()=>{
+    if(!readingState) return;
+    const { queue, pos } = readingState;
+    if(pos < queue.length && el("btn-reading-check").textContent === "Check") checkReadingAnswer();
+    else advanceReadingQuestion();
+  });
+  el("btn-reading-skip").addEventListener("click", advanceReadingQuestion);
+  el("reading-answer-input").addEventListener("keydown", e=>{
+    if(e.key === "Enter"){
+      e.preventDefault();
+      if(!el("btn-reading-check").disabled) el("btn-reading-check").click();
+    }
+  });
+  el("btn-reading-more-questions").addEventListener("click", generateMoreForCurrentReading);
+  el("btn-reading-done").addEventListener("click", closeReadingRound);
   el("btn-checkup-next").addEventListener("click", ()=> skillPracticeState ? submitSkillPracticeAnswer() : submitCheckupAnswer());
   el("btn-checkup-reveal").addEventListener("click", revealCheckupHint);
   el("checkup-answer-input").addEventListener("keydown", e=>{
@@ -7841,7 +6662,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   restoreActiveSessions();
   // Herstel het laatst geopende tabblad i.p.v. altijd op "practice" te starten (bv. na een refresh).
   const savedTab = localStorage.getItem(LS_ACTIVE_TAB);
-  const initialTab = ["practice","suffixes","course","words","stats","settings"].includes(savedTab) ? savedTab : "practice";
+  const initialTab = ["practice","suffixes","reading","course","words","stats","settings"].includes(savedTab) ? savedTab : "practice";
   if(syncConfigured()){
     syncPullNow(false).then(()=> switchTab(initialTab));
   } else {

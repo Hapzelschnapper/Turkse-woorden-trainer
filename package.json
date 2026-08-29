@@ -1,0 +1,14 @@
+{
+  "name": "turkce-ogren",
+  "private": true,
+  "description": "Türkçe Öğren — Turkse-woorden-trainer PWA (GitHub Pages, geen build-stap nodig om de app zelf te draaien; deze package.json is alleen voor tests/linting tijdens ontwikkeling).",
+  "scripts": {
+    "test": "node run-all.js",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "eslint": "^10.9.1",
+    "globals": "^17.11.0",
+    "puppeteer": "^25.9.0"
+  }
+}
