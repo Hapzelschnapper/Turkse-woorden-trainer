@@ -1,1 +1,35 @@
+name: Tests
+
+# Draait automatisch bij elke push en bij elke pull request naar main -- geen lokale Node-installatie
+# nodig, GitHub voert dit zelf uit. Resultaat is zichtbaar als een groen vinkje / rood kruisje bij de
+# commit en onder het "Actions"-tabblad van de repo.
+"on":
+  push:
+  pull_request:
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo uitchecken
+        uses: actions/checkout@v4
+
+      - name: Node.js installeren
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Nodig vóór de testrun: browser.test.js draait op de echte puppeteer-dependency (een
+      # eigen, automatisch gedownloade Chromium) -- geen losse browser-installatiestap nodig.
+      - name: Dependencies installeren
+        run: npm ci
+
+      - name: Testsuite draaien
+        run: node run-all.js
+
+      # ESLint-regels met severity "error" (bv. no-undef) laten deze stap falen; regels met severity
+      # "warn" (bv. no-unused-vars) verschijnen wel zichtbaar in de log, maar blokkeren de build niet --
+      # zie eslint.config.js voor de toelichting per regel.
+      - name: Linten
+        run: npm run lint
 
