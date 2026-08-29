@@ -16,10 +16,10 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const DEFAULT_SOURCE_PATH = path.join(__dirname, '..', 'app.js');
+const DEFAULT_SOURCE_PATH = path.join(__dirname, 'app.js');
 
 function readSourceFile(relativePath) {
-  const p = relativePath ? path.join(__dirname, '..', relativePath) : DEFAULT_SOURCE_PATH;
+  const p = relativePath ? path.join(__dirname, relativePath) : DEFAULT_SOURCE_PATH;
   return fs.readFileSync(p, 'utf8');
 }
 

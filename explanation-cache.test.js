@@ -36,7 +36,7 @@ async function main() {
       explanationCache,
       callAI: async () => { callCount++; return JSON.stringify({ uitleg: "De betekenis van kitap is 'book'." }); },
       saveJSON: (key, val) => { saved.push(key); Object.assign(explanationCache, val); },
-    }));
+    }), 'ai.js');
     const item = { direction: "tr-en", tr: "kitap", en: "book" };
     const first = await explainWordContent(item, "");
     const second = await explainWordContent(item, "");
@@ -51,7 +51,7 @@ async function main() {
       explanationCache: {},
       callAI: async () => { callCount++; return JSON.stringify({ uitleg: `uitleg #${callCount}` }); },
       saveJSON: () => {},
-    }));
+    }), 'ai.js');
     const itemA = { direction: "tr-en", tr: "kitap", en: "book" };
     const itemB = { direction: "tr-en", tr: "kalem", en: "pen" };
     await explainWordContent(itemA, "");
@@ -65,7 +65,7 @@ async function main() {
       explanationCache: {},
       callAI: async () => { callCount++; return JSON.stringify({ uitleg: `uitleg #${callCount}` }); },
       saveJSON: () => {},
-    }));
+    }), 'ai.js');
     const item = { direction: "tr-en", tr: "kitap", en: "book" };
     await explainWordContent(item, "");
     await explainWordContent(item, "kalem"); // ander fout antwoord -> punt 5 in de prompt verschilt -> geen cache-hit
@@ -78,7 +78,7 @@ async function main() {
       explanationCache: {},
       callAI: async () => { callCount++; return JSON.stringify({ uitleg: "" }); },
       saveJSON: () => {},
-    }));
+    }), 'ai.js');
     const item = { direction: "tr-en", tr: "kitap", en: "book" };
     await explainWordContent(item, "");
     await explainWordContent(item, "");
@@ -91,7 +91,7 @@ async function main() {
       explanationCache: {},
       callAI: async () => { callCount++; return JSON.stringify({ betekenis: "boek" }); },
       saveJSON: () => {},
-    }));
+    }), 'ai.js');
     const item = { direction: "en-tr" };
     const first = await lookupWrongAnswerMeaning(item, "book");
     const second = await lookupWrongAnswerMeaning(item, "book");
@@ -105,7 +105,7 @@ async function main() {
       explanationCache: {},
       callAI: async () => { callCount++; return JSON.stringify({ betekenis: "" }); },
       saveJSON: () => {},
-    }));
+    }), 'ai.js');
     const item = { direction: "en-tr" };
     await lookupWrongAnswerMeaning(item, "xyzzy123");
     await lookupWrongAnswerMeaning(item, "xyzzy123");

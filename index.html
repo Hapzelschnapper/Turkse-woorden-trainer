@@ -19,14 +19,14 @@
   <div style="font-size:2.2rem;">🇹🇷</div>
   <div style="width:34px;height:34px;border:3px solid #3a4a5a;border-top-color:#2fae6a;border-radius:50%;animation:loading-spin 0.8s linear infinite;" id="loading-spinner"></div>
   <div id="loading-overlay-text" style="font-size:.9rem;">Loading Türkçe Öğren…</div>
-  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.59</div>
+  <div id="loading-version" style="font-size:.65rem;opacity:.6;">v3.65</div>
   <button id="loading-retry-btn" class="btn-primary hidden" style="margin-top:6px;">Try again</button>
 </div>
 <style>@keyframes loading-spin{to{transform:rotate(360deg);}}</style>
 <div id="peak-indicator" class="peak-tab dal" title="DeepSeek peak/off-peak pricing (based on UTC time)">● off-peak</div>
 <div id="app">
 
-  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.59</span></h1>
+  <h1><span class="flag">🇹🇷</span> Türkçe Öğren <span class="muted" style="font-weight:400;font-size:.65rem;margin-left:auto;" id="build-stamp">v3.65</span></h1>
 
   <!-- ===================== PRACTICE SCREEN ===================== -->
   <section id="screen-practice">
@@ -167,6 +167,60 @@
           <button class="btn-secondary btn-small" id="dict-btn-skip">Skip</button>
         </div>
         <div id="dict-feedback-box"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== READING SCREEN =====================
+       AI-gegenereerde leestekst (instelbaar niveau) + begripsvragen erover. Teksten en hun vragen
+       worden blijvend opgeslagen (LS_READING_TEXTS) zodat een tekst later hergebruikt kan worden
+       zonder dat een vraag twee keer gesteld wordt (elke vraag heeft een eigen asked-vlag) -- zie
+       generateReadingText/generateMoreReadingQuestions/gradeReadingAnswer in ai.js. -->
+  <section id="screen-reading" class="hidden">
+    <div class="card">
+      <div class="muted" style="margin-bottom:10px;">AI-gegenereerde Turkse leestekst op instelbaar niveau, met begripsvragen erover. Teksten en vragen worden opgeslagen — een vraag wordt nooit twee keer gesteld.</div>
+      <div class="row space-between" style="margin-bottom:8px;gap:6px;">
+        <label class="muted" style="display:flex;align-items:center;gap:6px;">Level:</label>
+        <select id="reading-level-select" class="select-input" style="flex:1;">
+          <option value="A2">A2</option>
+          <option value="B1">B1</option>
+          <option value="B2" selected>B2</option>
+          <option value="C1">C1</option>
+        </select>
+      </div>
+      <div class="row" style="gap:6px;margin-bottom:4px;">
+        <button class="btn-secondary btn-small" id="reading-model-cheap" style="flex:1;">🐢 Cheap (DeepSeek)</button>
+        <button class="btn-secondary btn-small" id="reading-model-best" style="flex:1;">🎯 Best quality (Claude)</button>
+      </div>
+      <div class="muted" id="reading-model-price-hint" style="font-size:.72rem;margin-bottom:10px;"></div>
+      <button class="btn-primary" id="btn-reading-new" style="width:100%;">📰 New text</button>
+      <button class="btn-ghost" id="btn-reading-saved" style="width:100%;margin-top:6px;">📚 Saved texts</button>
+    </div>
+
+    <div class="card hidden" id="reading-saved-list-card">
+      <h3 style="margin-top:0;">📚 Saved texts</h3>
+      <div id="reading-saved-list"></div>
+    </div>
+
+    <div class="card hidden" id="reading-session-card">
+      <div class="row space-between">
+        <span class="badge badge-word" id="reading-level-badge">B2</span>
+        <div class="muted" id="reading-question-progress" style="font-size:.78rem;"></div>
+      </div>
+      <div id="reading-text-box" style="margin-top:8px;line-height:1.6;font-size:1rem;white-space:pre-line;"></div>
+      <div style="margin-top:16px;">
+        <div class="muted" style="font-weight:700;font-size:.85rem;margin-bottom:6px;" id="reading-question-text"></div>
+        <input type="search" id="reading-answer-input" placeholder="Type your answer, in English…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn-primary" id="btn-reading-check" style="flex:1;">Check</button>
+        <button class="btn-secondary btn-small" id="btn-reading-skip">Skip</button>
+      </div>
+      <div id="reading-feedback-box"></div>
+      <div class="hidden" id="reading-round-done-box" style="margin-top:12px;">
+        <div class="muted" style="margin-bottom:8px;">All questions for this text have been asked.</div>
+        <button class="btn-secondary" id="btn-reading-more-questions" style="width:100%;margin-bottom:6px;">➕ Generate more questions for this text</button>
+        <button class="btn-ghost" id="btn-reading-done" style="width:100%;">Close</button>
       </div>
     </div>
   </section>
@@ -444,7 +498,7 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">Version</h3>
-      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.59</b></div>
+      <div class="muted">Latest build: <b id="build-stamp-settings">2026-08-25 v3.65</b></div>
       <div class="muted" style="margin-top:4px;">If this timestamp doesn't update after a change, the upload didn't refresh correctly — check GitHub and reload (try incognito against caching).</div>
     </div>
     </div>
@@ -454,6 +508,7 @@
   <div class="tabbar">
     <button class="tab-btn active" data-tab="practice"><span class="ic">📝</span>Practice</button>
     <button class="tab-btn" data-tab="suffixes"><span class="ic">🧩</span>Special</button>
+    <button class="tab-btn" data-tab="reading"><span class="ic">📰</span>Reading</button>
     <button class="tab-btn" data-tab="course"><span class="ic">🎓</span>Course</button>
     <button class="tab-btn" data-tab="words"><span class="ic">📖</span>Words</button>
     <button class="tab-btn" data-tab="stats"><span class="ic">📊</span>Stats</button>

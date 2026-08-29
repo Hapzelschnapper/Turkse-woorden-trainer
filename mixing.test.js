@@ -3,7 +3,7 @@ const assert = require('assert');
 
 // resolveWordMixSlot/pickBestPracticeType staan sinds de module-opsplitsing (stap 3) in ../srs.js.
 async function main() {
-  const { resolveWordMixSlot, pickBestPracticeType } = await import('../srs.js');
+  const { resolveWordMixSlot, pickBestPracticeType } = await import('./srs.js');
 
   let passed = 0;
   function test(name, fn) {

@@ -11,7 +11,7 @@ async function main() {
     EASE_START, EASE_MIN, EASE_MAX, EASE_STEP_DOWN,
     WRONG_INTERVAL_FACTOR, WRONG_INTERVAL_CAP_MIN,
     intervalMinutes, nextWordIntervalMinutes,
-  } = await import('../srs.js');
+  } = await import('./srs.js');
 
   let passed = 0;
   function test(name, fn) {

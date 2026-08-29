@@ -3,11 +3,11 @@ const assert = require('assert');
 
 async function main() {
   const {
-    retrievability, initStability, initDifficulty, nextDifficulty, nextStability, nextIntervalDays,
-    scheduleReview, migrateLegacyProgress, stabilityToLevel, difficultyToDisplayEase, gradeFromResult,
+    retrievability, initStability, initDifficulty, nextStability, nextIntervalDays,
+    scheduleReview, migrateLegacyProgress, difficultyToDisplayEase, gradeFromResult,
     GRADE_AGAIN, GRADE_HARD, GRADE_GOOD, GRADE_EASY,
     FSRS_MIN_STABILITY_DAYS, FSRS_MAX_STABILITY_DAYS,
-  } = await import('../fsrs.js');
+  } = await import('./fsrs.js');
 
   let passed = 0;
   function test(name, fn) {

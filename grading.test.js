@@ -20,8 +20,13 @@ function makeStubs(overrides) {
   }, overrides || {});
 }
 
+// gradeCheckupWordAnswer staat sinds stap 11 (modulesplitsing) in ai.js, niet meer in app.js.
+function loadGrading(overrides) {
+  return loadFunctions(['gradeCheckupWordAnswer'], makeStubs(overrides), 'ai.js');
+}
+
 async function main() {
-  const { gradeCheckupWordAnswer } = loadFunctions(['gradeCheckupWordAnswer'], makeStubs());
+  const { gradeCheckupWordAnswer } = loadGrading();
 
   let passed = 0;
   async function test(name, fn) {
@@ -45,10 +50,10 @@ async function main() {
   });
 
   await test('wordSource:"tr" (rechtstreeks tr-en-item): checkStaticMatch geeft direct correct terug', async () => {
-    const { gradeCheckupWordAnswer } = loadFunctions(['gradeCheckupWordAnswer'], makeStubs({
+    const { gradeCheckupWordAnswer } = loadGrading({
       checkStaticMatch: () => true,
       correctEnglishDisplayFor: () => "book",
-    }));
+    });
     const cur = { wordSource: "tr", en: "book", tr: "kitap" };
     const { correct, correctAnswerTxt } = await gradeCheckupWordAnswer(cur, "book");
     assert.strictEqual(correct, true);
@@ -56,10 +61,10 @@ async function main() {
   });
 
   await test('wordSource:"tr", gepiept: alleen een LETTERLIJKE match telt (geen checkStaticMatch-fallback)', async () => {
-    const { gradeCheckupWordAnswer } = loadFunctions(['gradeCheckupWordAnswer'], makeStubs({
+    const { gradeCheckupWordAnswer } = loadGrading({
       checkStaticMatch: () => { throw new Error('mag niet aangeroepen worden als cur.peeked'); },
       correctEnglishDisplayFor: () => "book",
-    }));
+    });
     const cur = { wordSource: "tr", en: "book", tr: "kitap", peeked: true };
     const { correct } = await gradeCheckupWordAnswer(cur, "book");
     assert.strictEqual(correct, true);
@@ -67,11 +72,11 @@ async function main() {
 
   await test('wordSource:"tr", geen match: valt terug op askDeepSeekJudge', async () => {
     let judgeCalled = false;
-    const { gradeCheckupWordAnswer } = loadFunctions(['gradeCheckupWordAnswer'], makeStubs({
+    const { gradeCheckupWordAnswer } = loadGrading({
       checkStaticMatch: () => false,
       correctEnglishDisplayFor: () => "book",
       askDeepSeekJudge: async (item) => { judgeCalled = true; assert.strictEqual(item.direction, "tr-en"); return { correct: true, afwijking: "", uitleg: "goed zo" }; },
-    }));
+    });
     const cur = { wordSource: "tr", en: "book", tr: "kitap" };
     const { correct, uitleg } = await gradeCheckupWordAnswer(cur, "een boek");
     assert.strictEqual(judgeCalled, true);
@@ -80,9 +85,9 @@ async function main() {
   });
 
   await test('en-tr, exacte match: correct zonder AI-call', async () => {
-    const { gradeCheckupWordAnswer } = loadFunctions(['gradeCheckupWordAnswer'], makeStubs({
+    const { gradeCheckupWordAnswer } = loadGrading({
       askDeepSeekJudge: async () => { throw new Error('mag niet aangeroepen worden bij een exacte match'); },
-    }));
+    });
     const cur = { direction: "en-tr", en: "book", tr: "kitap" };
     const { correct, correctAnswerTxt } = await gradeCheckupWordAnswer(cur, "kitap");
     assert.strictEqual(correct, true);
@@ -90,9 +95,9 @@ async function main() {
   });
 
   await test('en-tr, gepiept: alleen een letterlijke match telt (geen AI-fallback)', async () => {
-    const { gradeCheckupWordAnswer } = loadFunctions(['gradeCheckupWordAnswer'], makeStubs({
+    const { gradeCheckupWordAnswer } = loadGrading({
       askDeepSeekJudge: async () => { throw new Error('mag niet aangeroepen worden als cur.peeked'); },
-    }));
+    });
     const cur = { direction: "en-tr", en: "book", tr: "kitap", peeked: true };
     const wrongCase = await gradeCheckupWordAnswer(cur, "kitaap");
     assert.strictEqual(wrongCase.correct, false);
@@ -101,9 +106,9 @@ async function main() {
   });
 
   await test('en-tr, ontbrekende cur.tr: haalt de vertaling alsnog op via getOrFetchTranslation', async () => {
-    const { gradeCheckupWordAnswer } = loadFunctions(['gradeCheckupWordAnswer'], makeStubs({
+    const { gradeCheckupWordAnswer } = loadGrading({
       getOrFetchTranslation: async () => ["opgehaald-woord"],
-    }));
+    });
     const cur = { direction: "en-tr", en: "book", tr: null };
     const { correctAnswerTxt } = await gradeCheckupWordAnswer(cur, "iets anders");
     assert.strictEqual(correctAnswerTxt, "opgehaald-woord");
@@ -111,29 +116,29 @@ async function main() {
   });
 
   await test('en-tr, AI keurt een tikfout goed: spokenTr wordt de dichtstbijzijnde bekende vorm, niet de tikfout zelf', async () => {
-    const { gradeCheckupWordAnswer } = loadFunctions(['gradeCheckupWordAnswer'], makeStubs({
+    const { gradeCheckupWordAnswer } = loadGrading({
       askDeepSeekJudge: async () => ({ correct: true, afwijking: "typo", uitleg: "" }),
       closestTrMatch: () => "kitap",
-    }));
+    });
     const cur = { direction: "en-tr", en: "book", tr: "kitap" };
     const { spokenTr } = await gradeCheckupWordAnswer(cur, "kitab");
     assert.strictEqual(spokenTr, "kitap");
   });
 
   await test('en-tr, AI keurt een ECHT synoniem goed (geen tikfout): spokenTr is het getypte antwoord zelf', async () => {
-    const { gradeCheckupWordAnswer } = loadFunctions(['gradeCheckupWordAnswer'], makeStubs({
+    const { gradeCheckupWordAnswer } = loadGrading({
       askDeepSeekJudge: async () => ({ correct: true, afwijking: "", uitleg: "" }),
-    }));
+    });
     const cur = { direction: "en-tr", en: "book", tr: "kitap" };
     const { spokenTr } = await gradeCheckupWordAnswer(cur, "kitabı");
     assert.strictEqual(spokenTr, "kitabı");
   });
 
   await test('leeg antwoord: altijd fout, geen enkele AI-call', async () => {
-    const { gradeCheckupWordAnswer } = loadFunctions(['gradeCheckupWordAnswer'], makeStubs({
+    const { gradeCheckupWordAnswer } = loadGrading({
       askDeepSeekJudge: async () => { throw new Error('mag niet aangeroepen worden bij een leeg antwoord'); },
       gradeGrammarDrillAnswer: async () => { throw new Error('mag niet aangeroepen worden bij een leeg antwoord'); },
-    }));
+    });
     const cur = { direction: "en-tr", en: "book", tr: "kitap" };
     const { correct } = await gradeCheckupWordAnswer(cur, "");
     assert.strictEqual(correct, false);

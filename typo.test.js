@@ -4,8 +4,8 @@ const assert = require('assert');
 // Sinds de module-opsplitsing (stap 3) staat deze logica in ../typo.js en ../utils.js als echte
 // ES-module-exports -- rechtstreeks importeren i.p.v. via regex uit index.html extraheren.
 async function main() {
-  const { levenshteinDistance, typoTolerance, isTypoOf } = await import('../typo.js');
-  const { foldTurkishDiacritics } = await import('../utils.js');
+  const { levenshteinDistance, typoTolerance, isTypoOf } = await import('./typo.js');
+  const { foldTurkishDiacritics } = await import('./utils.js');
 
   let passed = 0;
   function test(name, fn) {

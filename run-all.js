@@ -1,7 +1,7 @@
 'use strict';
 // Draait alle *.test.js in deze map als losse subprocessen (zodat een crash in het ene testbestand de
 // andere niet meesleept), en geeft een niet-nul exitcode als er ook maar één test faalt -- geschikt om
-// later aan een CI-stap te hangen. Gebruik: `node tests/run-all.js`
+// later aan een CI-stap te hangen. Gebruik: `node run-all.js`
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
