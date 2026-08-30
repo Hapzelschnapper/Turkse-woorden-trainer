@@ -1757,29 +1757,55 @@ ${existingQs.length ? `Al gestelde vragen (NIET herhalen):\n${existingQs.map((q,
   return parsed.questions.filter(q => q && q.q).map(q => ({q: q.q, answerHint: q.answerHint || ""}));
 }
 
-export async function gradeReadingAnswer(readingItem, question, answer){
-  if(!answer) return {correct: false, feedback: ""};
+export async function gradeReadingAnswer(readingItem, question, answer, clarification){
+  if(!answer) return {correct: false, feedback: "", needsClarification: false};
   if(!hasKeyFor("reading")) throw new Error(`No ${preferredModelFor("reading") === "claude" ? "Anthropic" : "DeepSeek"} API key (or shared proxy) set — needed to check your answer.`);
-  const sys = `Je beoordeelt of het Engelse antwoord van een gebruiker op een leesbegripsvraag over een Turkse tekst inhoudelijk correct/acceptabel is. Wees soepel met bewoording (parafrasering en synoniemen zijn prima), streng op inhoud (het antwoord moet daadwerkelijk kloppen met wat er in de tekst staat). Antwoord in JSON.`;
-  const user = `Tekst: "${readingItem.tr}"
+  // `clarification` is gezet zodra dit de TWEEDE beoordelingsronde is voor deze vraag (de eerste ronde
+  // leverde needsClarification=true op, en de gebruiker heeft net op de verduidelijkingsvraag
+  // geantwoord) -- in dat geval MOET er nu een definitief oordeel komen, geen nieuwe vervolgvraag.
+  const isFollowUp = !!clarification;
+  const sys = `Je bent een vriendelijke, geduldige docent Turks die leesbegrip beoordeelt. Je toon is warm en bemoedigend, nooit streng of afwijzend -- ook bij een fout antwoord blijf je ondersteunend en leg je vriendelijk uit wat er anders zit.
+
+Beoordeel of het Engelse antwoord van de gebruiker op een leesbegripsvraag over een Turkse tekst inhoudelijk correct/acceptabel is. Wees soepel met bewoording (parafrasering en synoniemen zijn prima), streng op inhoud (het antwoord moet daadwerkelijk kloppen met wat er in de tekst staat).
+
+BELANGRIJK -- oorzaak vs. gevolg: vraagt de vraag naar een REDEN/OORZAAK (bv. "why...") maar noemt de tekst zelf alleen een GEVOLG (bv. "hierdoor gebeurde X", "dit leidde tot Y") zonder een expliciete reden te geven, reken dan een antwoord als "the text doesn't mention a reason, only a consequence/effect" (of een vergelijkbaar antwoord dat dit onderscheid herkent) als CORRECT. Verzin zelf ook nooit een reden die niet letterlijk of duidelijk impliciet in de tekst staat, en verwar een genoemd gevolg nooit met een genoemde oorzaak.
+
+${!isFollowUp
+  ? `Is het antwoord van de gebruiker ECHT ONDUIDELIJK OF DUBBELZINNIG geformuleerd (niet gewoon fout, maar zo vaag/onvolledig dat je zelf niet met vertrouwen kunt beoordelen of het klopt) -- stel dan GEEN oordeel, maar zet needsClarification op true en stel een korte, vriendelijke verduidelijkingsvraag om te snappen wat de gebruiker precies bedoelde. Gebruik dit spaarzaam en alleen bij ECHTE onduidelijkheid -- een gewoon fout of onvolledig antwoord krijgt gewoon meteen een oordeel (needsClarification blijft dan false), geen verduidelijkingsvraag als excuus om nooit te hoeven oordelen.`
+  : `Dit is al een VERVOLGVRAAG-RONDE: de gebruiker heeft eerder geantwoord, is om verduidelijking gevraagd, en heeft die verduidelijking nu gegeven. Geef nu een DEFINITIEF oordeel (needsClarification MOET false zijn) op basis van het oorspronkelijke antwoord samen met de verduidelijking -- vraag niet nogmaals door.`}
+
+Antwoord in JSON.`;
+  const user = isFollowUp
+    ? `Tekst: "${readingItem.tr}"
+Vraag: "${question.q}"
+Referentieantwoord: "${question.answerHint}"
+Oorspronkelijk antwoord van de gebruiker: "${clarification.previousAnswer}"
+Jouw verduidelijkingsvraag daarop: "${clarification.clarifyingQuestion}"
+Antwoord van de gebruiker op de verduidelijkingsvraag: "${answer}"`
+    : `Tekst: "${readingItem.tr}"
 Vraag: "${question.q}"
 Referentieantwoord: "${question.answerHint}"
 Antwoord van gebruiker: "${answer}"`;
   const schema = {
     name: "leesbegrip_oordeel",
-    description: "Beoordeling van een leesbegrip-antwoord.",
+    description: "Beoordeling van een leesbegrip-antwoord, met optioneel een verduidelijkingsvraag i.p.v. een direct oordeel bij echte onduidelijkheid.",
     input_schema: {
       type: "object",
       properties: {
-        correct: {type:"boolean"},
-        feedback: {type:"string", description:"Korte Engelse toelichting -- vooral relevant bij een fout antwoord: wat mist er, of wat staat er daadwerkelijk in de tekst."},
+        needsClarification: {type:"boolean", description:"True als het antwoord te onduidelijk/dubbelzinnig is om te beoordelen en er eerst een verduidelijkingsvraag gesteld moet worden. Alleen bij ECHTE onduidelijkheid, nooit als vervanging voor een gewoon fout-oordeel. Moet false zijn tijdens een vervolgvraag-ronde."},
+        clarifyingQuestion: {type:"string", description:"Alleen invullen als needsClarification true is: een korte, vriendelijke vervolgvraag aan de gebruiker."},
+        correct: {type:"boolean", description:"Het oordeel. Alleen relevant/betrouwbaar als needsClarification false is."},
+        feedback: {type:"string", description:"Korte, warme en bemoedigende Engelse toelichting -- vooral relevant bij een fout antwoord: wat mist er, of wat staat er daadwerkelijk in de tekst, in een vriendelijke toon."},
       },
-      required: ["correct", "feedback"],
+      required: ["needsClarification", "correct", "feedback"],
     },
   };
   const raw = await callAI("reading", sys, user, 400, 0, schema);
   const parsed = parseAIJson(raw);
-  return {correct: !!parsed.correct, feedback: parsed.feedback || ""};
+  if(parsed.needsClarification && !isFollowUp){
+    return { needsClarification: true, clarifyingQuestion: parsed.clarifyingQuestion || "Could you clarify your answer a bit?", correct: false, feedback: "" };
+  }
+  return { correct: !!parsed.correct, feedback: parsed.feedback || "", needsClarification: false };
 }
 
 

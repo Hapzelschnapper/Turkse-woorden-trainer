@@ -24,6 +24,32 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.70 — Leesbegrip-beoordeling: warmere toon, oorzaak/gevolg-onderscheid, verduidelijkingsvraag
+- Naar aanleiding van een terecht bevonden beoordelingsfout ("waarom deed Elif X" beantwoord met "de
+  tekst noemt geen reden, alleen een gevolg" werd onterecht fout gerekend): `gradeReadingAnswer`
+  onderscheidt nu expliciet een genoemde OORZAAK van een genoemd GEVOLG — "de tekst vermeldt geen
+  reden" telt voortaan terecht als correct wanneer dat feitelijk klopt.
+- Warmere, geduldigere docenttoon in de beoordelingsprompt (bemoedigend, ook bij een fout antwoord).
+- **Nieuw**: bij een écht onduidelijk/dubbelzinnig antwoord (niet zomaar fout, maar te vaag om
+  te kunnen beoordelen) stelt de AI eerst een korte verduidelijkingsvraag i.p.v. meteen een oordeel te
+  vellen — de vraag telt dan nog niet als "gesteld". Bij het antwoord daarop volgt altijd een
+  definitief oordeel (met een ingebouwde bescherming tegen een oneindige verduidelijkingslus, ook als
+  de AI zich niet aan de instructie houdt).
+- 5 nieuwe tests (`reading-clarification.test.js`) — totaal nu 79 tests over 10 bestanden.
+
+## v3.69 — CEFR-streepjes: symmetrie gefixt (echte CSS-bug)
+- De start/mid/end-streepjes uit v3.68 stonden niet symmetrisch rond het midden, en het mid-streepje
+  stond ook niet op de halve letterhoogte -- **rootcause**: `.cefr-badge` gebruikte
+  `display:inline-flex`, en `vertical-align` heeft simpelweg GEEN effect op flex-items (flexbox
+  gebruikt zijn eigen uitlijningsmechanisme). Alle drie de streepjes stonden daardoor onopgemerkt op
+  exact dezelfde positie.
+- Fix: `.cefr-badge` terug naar een gewone inline-weergave, zodat `vertical-align` op de
+  streepjes weer normaal werkt. De onderliggende waarden (start 0em / mid 0,35em / end 0,7em) waren al
+  correct opgezet om wiskundig symmetrisch te zijn (mid = precies het midden tussen start en end) --
+  dat kwam alleen niet tot uiting door de flex-bug.
+- Geverifieerd met een pixel-nauwkeurige meting in een geïsoleerde testpagina én in de echte
+  app-context: afstand start→mid en mid→end zijn nu exact gelijk.
+
 ## v3.68 — Ingesteld moeilijkheidsbereik zichtbaar op het Practice-scherm
 - Nieuwe indicator naast de bestaande badge boven het oefenscherm: toont het ingestelde CEFR-bereik
   (bv. "A2 – B1") met een klein, gekleurd streepje ná elk hoofdniveau dat het sub-niveau

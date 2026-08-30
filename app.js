@@ -5721,6 +5721,7 @@ function startLessonAction(){
    AI-functies zelf muteren niets aan readingTexts -- dat gebeurt hier, zodat opslaan/synchroniseren
    op dezelfde plek blijft als bij alle andere opslagsleutels. */
 let readingState = null; // { item, queue: [indices in item.questions die nog niet gesteld zijn], pos }
+let readingClarification = null; // { previousAnswer, clarifyingQuestion } tijdens een lopende verduidelijkingsronde, anders null
 
 // Ruwe prijsindicatie per gegenereerde ronde (1 tekst+vragen + de beoordeling van alle antwoorden) --
 // gebaseerd op een schatting van ~1800 input- + ~1050 output-tokens per ronde, tegen de prijzen die de
@@ -5847,6 +5848,7 @@ async function startNewReading(){
 
 function renderReadingQuestion(){
   const { item, queue, pos } = readingState;
+  readingClarification = null; // een eventuele lopende verduidelijkingsronde hoort nooit naar een andere vraag over te lekken
   el("reading-level-badge").textContent = item.level;
   el("reading-text-box").textContent = item.tr;
   if(item.source === "wikipedia" && item.sourceUrl){
@@ -5892,10 +5894,26 @@ async function checkReadingAnswer(){
     saveJSON(LS_READING_TEXTS, readingTexts);
     el("btn-reading-check").textContent = "Next ▶";
     el("btn-reading-check").disabled = false;
+    readingClarification = null;
     return;
   }
   try{
-    const verdict = await gradeReadingAnswer(item, q, answer);
+    // Tweede beoordelingsronde voor dezelfde vraag? Geef de eerdere verduidelijkingsvraag + het
+    // oorspronkelijke antwoord mee, zodat de AI nu een DEFINITIEF oordeel geeft i.p.v. weer door te vragen.
+    const verdict = await gradeReadingAnswer(item, q, answer, readingClarification);
+    if(verdict.needsClarification){
+      // Nog geen oordeel -- de vraag telt dus ook nog niet als "asked". Toon de vervolgvraag vriendelijk
+      // (pending-stijl: geen goed/fout-kleur, dit is geen beoordeling) en laat opnieuw antwoorden.
+      readingClarification = { previousAnswer: answer, clarifyingQuestion: verdict.clarifyingQuestion };
+      el("reading-feedback-box").innerHTML = `<div class="feedback pending">🤔 ${escapeHtml(verdict.clarifyingQuestion)}</div>`;
+      el("reading-answer-input").value = "";
+      el("reading-answer-input").disabled = false;
+      el("btn-reading-check").disabled = false;
+      el("btn-reading-check").textContent = "Check";
+      if(hasLikelyPhysicalKeyboard()) el("reading-answer-input").focus();
+      return;
+    }
+    readingClarification = null;
     q.asked = true; q.correct = verdict.correct;
     saveJSON(LS_READING_TEXTS, readingTexts);
     el("reading-feedback-box").innerHTML = `<div class="feedback ${verdict.correct ? "correct" : "wrong"}">${verdict.correct ? "✅" : "❌"}${verdict.feedback ? "<br>" + escapeHtml(verdict.feedback) : ""}</div>`;
