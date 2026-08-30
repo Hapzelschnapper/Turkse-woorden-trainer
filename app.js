@@ -5729,6 +5729,10 @@ function renderReadingSourceButtons(){
   el("reading-source-hint").textContent = isWiki
     ? "Real text from Turkish Wikipedia — AI only estimates its level and writes the questions, never the text itself."
     : "Text is written by AI, aimed at your chosen level.";
+  // Op verzoek: bij Wikipedia als bron blijft de modelkeuze verborgen (settings.readingModel blijft
+  // gewoon actief op de achtergrond -- bepaalt in die modus alleen de niveau-inschatting en de
+  // begripsvragen, niet de tekst zelf -- alleen de KNOP ervoor wordt niet meer getoond).
+  el("reading-model-block").classList.toggle("hidden", isWiki);
 }
 
 function renderReadingTab(){

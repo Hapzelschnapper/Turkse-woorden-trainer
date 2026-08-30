@@ -24,6 +24,12 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.67 — Modelkeuze verborgen bij Wikipedia-bron
+- Op verzoek: kies je "🌐 From the internet (Wikipedia)" als bron, dan verdwijnt de
+  Cheap/Best-quality-modelkeuze uit beeld. `settings.readingModel` blijft gewoon actief op de
+  achtergrond (bepaalt in die modus alleen de niveau-inschatting en de begripsvragen, niet de tekst
+  zelf) — alleen de knop ervoor wordt niet meer getoond. Terug naar "AI-generated" laat 'm weer zien.
+
 ## v3.66 — Leesoefening: echte tekst van Wikipedia als alternatief voor AI-generatie
 - Nieuwe bronkeuze op het Reading-scherm zelf: **🤖 AI-generated** (bestaand) naast **🌐 From the
   internet (Wikipedia)** (nieuw) — beide beschikbaar, jij kiest per sessie.
