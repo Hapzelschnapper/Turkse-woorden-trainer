@@ -24,6 +24,17 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.68 — Ingesteld moeilijkheidsbereik zichtbaar op het Practice-scherm
+- Nieuwe indicator naast de bestaande badge boven het oefenscherm: toont het ingestelde CEFR-bereik
+  (bv. "A2 – B1") met een klein, gekleurd streepje ná elk hoofdniveau dat het sub-niveau
+  (start/mid/end) toont via kleur ÉN verticale positie — laag+groen=start, midden+oranje=mid,
+  hoog+rood=end. Bewust met CSS opgebouwd i.p.v. specifieke Unicode-tekens, voor consistente weergave
+  op elk toestel/lettertype.
+  Werkt live mee: verandert het bereik via het Settings-schuifje, of automatisch via "Adaptive
+  difficulty", dan werkt de weergave vanzelf mee (bij adaptive: bij de eerstvolgende beurt).
+- Onderweg een bug gevonden en gefixt: `CEFR_SUB` (uit `utils.js`) was niet geïmporteerd in `app.js` —
+  ontdekt via de eigen browsertest, vóór oplevering.
+
 ## v3.67 — Modelkeuze verborgen bij Wikipedia-bron
 - Op verzoek: kies je "🌐 From the internet (Wikipedia)" als bron, dan verdwijnt de
   Cheap/Best-quality-modelkeuze uit beeld. `settings.readingModel` blijft gewoon actief op de

@@ -108,3 +108,15 @@
   .peak-tab.peak{background:var(--accent);}
   .peak-tab.dal{background:var(--accent2);}
   .toplink{background:none;border:none;color:var(--muted);font-size:.8rem;text-decoration:underline;padding:0;}
+
+  /* CEFR-bereikweergave op het Practice-scherm (het ingestelde moeilijkheidsbereik, bv. "A2⌐ – B1﹍"):
+     het hoofdniveau (A1/A2/B1/...) met een klein, gekleurd streepje erachter dat het sub-niveau
+     (start/mid/end) toont via kleur ÉN verticale positie -- laag+groen=start, midden+oranje=mid,
+     hoog+rood=end. Bewust een eigen CSS-gebouwd streepje i.p.v. een specifiek Unicode-teken: dat
+     oogt op elk toestel/lettertype consistent, in tegenstelling tot exotischere Unicode-blokjes. */
+  .cefr-range-display{font-size:.72rem;color:var(--muted);text-align:right;white-space:nowrap;}
+  .cefr-badge{display:inline-flex;align-items:baseline;font-weight:600;color:var(--text);}
+  .cefr-sub-mark{display:inline-block;width:5px;height:2px;border-radius:1px;margin-left:1px;}
+  .cefr-sub-mark.start{background:#4caf50;transform:translateY(4px);}
+  .cefr-sub-mark.mid{background:#e0a733;transform:translateY(1px);}
+  .cefr-sub-mark.end{background:#e05a4e;transform:translateY(-3px);}

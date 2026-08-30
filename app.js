@@ -5,7 +5,7 @@
 // is een vervolgstap; deze eerste opsplitsing haalt specifiek de meest bug-gevoelige, goed te isoleren
 // kernlogica los.
 
-import { CEFR_MAJOR, cefrLabel, vocabCefrBand, normalize, foldTurkishDiacritics, escapeHtml } from './utils.js';
+import { CEFR_MAJOR, CEFR_SUB, cefrLabel, vocabCefrBand, normalize, foldTurkishDiacritics, escapeHtml } from './utils.js';
 import { isTypoOf } from './typo.js';
 import { intervalMinutes, EASE_START, resolveWordMixSlot, pickBestPracticeType } from './srs.js';
 import { scheduleReview, migrateLegacyProgress, gradeFromResult, GRADE_EASY } from './fsrs.js';
@@ -3563,6 +3563,7 @@ function bumpMaxCefrRangeByOne(){
     el("cefr-min-label").textContent = cefrLabel(settings.cefrMin);
   }
   updateCefrUnlockedInfo();
+  renderCefrRangeDisplay();
   return true;
 }
 
@@ -3592,6 +3593,25 @@ function showRangeExhaustedNotice(){
   el("range-exhausted-notice").classList.remove("hidden");
 }
 
+// Bouwt de badge-HTML voor één sub-niveau-index: hoofdniveau (A1/A2/B1/...) plus een klein, gekleurd
+// streepje erachter dat het sub-niveau (start/mid/end) toont via kleur ÉN verticale positie.
+function cefrBadgeHtml(idx){
+  const major = CEFR_MAJOR[idx];
+  const sub = CEFR_SUB[idx]; // "start" | "mid" | "end"
+  return `<span class="cefr-badge">${major}<span class="cefr-sub-mark ${sub}"></span></span>`;
+}
+
+// Toont het ingestelde moeilijkheidsbereik (settings.cefrMin/cefrMax) op het Practice-scherm zelf --
+// vooral zinvol omdat "Adaptive difficulty" dit bereik stilletjes kan verschuiven (zie
+// recordAdaptiveResult) zonder dat je in Settings hoeft te kijken om te zien waar je nu op zit.
+function renderCefrRangeDisplay(){
+  const target = el("cefr-range-display");
+  if(!target) return;
+  const lo = Math.min(settings.cefrMin, settings.cefrMax);
+  const hi = Math.max(settings.cefrMin, settings.cefrMax);
+  target.innerHTML = lo === hi ? cefrBadgeHtml(lo) : `${cefrBadgeHtml(lo)} – ${cefrBadgeHtml(hi)}`;
+}
+
 async function renderPractice(){
   currentAnswered = false;
   retryPending = false;
@@ -3611,6 +3631,7 @@ async function renderPractice(){
   el("range-exhausted-notice").classList.add("hidden");
   el("direction-switch-notice").classList.add("hidden");
   renderDueCount();
+  renderCefrRangeDisplay();
 
   let picked = pickNextItem();
 
@@ -6564,7 +6585,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     el(`${prefix}-min-select`).addEventListener("change", ()=> applyCefrRange(prefix, minKey, maxKey, parseInt(el(`${prefix}-min-select`).value,10), settings[maxKey], "min", onChange));
     el(`${prefix}-max-select`).addEventListener("change", ()=> applyCefrRange(prefix, minKey, maxKey, settings[minKey], parseInt(el(`${prefix}-max-select`).value,10), "max", onChange));
   }
-  wireCefrRangeControl("cefr", "cefrMin", "cefrMax", ()=>{ updateCefrUnlockedInfo(); renderDueCount(); });
+  wireCefrRangeControl("cefr", "cefrMin", "cefrMax", ()=>{ updateCefrUnlockedInfo(); renderDueCount(); renderCefrRangeDisplay(); });
   function applySentComplexity(v){
     settings.sentenceComplexityMin = v;
     settings.sentenceComplexityMax = v;
