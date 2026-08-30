@@ -1729,8 +1729,7 @@ export async function generateMoreReadingQuestions(readingItem, questionCount){
   const existingQs = readingItem.questions.map(q => q.q);
   const sys = `Je krijgt een Turkse leestekst en een lijst begripsvragen die daar AL over gesteld zijn. Bedenk ${n} NIEUWE, andere begripsvragen in het Engels over dezelfde tekst -- mogen over andere details/interpretaties gaan, maar herhaal GEEN van de bestaande vragen, ook niet in andere bewoordingen met dezelfde strekking. Geef ook een kort referentieantwoord (Engels) per nieuwe vraag. Antwoord in JSON.`;
   const user = `Tekst: "${readingItem.tr}"
-Al gestelde vragen (NIET herhalen):
-${existingQs.map((q,i)=>`${i+1}. ${q}`).join("\n")}`;
+${existingQs.length ? `Al gestelde vragen (NIET herhalen):\n${existingQs.map((q,i)=>`${i+1}. ${q}`).join("\n")}` : "Dit is de eerste keer dat er vragen over deze tekst gesteld worden -- er is dus nog niets te vermijden."}`;
   const schema = {
     name: "extra_vragen",
     description: "Nieuwe, niet eerder gestelde begripsvragen over dezelfde leestekst.",
@@ -1783,3 +1782,75 @@ Antwoord van gebruiker: "${answer}"`;
   return {correct: !!parsed.correct, feedback: parsed.feedback || ""};
 }
 
+
+/* ===================== WIKIPEDIA-LEESTEKST (echte, niet-gegenereerde tekst) =====================
+   Haalt een ECHT, van Turkse Wikipedia afkomstig tekstfragment op -- de AI genereert hier NIETS, en
+   schat alleen ACHTERAF het CEFR-niveau van de gevonden tekst in (een beoordelingstaak). Komt er
+   binnen het aantal pogingen geen tekst op het gevraagde niveau naar boven, dan geeft
+   findWikipediaReadingText() null terug; de aanroeper (app.js) beslist zelf of/hoe er dan alsnog op
+   AI-generatie (generateReadingText) teruggevallen wordt -- expliciet pas na het vragen van
+   toestemming, zoals gevraagd. */
+
+// Eén willekeurig Turks Wikipedia-artikel + tekstfragment ophalen. Gebruikt de publieke, CORS-
+// vriendelijke MediaWiki-API (origin=*) -- rechtstreeks vanuit de browser, geen eigen server nodig.
+// exchars=1200 begrenst de lengte grofweg; we knippen daarna zelf netjes af op een zinsgrens.
+async function fetchRandomWikipediaExtract(){
+  const url = "https://tr.wikipedia.org/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=1&prop=extracts&explaintext=1&exchars=1200&format=json&origin=*";
+  const res = await fetchWithTimeout(url, {}, 15000);
+  if(!res.ok) throw new Error("Wikipedia API returned status " + res.status);
+  const data = await res.json();
+  const pages = data && data.query && data.query.pages;
+  if(!pages) return null;
+  const page = Object.values(pages)[0];
+  if(!page || !page.extract) return null;
+  let text = page.extract.trim();
+  if(text.length < 200) return null; // stub-artikel / doorverwijspagina, te kort om als leestekst te dienen
+  // Netjes afkappen op de laatste volledige zin i.p.v. midden in een zin (exchars snijdt soms dwars
+  // door een zin heen) -- alleen toepassen als dat punt niet belachelijk vroeg in de tekst zit.
+  const lastSentenceEnd = Math.max(text.lastIndexOf("."), text.lastIndexOf("!"), text.lastIndexOf("?"));
+  if(lastSentenceEnd > 200) text = text.slice(0, lastSentenceEnd + 1);
+  return {
+    tr: text,
+    title: page.title,
+    url: "https://tr.wikipedia.org/wiki/" + encodeURIComponent(page.title.replace(/ /g, "_")),
+  };
+}
+
+// Schat het CEFR-niveau van een GEGEVEN (al bestaande, niet door AI geschreven) stuk Turkse tekst --
+// puur een beoordelingstaak, vergelijkbaar met hoe checkStaticMatch/askDeepSeekJudge bestaande
+// antwoorden beoordelen i.p.v. iets nieuws te verzinnen.
+export async function estimateTextLevel(text){
+  if(!hasKeyFor("reading")) throw new Error(`No ${preferredModelFor("reading") === "claude" ? "Anthropic" : "DeepSeek"} API key (or shared proxy) set — needed to estimate the text level.`);
+  const sys = `Je krijgt een stuk Turkse tekst uit een echt Wikipedia-artikel. Schat het CEFR-niveau in op basis van zinsbouw en vocabulaire-complexiteit -- NIET op basis van het onderwerp zelf (een encyclopedisch onderwerp kan met eenvoudige zinnen beschreven zijn, en andersom). Kies EXACT een van: A2, B1, B2, C1. Antwoord in JSON.`;
+  const user = `Tekst:\n"${text}"`;
+  const schema = {
+    name: "niveau_inschatting",
+    description: "Geschat CEFR-niveau van de gegeven, al bestaande tekst.",
+    input_schema: {
+      type: "object",
+      properties: { level: {type:"string", description:"Exact een van: A2, B1, B2, C1."} },
+      required: ["level"],
+    },
+  };
+  const raw = await callAI("reading", sys, user, 50, 0, schema);
+  const parsed = parseAIJson(raw);
+  return ["A2","B1","B2","C1"].includes(parsed.level) ? parsed.level : null;
+}
+
+// Probeert tot `maxAttempts` willekeurige Wikipedia-artikelen totdat er een gevonden wordt waarvan het
+// geschatte niveau EXACT overeenkomt met het gevraagde niveau (geen "dichtstbijzijnde" fallback -- dat
+// zou de indruk kunnen wekken dat het niveau klopt terwijl dat niet zo is). Geeft null terug als dat
+// niet lukt binnen het aantal pogingen; een AI-infrastructuurfout (na callAI's eigen retries nog steeds
+// mislukt) wordt NIET als "geen match" behandeld maar meteen doorgegeven aan de aanroeper (stap 6-
+// patroon: geen zinloze herhaalde pogingen tegen een server die toch niet reageert).
+export async function findWikipediaReadingText(targetLevel, maxAttempts){
+  const attempts = maxAttempts || 5;
+  for(let i=0; i<attempts; i++){
+    let article;
+    try{ article = await fetchRandomWikipediaExtract(); }catch(e){ continue; } // dit ene artikel mislukte op te halen -> gewoon een volgende proberen
+    if(!article) continue;
+    const level = await estimateTextLevel(article.tr); // AI-infrastructuurfout hier -> bewust NIET gevangen, propageert naar de aanroeper
+    if(level === targetLevel) return {...article, level};
+  }
+  return null;
+}

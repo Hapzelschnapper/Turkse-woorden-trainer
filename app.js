@@ -57,6 +57,7 @@ import {
   generateReadingText,
   generateMoreReadingQuestions,
   gradeReadingAnswer,
+  findWikipediaReadingText,
 } from './ai.js';
 
 
@@ -275,6 +276,7 @@ if(settings.wordModel === undefined) settings.wordModel = "deepseek";       // v
 if(settings.sentenceModel === undefined) settings.sentenceModel = "claude"; // zin/vraag-generatie, -beoordeling, grammatica-oefeningen, taaltoets, "vraag aan AI"
 if(settings.readingModel === undefined) settings.readingModel = "deepseek"; // leesoefening -- goedkoop als standaard, expliciet omschakelbaar op het scherm zelf (niet verstopt in Settings)
 if(settings.readingLevel === undefined) settings.readingLevel = "B2";
+if(settings.readingSource === undefined) settings.readingSource = "ai"; // "ai" | "wikipedia"
 if(settings.sentencePercent === undefined){
   // migratie vanaf de oude "aantal van elke 5"-instelling
   settings.sentencePercent = Math.round(((settings.sentenceRatio || 1) / 5) * 100);
@@ -5718,9 +5720,21 @@ function renderReadingModelButtons(){
   el("reading-model-price-hint").textContent = `Selected: ${hintModel === "claude" ? "Claude (best quality)" : "DeepSeek (cheap)"} — ${estimatedReadingCostPerRound(hintModel)}`;
 }
 
+function renderReadingSourceButtons(){
+  const isWiki = settings.readingSource === "wikipedia";
+  el("reading-source-ai").classList.toggle("btn-primary", !isWiki);
+  el("reading-source-ai").classList.toggle("btn-secondary", isWiki);
+  el("reading-source-wiki").classList.toggle("btn-primary", isWiki);
+  el("reading-source-wiki").classList.toggle("btn-secondary", !isWiki);
+  el("reading-source-hint").textContent = isWiki
+    ? "Real text from Turkish Wikipedia — AI only estimates its level and writes the questions, never the text itself."
+    : "Text is written by AI, aimed at your chosen level.";
+}
+
 function renderReadingTab(){
   el("reading-level-select").value = settings.readingLevel;
   renderReadingModelButtons();
+  renderReadingSourceButtons();
   el("reading-saved-list-card").classList.add("hidden");
   if(readingState){
     el("reading-session-card").classList.remove("hidden");
@@ -5736,29 +5750,72 @@ function unaskedIndices(item){
   return out;
 }
 
+function saveNewReadingItem(item){
+  readingTexts.push(item);
+  saveJSON(LS_READING_TEXTS, readingTexts);
+  readingState = { item, queue: unaskedIndices(item), pos: 0 };
+  el("reading-session-card").classList.remove("hidden");
+  renderReadingQuestion();
+}
+
 async function startNewReading(){
   if(!hasKeyFor("reading")){
     alert("A " + keyNameFor("reading") + " API key (or shared proxy) is needed for the reading exercise (Settings).");
     return;
   }
+  const level = settings.readingLevel;
   el("btn-reading-new").disabled = true;
-  el("btn-reading-new").textContent = "🤖 Generating…";
-  try{
-    const level = settings.readingLevel;
-    const { tr, questions } = await generateReadingText(level, 4);
-    const item = {
-      id: "r_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
-      tr, level, createdAt: Date.now(),
-      questions: questions.map(q => ({q: q.q, answerHint: q.answerHint, asked: false, correct: null})),
-    };
-    readingTexts.push(item);
-    saveJSON(LS_READING_TEXTS, readingTexts);
-    readingState = { item, queue: unaskedIndices(item), pos: 0 };
-    el("reading-session-card").classList.remove("hidden");
-    renderReadingQuestion();
-  }catch(e){
-    alert("⚠️ Could not generate a reading text: " + e.message);
+
+  if(settings.readingSource === "wikipedia"){
+    el("btn-reading-new").textContent = "🌐 Searching Wikipedia…";
+    try{
+      const found = await findWikipediaReadingText(level, 5);
+      if(found){
+        el("btn-reading-new").textContent = "🤖 Writing questions…";
+        // Hergebruikt dezelfde functie als "extra vragen bij een bestaande tekst" (zie hieronder),
+        // met een lege bestaande-vragenlijst -- voor een net gevonden tekst is er nog niets om te
+        // vermijden. Zo blijft de promptlogica op één plek (ai.js), geen aparte "eerste keer"-variant nodig.
+        const questions = await generateMoreReadingQuestions({tr: found.tr, questions: []}, 4);
+        const item = {
+          id: "r_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+          tr: found.tr, level: found.level, createdAt: Date.now(),
+          source: "wikipedia", sourceTitle: found.title, sourceUrl: found.url,
+          questions: questions.map(q => ({q: q.q, answerHint: q.answerHint, asked: false, correct: null})),
+        };
+        saveNewReadingItem(item);
+      } else {
+        // Geen match binnen de pogingen: pas NA expliciete toestemming alsnog op AI-generatie
+        // terugvallen -- zoals gevraagd, nooit stilzwijgend.
+        const fallback = confirm(`Could not find a Wikipedia article matching level ${level} after 5 attempts. Generate an AI text instead?`);
+        if(fallback){
+          el("btn-reading-new").textContent = "🤖 Generating…";
+          const { tr, questions } = await generateReadingText(level, 4);
+          const item = {
+            id: "r_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+            tr, level, createdAt: Date.now(), source: "ai",
+            questions: questions.map(q => ({q: q.q, answerHint: q.answerHint, asked: false, correct: null})),
+          };
+          saveNewReadingItem(item);
+        }
+      }
+    }catch(e){
+      alert("⚠️ Could not fetch/generate a reading text: " + e.message);
+    }
+  } else {
+    el("btn-reading-new").textContent = "🤖 Generating…";
+    try{
+      const { tr, questions } = await generateReadingText(level, 4);
+      const item = {
+        id: "r_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+        tr, level, createdAt: Date.now(), source: "ai",
+        questions: questions.map(q => ({q: q.q, answerHint: q.answerHint, asked: false, correct: null})),
+      };
+      saveNewReadingItem(item);
+    }catch(e){
+      alert("⚠️ Could not generate a reading text: " + e.message);
+    }
   }
+
   el("btn-reading-new").disabled = false;
   el("btn-reading-new").textContent = "📰 New text";
 }
@@ -5767,6 +5824,12 @@ function renderReadingQuestion(){
   const { item, queue, pos } = readingState;
   el("reading-level-badge").textContent = item.level;
   el("reading-text-box").textContent = item.tr;
+  if(item.source === "wikipedia" && item.sourceUrl){
+    el("reading-attribution").innerHTML = `🌐 From Wikipedia: <a href="${escapeHtml(item.sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(item.sourceTitle || "article")}</a> (CC BY-SA)`;
+    el("reading-attribution").classList.remove("hidden");
+  } else {
+    el("reading-attribution").classList.add("hidden");
+  }
   el("reading-feedback-box").innerHTML = "";
   el("reading-answer-input").value = "";
   if(pos >= queue.length){
@@ -5862,8 +5925,9 @@ function renderSavedReadingList(){
   const rows = [...readingTexts].reverse().map(item => {
     const remaining = unaskedIndices(item).length;
     const snippet = escapeHtml(item.tr.slice(0, 70)) + (item.tr.length > 70 ? "…" : "");
+    const sourceTag = item.source === "wikipedia" ? "🌐" : "🤖";
     return `<div class="word-row" style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);">
-      <div style="font-size:.78rem;" class="muted">${item.level} · ${item.questions.length} question${item.questions.length===1?"":"s"} · ${remaining} unasked</div>
+      <div style="font-size:.78rem;" class="muted">${sourceTag} ${item.level} · ${item.questions.length} question${item.questions.length===1?"":"s"} · ${remaining} unasked</div>
       <div style="margin:4px 0;">${snippet}</div>
       <button class="btn-ghost btn-small resume-reading-btn" data-id="${item.id}">▶️ ${remaining ? "Continue" : "Open (all asked)"}</button>
     </div>`;
@@ -6593,6 +6657,16 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     settings.readingModel = "claude";
     saveJSON(LS_SETTINGS, settings);
     renderReadingModelButtons();
+  });
+  el("reading-source-ai").addEventListener("click", ()=>{
+    settings.readingSource = "ai";
+    saveJSON(LS_SETTINGS, settings);
+    renderReadingSourceButtons();
+  });
+  el("reading-source-wiki").addEventListener("click", ()=>{
+    settings.readingSource = "wikipedia";
+    saveJSON(LS_SETTINGS, settings);
+    renderReadingSourceButtons();
   });
   el("btn-reading-new").addEventListener("click", startNewReading);
   el("btn-reading-saved").addEventListener("click", renderSavedReadingList);

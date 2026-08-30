@@ -24,6 +24,24 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.66 — Leesoefening: echte tekst van Wikipedia als alternatief voor AI-generatie
+- Nieuwe bronkeuze op het Reading-scherm zelf: **🤖 AI-generated** (bestaand) naast **🌐 From the
+  internet (Wikipedia)** (nieuw) — beide beschikbaar, jij kiest per sessie.
+- Wikipedia-modus: haalt een echt, willekeurig Turks Wikipedia-artikel op (publieke, CORS-vriendelijke
+  MediaWiki-API, CC BY-SA-gelicenseerd, met zichtbare bronvermelding + link onder de tekst). De AI
+  genereert hier NIETS aan de tekst zelf — schat alleen het CEFR-niveau in (een beoordelingstaak) en
+  bedenkt de begripsvragen erover, exact zoals bij de AI-gegenereerde variant.
+- Max. 5 pogingen om een artikel te vinden dat **exact** op het gevraagde niveau uitkomt (geen
+  "dichtstbijzijnde"-fallback). Lukt dat niet, dan wordt **expliciet gevraagd** ("Could not find a
+  Wikipedia article matching level X after 5 attempts. Generate an AI text instead?") vóórdat er
+  alsnog op AI-generatie wordt teruggevallen — nooit stilzwijgend.
+- Nieuwe functies in `ai.js`: `estimateTextLevel`, `findWikipediaReadingText`.
+- Opgeslagen teksten tonen nu hun bron (🌐/🤖) in de "Saved texts"-lijst.
+- **Eerlijke kanttekening**: de daadwerkelijke Wikipedia-aanroep kon niet end-to-end getest worden
+  vanuit de ontwikkelomgeving (netwerktoegang tot wikipedia.org stond daar niet open) — wel volledig
+  getest: de UI-doorloop, de bronkeuze-knoppen, de "geen API-key"-afhandeling, en de JSON-structuur
+  van de MediaWiki-API-aanroep (een stabiel, goed gedocumenteerd, veelgebruikt publiek endpoint).
+
 ## v3.65 — Testbestanden plat getrokken (geen tests/-submap meer)
 - Op verzoek: alle testbestanden (en `extract.js`/`run-all.js`) staan nu plat in de hoofdmap, samen
   met de rest van de app, i.p.v. in een aparte `tests/`-submap — past bij de bestaande, simpele
