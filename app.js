@@ -3933,6 +3933,8 @@ function setSpeakableTr(text){
   if(btn) btn.classList.toggle("hidden", !currentSpeakableTr);
   const slowBtn = el("btn-speak-word-slow");
   if(slowBtn) slowBtn.classList.toggle("hidden", !currentSpeakableTr);
+  const extraSlowBtn = el("btn-speak-word-extraslow");
+  if(extraSlowBtn) extraSlowBtn.classList.toggle("hidden", !currentSpeakableTr);
 }
 function setCheckupSpeakableTr(text){
   currentCheckupSpeakableTr = text || null;
@@ -6511,6 +6513,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   el("dict-level-slider").addEventListener("change", renderDictationPractice); // pas na loslaten een nieuwe opgave laden, niet bij elke tussenstap
   el("btn-dict-speak").addEventListener("click", ()=> currentDictationItem && speakTurkish(currentDictationItem.tr));
   el("btn-dict-speak-slow").addEventListener("click", ()=> currentDictationItem && speakTurkish(currentDictationItem.tr, 0.5));
+  el("btn-dict-speak-extraslow").addEventListener("click", ()=> currentDictationItem && speakTurkish(currentDictationItem.tr, 0.3));
   el("dict-btn-check").addEventListener("click", ()=>{
     if(!dictationAnswered) handleCheckDictation(); else renderDictationPractice();
   });
@@ -6533,6 +6536,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   el("btn-ask-ai").addEventListener("click", openAiModal);
   el("btn-speak-word").addEventListener("click", ()=> speakTurkish(currentSpeakableTr));
   el("btn-speak-word-slow").addEventListener("click", ()=> speakTurkish(currentSpeakableTr, 0.5));
+  el("btn-speak-word-extraslow").addEventListener("click", ()=> speakTurkish(currentSpeakableTr, 0.3));
   el("btn-checkup-speak-word").addEventListener("click", ()=> speakTurkish(currentCheckupSpeakableTr));
   el("btn-edit-flashcard").addEventListener("click", ()=>{
     if(!currentItem || currentItem.type !== "word") return;

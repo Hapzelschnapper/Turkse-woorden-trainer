@@ -24,6 +24,14 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.75 — Extra-slow-uitspraakknop (🐌)
+- Nieuwe knop naast de bestaande "slow" (🐢, snelheid 0,5) op zowel het hoofdscherm als het
+  dictee-scherm: 🐌, snelheid 0,3 — merkbaar trager dan de bestaande langzame stand, maar niet zo
+  extreem laag dat de meeste browsers' spraaksynthese er glitchy van wordt.
+- Verschijnt/verdwijnt gelijk met de andere uitspraakknoppen (zelfde toon-logica).
+- Geverifieerd met een echte browsertest: bevestigd dat de knop op beide schermen daadwerkelijk
+  snelheid 0,3 doorgeeft aan de spraaksynthese (niet alleen zichtbaar, ook functioneel correct).
+
 ## v3.74 — Markdown-opmaak echt laten renderen (i.p.v. onderdrukken, correctie op v3.73)
 - **Terechte correctie op v3.73**: opmaak (vet/cursief/koppen/opsommingen) is juist nuttig — het
   probleem was nooit dat de AI opmaak gebruikte, maar dat de app 'm niet weergaf (platte tekst, dus
