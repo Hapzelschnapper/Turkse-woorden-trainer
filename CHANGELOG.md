@@ -24,7 +24,23 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
-## v3.73 — Geen markdown-opmaak meer in AI-antwoorden (asterisks e.d.)
+## v3.74 — Markdown-opmaak echt laten renderen (i.p.v. onderdrukken, correctie op v3.73)
+- **Terechte correctie op v3.73**: opmaak (vet/cursief/koppen/opsommingen) is juist nuttig — het
+  probleem was nooit dat de AI opmaak gebruikte, maar dat de app 'm niet weergaf (platte tekst, dus
+  sterretjes bleven letterlijk zichtbaar). `PLAIN_TEXT_GUARD` (die opmaak verbood) is vervangen door
+  `FORMATTING_GUARD`, die opmaak juist aanmoedigt waar het de leesbaarheid helpt, maar wel licht houdt
+  (korte feedbackfragmenten, geen volle documentopmaak).
+- Nieuwe `renderMarkdownLite()` (`utils.js`): zet **vet**, *cursief*, #koppen (als vet weergegeven),
+  opsommingslijsten en genummerde lijsten om naar echte HTML — ALTIJD eerst volledig ge-escaped
+  (veilig tegen HTML-injectie vanuit AI-tekst), pas daarna de eigen beperkte, veilige tagset toegepast.
+- Toegepast op alle plekken waar AI-tekst getoond wordt: hoofdscherm-dispuutnotitie, leesbegrip-
+  feedback/verduidelijkingsvragen/referentieantwoorden, het uitleg-paneel (woord + checkup), en
+  AI-chatberichten.
+- 11 nieuwe tests (`markdown-lite.test.js`), inclusief een expliciete XSS-veiligheidstest (een
+  `<script>`/`<img onerror=...>`-injectiepoging via AI-tekst blijft gegarandeerd onschadelijke platte
+  tekst) — totaal nu 90 tests over 11 bestanden.
+
+## v3.73 — Geen markdown-opmaak meer in AI-antwoorden (asterisks e.d.) *(ingetrokken, zie v3.74)*
 - Nieuwe centrale waarborg `PLAIN_TEXT_GUARD`, naar exact hetzelfde patroon als de bestaande
   `ENGLISH_OUTPUT_GUARD`: automatisch aan ELKE systeemprompt toegevoegd via `callAI`, dus overal in de
   app tegelijk actief zonder losse aanpassingen per prompt. Verbiedt expliciet `**vet**`, `*cursief*`,

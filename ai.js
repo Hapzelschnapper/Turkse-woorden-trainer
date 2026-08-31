@@ -28,7 +28,7 @@ import { migrateLegacyProgress } from './fsrs.js';
 import {
   settings, progress, overrides, explanationCache, trCache, curatedTr, newWords, custom,
   EN_WORDS_DATA, REVERSE_TR_INDEX, saveJSON, sleep,
-  LS_TRCACHE, LS_EXPLANATION_CACHE, LS_NEWWORDS, ENGLISH_OUTPUT_GUARD, PLAIN_TEXT_GUARD,
+  LS_TRCACHE, LS_EXPLANATION_CACHE, LS_NEWWORDS, ENGLISH_OUTPUT_GUARD, FORMATTING_GUARD,
   CEFR_LEVEL_GUIDANCE, CEFR_SUB_NOTE, DICTATION_LEVELS, GRAMMAR_TOPIC_FRAMEWORK,
   SUFFIX_DRILL_PREFERRED_VERB_LEVEL, SUFFIX_DRILL_VERB_FRAMEWORKS, SUFFIX_DRILL_NOUN_FRAMEWORKS,
   displayTrEntryGloss, displayEnglishWord, looksLikeEnglishWord, turkishWordLikelyInSentence,
@@ -45,7 +45,7 @@ let _baseEnMap = null;
 
 export async function callAI(category, systemPrompt, userContentOrMessages, maxTokens, temperature, schema){
   const model = preferredModelFor(category);
-  const sysWithGuards = (systemPrompt || "") + ENGLISH_OUTPUT_GUARD + PLAIN_TEXT_GUARD;
+  const sysWithGuards = (systemPrompt || "") + ENGLISH_OUTPUT_GUARD + FORMATTING_GUARD;
   const call = () => model === "claude"
     ? callClaude(sysWithGuards, userContentOrMessages, maxTokens, temperature, 0, schema)
     : callDeepSeek(sysWithGuards, userContentOrMessages, maxTokens, temperature, 0, schema);

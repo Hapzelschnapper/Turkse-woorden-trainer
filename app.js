@@ -5,7 +5,7 @@
 // is een vervolgstap; deze eerste opsplitsing haalt specifiek de meest bug-gevoelige, goed te isoleren
 // kernlogica los.
 
-import { CEFR_MAJOR, CEFR_SUB, cefrLabel, vocabCefrBand, normalize, foldTurkishDiacritics, escapeHtml } from './utils.js';
+import { CEFR_MAJOR, CEFR_SUB, cefrLabel, vocabCefrBand, normalize, foldTurkishDiacritics, escapeHtml, renderMarkdownLite } from './utils.js';
 import { isTypoOf } from './typo.js';
 import { intervalMinutes, EASE_START, resolveWordMixSlot, pickBestPracticeType } from './srs.js';
 import { scheduleReview, migrateLegacyProgress, gradeFromResult, GRADE_EASY } from './fsrs.js';
@@ -419,10 +419,11 @@ export function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms)
 // niet expliciet om vraagt. Velden die BEDOELD Turks zijn (een vertaling, een woordenboekvorm, een
 // gegenereerde Turkse zin) blijven hierdoor onaangetast -- die worden hieronder expliciet uitgezonderd.
 export const ENGLISH_OUTPUT_GUARD = "\n\nLANGUAGE REQUIREMENT (always applies, regardless of what language this prompt above is written in): any free-text, explanatory, or feedback content you write in your response must be in English. This does NOT apply to fields that are explicitly meant to hold a Turkish word, phrase, sentence, or translation -- those stay in Turkish as instructed above.";
-// Zelfde patroon als hierboven, ook aan ELKE systeemprompt toegevoegd: de app toont AI-tekst als platte
-// tekst (geen markdown-renderer), dus letterlijke sterretjes/koppen/opsommingstekens in het antwoord
-// zouden gewoon zichtbaar blijven staan i.p.v. als opmaak te worden weergegeven.
-export const PLAIN_TEXT_GUARD = "\n\nFORMATTING REQUIREMENT (always applies): write in plain, unformatted text only. Do NOT use markdown syntax of any kind -- no **bold**, no *italics*, no # headers, no bullet points with - or *, no numbered lists with periods, no backtick code formatting. If you need to separate points, use plain sentences or a new paragraph (a blank line), never symbols meant to be rendered as formatting.";
+// Markdown-opmaak (**bold**, *italic*, # headers, - bullet lists, 1. numbered lists) wordt door de app
+// daadwerkelijk gerenderd, dus gebruik het gerust waar het de leesbaarheid helpt -- maar houd het licht:
+// dit zijn korte feedbackfragmenten, geen lange documenten, dus een enkel vetgedrukt woord of een korte
+// opsomming is nuttig, een hele reeks geneste koppen/lijsten is overkill.
+export const FORMATTING_GUARD = "\n\nFORMATTING: you may use light markdown (**bold**, *italic*, - bullet points, numbered lists) where it genuinely aids clarity -- these are short feedback snippets, so keep formatting minimal and purposeful, not decorative.";
 // Stap 6 van het verbeterplan ("AI-fouten fail-safe i.p.v. fail-closed"): een tijdelijke netwerk-/server-
 // hik mag de gebruiker nooit score kosten. Twee automatische herkansingen met een korte pauze ertussen
 // vangen het gros van zulke fluctuaties op, vóórdat de aanroeper het als een echte mislukking hoeft te
@@ -2239,7 +2240,7 @@ async function submitSkillPracticeAnswer(){
   el("btn-checkup-ask-ai").classList.remove("hidden");
   el("btn-checkup-dispute").classList.toggle("hidden", !!correct);
   if(uitleg){
-    el("checkup-explanation-box").textContent = "💬 " + uitleg;
+    el("checkup-explanation-box").innerHTML = "💬 " + renderMarkdownLite(uitleg);
     el("btn-checkup-show-explanation").classList.remove("hidden");
   } else {
     el("checkup-explanation-box").classList.add("hidden");
@@ -2293,7 +2294,7 @@ async function disputeSkillPracticeAnswer(){
       ? "🔁 ✅<br>Score restored."
       : `🔁 ❌<br>Still incorrect. Correct answer: <b>${escapeHtml(correctAnswerTxt)}</b>`;
     if(uitleg){
-      el("checkup-explanation-box").textContent = "💬 " + uitleg;
+      el("checkup-explanation-box").innerHTML = "💬 " + renderMarkdownLite(uitleg);
       el("checkup-explanation-box").classList.remove("hidden");
       el("btn-checkup-show-explanation").classList.remove("hidden");
     }
@@ -3488,7 +3489,7 @@ async function toggleExplanation(){
     return;
   }
   if(lastExplanation){
-    box.textContent = lastExplanation;
+    box.innerHTML = renderMarkdownLite(lastExplanation);
     box.classList.remove("hidden");
     return;
   }
@@ -3500,7 +3501,7 @@ async function toggleExplanation(){
     if(explanationLoader !== loader) return; // ondertussen naar een ander woord/oefening gewisseld
     lastExplanation = text || "(No explanation available.)";
     explanationLoader = null;
-    box.textContent = lastExplanation;
+    box.innerHTML = renderMarkdownLite(lastExplanation);
   }
 }
 
@@ -4919,7 +4920,7 @@ async function disputeAnswer(){
       showFeedback("correct",
         "🔁 ✅<br>" +
         (currentItem.direction === "en-tr" ? "Added permanently as an accepted Turkish translation, and score restored." : "Score restored.") +
-        (verdict.afwijking ? `<br><span class="muted">📝 ${escapeHtml(verdict.afwijking)}</span>` : ""));
+        (verdict.afwijking ? `<br><span class="muted">📝 ${renderMarkdownLite(verdict.afwijking)}</span>` : ""));
       el("btn-dispute").classList.add("hidden");
       el("level-fill").style.width = (p.level*10) + "%";
       el("level-label").textContent = fmtLevel(p);
@@ -4991,7 +4992,7 @@ async function sendChat(){
     const answer = await askDeepSeekFree(chatItem, q, chatMsgs);
     chatMsgs.push({role:"user", content:q});
     chatMsgs.push({role:"assistant", content:answer});
-    el("chat-pending").outerHTML = `<div class="chatline ai"><b>AI:</b> ${escapeHtml(answer)}</div>`;
+    el("chat-pending").outerHTML = `<div class="chatline ai"><b>AI:</b> ${renderMarkdownLite(answer)}</div>`;
   }catch(e){
     el("chat-pending").outerHTML = `<div class="chatline ai">⚠️ ${escapeHtml(e.message)}</div>`;
   }
@@ -5893,7 +5894,7 @@ async function checkReadingAnswer(){
   el("reading-answer-input").disabled = true;
   const q = item.questions[queue[pos]];
   if(!answer){
-    el("reading-feedback-box").innerHTML = `<div class="feedback wrong">❌ No answer entered.<br>Reference: ${escapeHtml(q.answerHint)}</div>`;
+    el("reading-feedback-box").innerHTML = `<div class="feedback wrong">❌ No answer entered.<br>Reference: ${renderMarkdownLite(q.answerHint)}</div>`;
     q.asked = true; q.correct = false;
     saveJSON(LS_READING_TEXTS, readingTexts);
     el("btn-reading-check").textContent = "Next ▶";
@@ -5909,7 +5910,7 @@ async function checkReadingAnswer(){
       // Nog geen oordeel -- de vraag telt dus ook nog niet als "asked". Toon de vervolgvraag vriendelijk
       // (pending-stijl: geen goed/fout-kleur, dit is geen beoordeling) en laat opnieuw antwoorden.
       readingClarification = { previousAnswer: answer, clarifyingQuestion: verdict.clarifyingQuestion };
-      el("reading-feedback-box").innerHTML = `<div class="feedback pending">🤔 ${escapeHtml(verdict.clarifyingQuestion)}</div>`;
+      el("reading-feedback-box").innerHTML = `<div class="feedback pending">🤔 ${renderMarkdownLite(verdict.clarifyingQuestion)}</div>`;
       el("reading-answer-input").value = "";
       el("reading-answer-input").disabled = false;
       el("btn-reading-check").disabled = false;
@@ -5920,7 +5921,7 @@ async function checkReadingAnswer(){
     readingClarification = null;
     q.asked = true; q.correct = verdict.correct;
     saveJSON(LS_READING_TEXTS, readingTexts);
-    el("reading-feedback-box").innerHTML = `<div class="feedback ${verdict.correct ? "correct" : "wrong"}">${verdict.correct ? "✅" : "❌"}${verdict.feedback ? "<br>" + escapeHtml(verdict.feedback) : ""}</div>`;
+    el("reading-feedback-box").innerHTML = `<div class="feedback ${verdict.correct ? "correct" : "wrong"}">${verdict.correct ? "✅" : "❌"}${verdict.feedback ? "<br>" + renderMarkdownLite(verdict.feedback) : ""}</div>`;
     el("btn-reading-check").textContent = "Next ▶";
     el("btn-reading-check").disabled = false;
   }catch(e){
