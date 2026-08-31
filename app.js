@@ -419,6 +419,10 @@ export function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms)
 // niet expliciet om vraagt. Velden die BEDOELD Turks zijn (een vertaling, een woordenboekvorm, een
 // gegenereerde Turkse zin) blijven hierdoor onaangetast -- die worden hieronder expliciet uitgezonderd.
 export const ENGLISH_OUTPUT_GUARD = "\n\nLANGUAGE REQUIREMENT (always applies, regardless of what language this prompt above is written in): any free-text, explanatory, or feedback content you write in your response must be in English. This does NOT apply to fields that are explicitly meant to hold a Turkish word, phrase, sentence, or translation -- those stay in Turkish as instructed above.";
+// Zelfde patroon als hierboven, ook aan ELKE systeemprompt toegevoegd: de app toont AI-tekst als platte
+// tekst (geen markdown-renderer), dus letterlijke sterretjes/koppen/opsommingstekens in het antwoord
+// zouden gewoon zichtbaar blijven staan i.p.v. als opmaak te worden weergegeven.
+export const PLAIN_TEXT_GUARD = "\n\nFORMATTING REQUIREMENT (always applies): write in plain, unformatted text only. Do NOT use markdown syntax of any kind -- no **bold**, no *italics*, no # headers, no bullet points with - or *, no numbered lists with periods, no backtick code formatting. If you need to separate points, use plain sentences or a new paragraph (a blank line), never symbols meant to be rendered as formatting.";
 // Stap 6 van het verbeterplan ("AI-fouten fail-safe i.p.v. fail-closed"): een tijdelijke netwerk-/server-
 // hik mag de gebruiker nooit score kosten. Twee automatische herkansingen met een korte pauze ertussen
 // vangen het gros van zulke fluctuaties op, vóórdat de aanroeper het als een echte mislukking hoeft te

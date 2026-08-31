@@ -24,6 +24,16 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.73 — Geen markdown-opmaak meer in AI-antwoorden (asterisks e.d.)
+- Nieuwe centrale waarborg `PLAIN_TEXT_GUARD`, naar exact hetzelfde patroon als de bestaande
+  `ENGLISH_OUTPUT_GUARD`: automatisch aan ELKE systeemprompt toegevoegd via `callAI`, dus overal in de
+  app tegelijk actief zonder losse aanpassingen per prompt. Verbiedt expliciet `**vet**`, `*cursief*`,
+  `#`-koppen, opsommingstekens met `-`/`*`, genummerde lijsten, en backtick-codeblokken — de app toont
+  AI-tekst als platte tekst, dus zulke tekens bleven voorheen letterlijk zichtbaar staan i.p.v. als
+  opmaak weergegeven te worden.
+- Geverifieerd door `callAI` zelf rechtstreeks aan te roepen (met alleen `callClaude`/`callDeepSeek`
+  gestubd) en te bevestigen dat de daadwerkelijk verstuurde systeemprompt beide waarborgen bevat.
+
 ## v3.72 — CEFR-streepjes: definitief gefixt (absolute positionering i.p.v. vertical-align)
 - Ondanks v3.71 (grotere spreiding) stond het hoge streepje nog steeds te laag. **Werkelijke
   rootcause**: `vertical-align` hangt af van de baseline/cap-hoogte-metrics van het daadwerkelijk
