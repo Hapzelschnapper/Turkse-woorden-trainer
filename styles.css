@@ -115,8 +115,8 @@
      hoog+rood=end. Bewust een eigen CSS-gebouwd streepje i.p.v. een specifiek Unicode-teken: dat
      oogt op elk toestel/lettertype consistent, in tegenstelling tot exotischere Unicode-blokjes. */
   .cefr-range-display{font-size:.72rem;color:var(--muted);text-align:right;white-space:nowrap;}
-  .cefr-badge{font-weight:600;color:var(--text);}
-  .cefr-sub-mark{display:inline-block;width:5px;height:2px;border-radius:1px;margin-left:1px;}
-  .cefr-sub-mark.start{background:#4caf50;vertical-align:0em;}    /* laag: op de basislijn */
-  .cefr-sub-mark.mid{background:#e0a733;vertical-align:0.5em;}    /* midden: exact het midden tussen start en end */
-  .cefr-sub-mark.end{background:#e05a4e;vertical-align:1em;}      /* hoog: ruim boven de hoofdletters -- even ver van mid als start */
+  .cefr-badge{position:relative;display:inline-block;padding-right:7px;font-weight:600;color:var(--text);}
+  .cefr-sub-mark{position:absolute;right:0;width:5px;height:2px;border-radius:1px;}
+  .cefr-sub-mark.start{background:#4caf50;bottom:0;}                          /* laag: onderkant van de badge zelf */
+  .cefr-sub-mark.mid{background:#e0a733;top:50%;margin-top:-1px;}             /* midden: exact gecentreerd (bewezen CSS-truc, onafhankelijk van lettertype) */
+  .cefr-sub-mark.end{background:#e05a4e;top:0;}                               /* hoog: bovenkant van de badge zelf */

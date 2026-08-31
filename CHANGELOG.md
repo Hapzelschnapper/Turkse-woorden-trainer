@@ -24,6 +24,23 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.72 — CEFR-streepjes: definitief gefixt (absolute positionering i.p.v. vertical-align)
+- Ondanks v3.71 (grotere spreiding) stond het hoge streepje nog steeds te laag. **Werkelijke
+  rootcause**: `vertical-align` hangt af van de baseline/cap-hoogte-metrics van het daadwerkelijk
+  gerenderde lettertype -- en mijn eigen "verificatie tegen het echte lettertype" in v3.71 was zelf
+  ook gebrekkig, want mijn testomgeving heeft vermoedelijk geen Apple/Segoe UI/Roboto geïnstalleerd en
+  viel dus ook terug op een vervangend lettertype, niet het lettertype dat een gebruiker daadwerkelijk
+  ziet. Elke `vertical-align`-kalibratie op basis van geschatte font-metrics was daarmee inherent
+  onbetrouwbaar, ongeacht welke em-waarden ik koos.
+- **Definitieve fix**: volledig overgestapt van `vertical-align` naar absolute positionering
+  (`position:absolute` met `top`/`bottom`/`margin-top` t.o.v. de badge zelf). Dit hangt niet af van
+  font-baseline-berekeningen, dus geen giswerk meer: start = onderkant van de badge, end = bovenkant,
+  mid = wiskundig exact het midden via de bewezen CSS-centreertruc (`top:50%` + `margin-top` gelijk
+  aan de halve eigen hoogte) — werkt identiek ongeacht welk lettertype gerenderd wordt.
+- Geverifieerd met pixel-metingen in de echte app-context: alle drie de posities kwamen exact (0,000
+  afwijking) overeen met de bedoelde badge-randen, en de symmetrie tussen start↔mid en mid↔end is nu
+  exact gelijk (5,000px vs 5,000px, geen enkele afronding meer).
+
 ## v3.71 — CEFR-streepjes: hoge markering stond te laag (echte lettertype-mismatch)
 - Het hoge (rode) streepje stond na v3.69 nog steeds maar halverwege de letterhoogte i.p.v. erboven.
   **Rootcause**: mijn eerdere waarden (0/0,35/0,7em) waren gekalibreerd tegen een generieke
