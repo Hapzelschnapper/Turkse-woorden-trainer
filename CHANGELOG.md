@@ -24,6 +24,19 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.71 — CEFR-streepjes: hoge markering stond te laag (echte lettertype-mismatch)
+- Het hoge (rode) streepje stond na v3.69 nog steeds maar halverwege de letterhoogte i.p.v. erboven.
+  **Rootcause**: mijn eerdere waarden (0/0,35/0,7em) waren gekalibreerd tegen een generieke
+  `sans-serif`-testomgeving, terwijl de app het systeemlettertype gebruikt (`-apple-system`/Segoe
+  UI/Roboto) -- dat heeft een andere cap-hoogte-verhouding, dus dezelfde em-waarden landden ergens
+  anders.
+- Fix: spreiding fors vergroot naar ronde getallen (start 0em / mid 0,5em / end 1em) — mid blijft
+  wiskundig exact het midden (bevestigd: symmetrie-afwijking <0,02px, binnen afrondingsruis), maar de
+  totale spreiding is nu groot genoeg om ook bij een afwijkende cap-hoogte-verhouding duidelijk
+  laag/midden/hoog te tonen, i.p.v. precies op de grens van "net niet hoog genoeg" te balanceren.
+- Geverifieerd met canvas-tekstmetingen tegen het ECHTE lettertype van de app (niet meer generieke
+  sans-serif): het hoge streepje reikt nu ruim (~6,5px) boven de top van de hoofdletters uit.
+
 ## v3.70 — Leesbegrip-beoordeling: warmere toon, oorzaak/gevolg-onderscheid, verduidelijkingsvraag
 - Naar aanleiding van een terecht bevonden beoordelingsfout ("waarom deed Elif X" beantwoord met "de
   tekst noemt geen reden, alleen een gevolg" werd onterecht fout gerekend): `gradeReadingAnswer`

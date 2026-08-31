@@ -115,8 +115,8 @@
      hoog+rood=end. Bewust een eigen CSS-gebouwd streepje i.p.v. een specifiek Unicode-teken: dat
      oogt op elk toestel/lettertype consistent, in tegenstelling tot exotischere Unicode-blokjes. */
   .cefr-range-display{font-size:.72rem;color:var(--muted);text-align:right;white-space:nowrap;}
-  .cefr-badge{display:inline-flex;align-items:baseline;font-weight:600;color:var(--text);}
+  .cefr-badge{font-weight:600;color:var(--text);}
   .cefr-sub-mark{display:inline-block;width:5px;height:2px;border-radius:1px;margin-left:1px;}
-  .cefr-sub-mark.start{background:#4caf50;transform:translateY(4px);}
-  .cefr-sub-mark.mid{background:#e0a733;transform:translateY(1px);}
-  .cefr-sub-mark.end{background:#e05a4e;transform:translateY(-3px);}
+  .cefr-sub-mark.start{background:#4caf50;vertical-align:0em;}    /* laag: op de basislijn */
+  .cefr-sub-mark.mid{background:#e0a733;vertical-align:0.5em;}    /* midden: exact het midden tussen start en end */
+  .cefr-sub-mark.end{background:#e05a4e;vertical-align:1em;}      /* hoog: ruim boven de hoofdletters -- even ver van mid als start */
