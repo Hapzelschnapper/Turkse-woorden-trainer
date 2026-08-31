@@ -3894,6 +3894,60 @@ function pickTurkishVoice(){
     || _cachedVoices.find(v => (v.lang||"").toLowerCase().startsWith("tr"))
     || null;
 }
+// Leest de VOLLEDIGE huidige leestekst (Reading-tab) hardop voor -- zelfde kernpatroon als
+// speakTurkish (stem kiezen, cancel+korte vertraging tegen de bekende Chromium-bug, één stille
+// herpoging bij een falende start), maar met een aparte pauzeer-knop die verschijnt zolang het
+// voorlezen loopt. De knop-zichtbaarheid wordt ONAFHANKELIJK van welk browser-event er precies
+// vuurt (onend/onerror gedragen zich niet overal identiek bij een handmatige cancel()) ook altijd
+// expliciet gereset door hideReadingSpeechControls(), zie switchTab().
+function speakReadingText(rate){
+  if(!readingState || !("speechSynthesis" in window)) return;
+  const text = readingState.item && readingState.item.tr;
+  if(!text) return;
+  const doSpeak = (retry)=>{
+    try{
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = "tr-TR";
+      utter.rate = rate || 0.9;
+      const voice = pickTurkishVoice();
+      if(voice) utter.voice = voice;
+      utter.onstart = ()=>{
+        const pauseBtn = el("btn-reading-speak-pause");
+        if(pauseBtn){ pauseBtn.classList.remove("hidden"); pauseBtn.textContent = "⏸️"; }
+      };
+      utter.onend = ()=> hideReadingSpeechControls();
+      if(!retry){
+        utter.onerror = ()=> setTimeout(()=> doSpeak(true), 150);
+      }
+      window.speechSynthesis.speak(utter);
+    }catch(e){ /* uitspraak is nooit kritiek voor de werking van de oefening -- gewoon negeren */ }
+  };
+  try{ window.speechSynthesis.cancel(); }catch(e){ /* negeren */ }
+  setTimeout(()=> doSpeak(false), 40);
+}
+
+function toggleReadingSpeechPause(){
+  if(!("speechSynthesis" in window)) return;
+  const pauseBtn = el("btn-reading-speak-pause");
+  try{
+    if(window.speechSynthesis.paused){
+      window.speechSynthesis.resume();
+      if(pauseBtn) pauseBtn.textContent = "⏸️";
+    } else if(window.speechSynthesis.speaking){
+      window.speechSynthesis.pause();
+      if(pauseBtn) pauseBtn.textContent = "▶️";
+    }
+  }catch(e){ /* negeren */ }
+}
+
+// Verbergt de pauzeer-knop en breekt eventueel lopend voorlezen af -- los aanroepbaar (bv. bij het
+// wisselen van tabblad) zodat de knop-status nooit kan "blijven hangen" ongeacht browser-specifiek
+// event-gedrag rond cancel().
+function hideReadingSpeechControls(){
+  const pauseBtn = el("btn-reading-speak-pause");
+  if(pauseBtn){ pauseBtn.classList.add("hidden"); pauseBtn.textContent = "⏸️"; }
+}
+
 function speakTurkish(text, rate){
   if(!text || !("speechSynthesis" in window)) return;
   const doSpeak = (retry)=>{
@@ -5996,6 +6050,11 @@ function renderSavedReadingList(){
 }
 
 function switchTab(tab){
+  // Elke tabwissel breekt lopend voorlezen af, ongeacht van/naar welk tabblad -- expliciet vóór al het
+  // overige, en de knop-status wordt los gereset (niet afhankelijk van of onend/onerror van de browser
+  // consistent vuurt na een handmatige cancel()).
+  try{ if("speechSynthesis" in window) window.speechSynthesis.cancel(); }catch(e){ /* negeren */ }
+  hideReadingSpeechControls();
   localStorage.setItem(LS_ACTIVE_TAB, tab); // onthouden zodat een refresh niet terugspringt naar "practice"
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
   el("screen-practice").classList.toggle("hidden", tab!=="practice");
@@ -6722,6 +6781,10 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   });
   el("btn-reading-new").addEventListener("click", startNewReading);
   el("btn-reading-saved").addEventListener("click", renderSavedReadingList);
+  el("btn-reading-speak").addEventListener("click", ()=> speakReadingText());
+  el("btn-reading-speak-slow").addEventListener("click", ()=> speakReadingText(0.5));
+  el("btn-reading-speak-extraslow").addEventListener("click", ()=> speakReadingText(0.3));
+  el("btn-reading-speak-pause").addEventListener("click", toggleReadingSpeechPause);
   el("btn-reading-check").addEventListener("click", ()=>{
     if(!readingState) return;
     const { queue, pos } = readingState;

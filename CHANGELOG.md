@@ -24,6 +24,21 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.76 — Voorlezen van de hele leestekst, met pauzeren en automatisch stoppen bij tabwissel
+- Nieuwe voorleesknoppen (🔊/🐢/🐌) boven de tekst op het Reading-scherm: leest de VOLLEDIGE tekst
+  hardop voor op de gekozen snelheid, zelfde onderliggende patroon als de bestaande knoppen elders.
+- Nieuwe ⏸️/▶️-knop, alleen zichtbaar zolang er daadwerkelijk wordt voorgelezen — pauzeert/hervat via
+  de browser-eigen `speechSynthesis.pause()`/`.resume()`.
+- **Elke tabwissel breekt lopend voorlezen nu af** (`speechSynthesis.cancel()`, in `switchTab()`),
+  ongeacht van/naar welk tabblad — de knop-zichtbaarheid wordt daarbij ook los, expliciet gereset,
+  onafhankelijk van of de browser's `onend`/`onerror`-events zich overal identiek gedragen na een
+  handmatige cancel().
+- Geverifieerd met een volledig gecontroleerde speechSynthesis-simulatie (headless Chrome heeft vaak
+  geen echte TTS-stemmen): bevestigd dat spreken/pauzeren/hervatten/tabwissel-annuleren en de juiste
+  snelheid per knop allemaal exact overeenkomen met het bedoelde gedrag. Onderweg twee eigen
+  testfouten gevonden en gecorrigeerd (een read-only `window.speechSynthesis`-eigenschap die een platte
+  toewijzing stilzwijgend negeerde, en een onvolledige mock die `addEventListener` miste).
+
 ## v3.75 — Extra-slow-uitspraakknop (🐌)
 - Nieuwe knop naast de bestaande "slow" (🐢, snelheid 0,5) op zowel het hoofdscherm als het
   dictee-scherm: 🐌, snelheid 0,3 — merkbaar trager dan de bestaande langzame stand, maar niet zo
