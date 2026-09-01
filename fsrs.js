@@ -208,5 +208,11 @@ export function migrateLegacyProgress(p) {
   const t = Math.min(1, Math.max(0, (EASE_MAX - legacyEase) / (EASE_MAX - EASE_MIN)));
   p.difficulty = clampDifficulty(1 + t * 9);
   p.lastReviewAt = typeof p.due === "number" ? p.due - legacyIntervalDays * 24 * 60 * 60 * 1000 : Date.now();
+  // Het weergegeven niveau/ease meteen bijwerken naar de eerlijke FSRS-positie die net gebootstrapt is,
+  // i.p.v. het oude (pre-migratie) getal te laten staan tot de eerstvolgende beurt dat toevallig
+  // overschrijft -- anders kan een normale volgende beurt een schijnbaar grote niveausprong tonen die in
+  // werkelijkheid grotendeels de eenmalige systeemovergang zelf was, niet de uitkomst van die ene beurt.
+  p.level = stabilityToLevel(p.stability);
+  p.ease = difficultyToDisplayEase(p.difficulty);
   return p;
 }

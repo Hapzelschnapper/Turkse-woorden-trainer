@@ -24,6 +24,38 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.78 — Niveausprong bij oude woorden: migratie herberekent nu direct, niet pas bij de volgende beurt
+- Naar aanleiding van een gemeld, onverwacht grote niveausprong (niveau 7 → 9 bij een gewoon goed
+  antwoord, zonder dispuut) bleek de oorzaak te zitten in `migrateLegacyProgress` (fsrs.js): bij een
+  woord van vóór de FSRS-omschakeling werd `stability`/`difficulty` wél meteen gebootstrapt vanuit het
+  oude, opgeslagen interval, maar het WEERGEGEVEN `level`-getal bleef het oude (mogelijk niet meer
+  kloppende) getal tot de eerstvolgende beurt dat toevallig overschreef — waardoor die eerstvolgende
+  beurt een sprong kon tonen die grotendeels de eenmalige systeemovergang zelf was, niet de uitkomst
+  van die ene beurt.
+- Fix: `p.level`/`p.ease` worden nu DIRECT bij de migratie zelf herberekend vanuit de nieuw
+  gebootstrapte `stability`/`difficulty`, i.p.v. te wachten op de volgende `scheduleReview()`-aanroep.
+- Raakt alleen woorden die sinds de FSRS-omschakeling nog niet opnieuw geoefend zijn (een klein,
+  krimpend groepje) — elk woord dat al minstens één keer sindsdien beoordeeld is, was al lang
+  gemigreerd en blijft ongewijzigd.
+- 2 nieuwe tests in `fsrs.test.js`, en apart geverifieerd met de exacte, door de gebruiker gemelde
+  situatie nagebouwd (niveau 7 weergegeven, 2 dagen daadwerkelijk interval) tegen de echte,
+  ongemockte code: levert nu direct niveau 5 op (de eerlijke positie) i.p.v. de verouderde 7 te laten
+  staan — totaal nu 92 tests.
+
+## v3.77 — Ingediend antwoord blijft zichtbaar, ook bij een herhaalde herkansing
+- **Bug**: bij een fout antwoord op een los woord werd het invoerveld geleegd (bedoeld voor het
+  opnieuw intypen van het juiste antwoord), maar daardoor toonde een volgende foute herkansing géén
+  enkele aanwijzing meer van wat je net had getypt ("Not quite yet — type X to continue", zonder je
+  eigen antwoord erbij). Bovendien stuurde "I disagree" na zo'n herkansing een LEEG antwoord mee naar
+  de AI, omdat het simpelweg de (inmiddels lege) live veldwaarde uitlas.
+- Nieuwe `lastSubmittedAnswer`-status onthoudt wat er daadwerkelijk werd ingediend, onafhankelijk van
+  het invoerveld. Elke herkansing-melding toont nu "wrong answer: <je antwoord>" (consistent met hoe
+  de allereerste foute poging dat al deed), en `disputeAnswer()` gebruikt voor woord-oefeningen dit
+  onthouden antwoord i.p.v. het live veld.
+- Geverifieerd met een echte browsertest: bevestigd dat zowel de eerste fout, een herhaalde
+  herkansing-fout, én het dispuut daarna stuk voor stuk het juiste, daadwerkelijk getypte antwoord
+  tonen/gebruiken — niet alleen aangenomen.
+
 ## v3.76 — Voorlezen van de hele leestekst, met pauzeren en automatisch stoppen bij tabwissel
 - Nieuwe voorleesknoppen (🔊/🐢/🐌) boven de tekst op het Reading-scherm: leest de VOLLEDIGE tekst
   hardop voor op de gekozen snelheid, zelfde onderliggende patroon als de bestaande knoppen elders.

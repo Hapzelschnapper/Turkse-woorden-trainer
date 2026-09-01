@@ -4,7 +4,7 @@ const assert = require('assert');
 async function main() {
   const {
     retrievability, initStability, initDifficulty, nextStability, nextIntervalDays,
-    scheduleReview, migrateLegacyProgress, difficultyToDisplayEase, gradeFromResult,
+    scheduleReview, migrateLegacyProgress, difficultyToDisplayEase, gradeFromResult, stabilityToLevel,
     GRADE_AGAIN, GRADE_HARD, GRADE_GOOD, GRADE_EASY,
     FSRS_MIN_STABILITY_DAYS, FSRS_MAX_STABILITY_DAYS,
   } = await import('./fsrs.js');
@@ -138,6 +138,26 @@ async function main() {
     assert.strictEqual(typeof p.stability, 'number');
     assert.strictEqual(typeof p.difficulty, 'number');
     assert.ok(Math.abs(p.stability - 10) < 0.01, `stability (${p.stability}) had rond de 10 dagen moeten liggen`);
+  });
+
+  test('migrateLegacyProgress werkt p.level/p.ease DIRECT bij naar de nieuw gebootstrapte FSRS-positie (voorkomt een schijnbaar grote sprong bij de eerstvolgende beurt)', () => {
+    // Een oud, pre-FSRS woord met een STALE weergegeven niveau (7) dat niet meer overeenkomt met het
+    // daadwerkelijk opgeslagen interval (hier: slechts 2 dagen, wat op de nieuwe FSRS-schaal een veel
+    // lager niveau is) -- precies het scenario dat de "river"/"kadın"-melding verklaarde.
+    const p = { level: 7, reps: 20, ease: 2.0, intervalMin: 60 * 24 * 2, due: Date.now() }; // 2 dagen interval
+    migrateLegacyProgress(p);
+    // Het oude, stale niveau (7) mag NIET blijven staan -- moet meteen herrekend zijn op basis van de
+    // nieuw gebootstrapte stability, niet pas bij de volgende scheduleReview()-aanroep.
+    assert.notStrictEqual(p.level, 7, 'p.level had direct herberekend moeten zijn, niet het oude getal laten staan');
+    assert.strictEqual(typeof p.level, 'number');
+    assert.ok(p.level >= 0 && p.level <= 10, `p.level (${p.level}) moet binnen 0-10 vallen`);
+    assert.strictEqual(typeof p.ease, 'number');
+  });
+
+  test('migrateLegacyProgress: het direct herberekende niveau komt overeen met stabilityToLevel van de gebootstrapte stability (geen losse, inconsistente formule)', () => {
+    const p = { level: 3, reps: 5, ease: 2.5, intervalMin: 60 * 24 * 30, due: Date.now() }; // 30 dagen interval
+    migrateLegacyProgress(p);
+    assert.strictEqual(p.level, stabilityToLevel(p.stability), 'p.level moet exact overeenkomen met stabilityToLevel(p.stability), geen aparte/verouderde berekening');
   });
 
   test('difficultyToDisplayEase: lagere difficulty (makkelijker) geeft een hogere ease-waarde (net als voorheen)', () => {
