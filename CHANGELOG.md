@@ -24,6 +24,25 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.79 — Kale woordtransformatie voor ci_eki/ce_eki, i.p.v. zinnen
+- Naar aanleiding van een te complexe zin bij "Manner/Opinion Suffix -ce/-ca" (25+ woorden, terwijl het
+  eigen framework al "Keep it SHORT (2-5 words)" eiste): op verzoek teruggebracht naar de kale
+  woordtransformatie die je eigenlijk wilde (bv. iş → işçi, boer → çiftçi, Türk → Türkçe) — geen zin,
+  ook geen korte frase, puur het woordpaar.
+- Nieuwe `generateBareSuffixDrillForTopic` (`ai.js`), specifiek voor twee onderwerpen:
+  - **ci_eki** (agent/beroep, bv. işçi): hergebruikt dezelfde beheerste-naamwoorden-pool als de
+    bestaande Special-tab-suffix-trainer, maar toetst het specifieke onderwerp dat de les kiest.
+  - **ce_eki** (manner/opinion): de "gorus"-variant (bence/sence/bizce/sizce) gebruikt zelfs **geen
+    AI-call meer** — een vaste, kleine set, dus gratis en deterministisch. De "zarf"-variant
+    (hızlı → hızlıca) vraagt de AI om alleen het kale woordpaar, geen zin.
+- Nieuwe gedeelde routeerfunctie `generateGrammarDrillForTopic` (`app.js`): stuurt deze twee
+  onderwerpen naar de nieuwe kale-woord-generator, alle overige grammatica-onderwerpen ongewijzigd
+  naar de bestaande, zin-gerichte `generateGrammarDrill` — gebruikt door zowel de Knowledge
+  Check als lesgebonden Skill Practice.
+- 8 nieuwe tests (`bare-suffix-drill.test.js`) — onderweg zelf een flaky test gevonden en gecorrigeerd
+  (een aanname die alleen bij een bepaalde willekeurige richting klopte). Totaal nu 100 tests over
+  12 bestanden.
+
 ## v3.78 — Niveausprong bij oude woorden: migratie herberekent nu direct, niet pas bij de volgende beurt
 - Naar aanleiding van een gemeld, onverwacht grote niveausprong (niveau 7 → 9 bij een gewoon goed
   antwoord, zonder dispuut) bleek de oorzaak te zitten in `migrateLegacyProgress` (fsrs.js): bij een

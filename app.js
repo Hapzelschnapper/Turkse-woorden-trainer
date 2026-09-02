@@ -12,6 +12,8 @@ import { scheduleReview, migrateLegacyProgress, gradeFromResult, GRADE_EASY } fr
 import {
   callAI,
   generateSuffixDrill,
+  generateBareSuffixDrillForTopic,
+  BARE_SUFFIX_DRILL_TOPICS,
   gradeSuffixDrillAnswer,
   gradeGrammarDrillAnswer,
   gradeCheckupWordAnswer,
@@ -1571,6 +1573,16 @@ function canOfferSuffixDrill(){
 // niet of het exact dezelfde bewoording is als de oorspronkelijke Engelse aanwijzing.
 
 
+// Routeert naar de kale-woord-transformatie (generateBareSuffixDrillForTopic) voor onderwerpen die
+// daar expliciet voor gekozen zijn (ci_eki, ce_eki -- zie BARE_SUFFIX_DRILL_TOPICS), anders ongewijzigd
+// de bestaande, zin-gerichte generateGrammarDrill. Gebruikt door zowel startCheckup als
+// nextSkillPracticeQuestion, zodat beide plekken consistent hetzelfde gedrag tonen.
+function generateGrammarDrillForTopic(topic, avoidEn){
+  const baseTopicKey = topic.key && topic.key.includes("::") ? topic.key.split("::")[0] : topic.key;
+  if(BARE_SUFFIX_DRILL_TOPICS.has(baseTopicKey)) return generateBareSuffixDrillForTopic(topic);
+  return generateGrammarDrill(topic, avoidEn);
+}
+
 async function generateGrammarDrill(topic, avoidEn){
   // BUGFIX: topic.key kan variant-gescoped zijn (bv. "hitap_bicimleri::titel", "ce_eki::gorus" --
   // zie effectiveTopicForVariant/variantProgressKey), maar GRAMMAR_TOPIC_FRAMEWORK is alleen op de
@@ -1749,7 +1761,7 @@ async function nextCheckupQuestion(){
     el("checkup-progress").textContent = `${topic.label} · question ${checkupState.grammarTopicResults.length+1}/${CHECKUP_QUESTIONS_PER_GRAMMAR_TOPIC}`;
     el("checkup-word").textContent = "🤖 …";
     try{
-      const drill = await generateGrammarDrill(topic, recentGrammarDrillWords);
+      const drill = await generateGrammarDrillForTopic(topic, recentGrammarDrillWords);
       checkupState.current = {type:"grammar", topic, drill};
       checkupState.consecutiveFailures = 0; // gelukte generatie -> teller resetten
       el("checkup-word").textContent = drill.prompt;
@@ -2143,7 +2155,7 @@ async function nextSkillPracticeQuestion(){
     const baseTopic = grammarTopicByKey(lesson.grammarTopics[0]);
     const topic = effectiveTopicForVariant(baseTopic, pickWeakestVariant(baseTopic));
     try{
-      const drill = await generateGrammarDrill(topic, recentGrammarDrillWords);
+      const drill = await generateGrammarDrillForTopic(topic, recentGrammarDrillWords);
       skillPracticeState.current = {type:"grammar", topic, drill};
       el("checkup-word").textContent = drill.prompt;
       el("checkup-word").className = "tr-word sentence";
@@ -3443,6 +3455,7 @@ let lastNoneDueInRange = false; // true als er niets due is, maar er WEL nog nie
 let wordsExhausted = false; // true als er niets due EN niets nieuws is binnen het ingestelde CEFR-bereik -- niets zinvols te tonen
 let lastAutoSwitchedFrom = null; // bij een vaste richting: de richting waar deze beurt vanaf geswitcht is (null = geen switch), zie resolveWordDirectionForThisTurn
 let retryPending = false; // true na een fout antwoord op een los woord: de fout is al geregistreerd, maar "Next" blijft geblokkeerd tot het juiste antwoord alsnog getypt is
+let lastSubmittedAnswer = ""; // wat de gebruiker daadwerkelijk indiende bij de laatste (fout gerekende) poging -- blijft bewaard nadat answer-input al geleegd is voor de herkansing, zodat het antwoord zichtbaar kan blijven én "I disagree" niet een leeg antwoord meestuurt
 let currentAnswered = false;
 let currentCorrect = null;
 let chatMsgs = []; // voor de "vraag aan AI"-modal, per huidige item
@@ -3621,6 +3634,7 @@ async function renderPractice(){
   currentAnswered = false;
   retryPending = false;
   currentCorrect = null;
+  lastSubmittedAnswer = "";
   chatMsgs = [];
   revealedWords = new Set();
   setExplanation("");
@@ -4077,8 +4091,9 @@ function peekCurrentWord(){
 // finalizeAnswer() -- NIET meteen door naar "Next": het antwoordveld blijft actief en btn-check blijft
 // "Check" tonen, zodat de gebruiker gedwongen wordt het juiste antwoord alsnog te typen voordat hij
 // verder kan. Zie de `retryPending`-tak bovenaan handleCheck() voor de herkansing zelf.
-function enterWordRetry(message){
+function enterWordRetry(message, answer){
   currentCorrect = false;
+  lastSubmittedAnswer = answer || "";
   if(currentItem.direction === "en-tr" && currentItem.tr) setSpeakableTr(currentItem.tr); // nu bekend, ook bij een fout antwoord
   recordHistory("word");
   recordResult(currentItem.progressKey || currentItem.en, false);
@@ -4191,7 +4206,8 @@ async function handleCheck(){
       el("answer-input").disabled = false;
       if(hasLikelyPhysicalKeyboard()) el("answer-input").focus();
     } else {
-      showFeedback("wrong", "Not quite yet — type <b>" + escapeHtml(correctAnswer) + "</b> to continue.");
+      lastSubmittedAnswer = answer;
+      showFeedback("wrong", answerCompareLine(answer, "", false) + "<br>Not quite yet — type <b>" + escapeHtml(correctAnswer) + "</b> to continue.");
       el("btn-check").disabled = false;
       el("answer-input").value = "";
       el("answer-input").disabled = false;
@@ -4214,7 +4230,7 @@ async function handleCheck(){
     }
     showFeedback("pending", "🤖 Checking your answer…");
     const wrongMeaning = await lookupWrongAnswerMeaning(currentItem, answer);
-    enterWordRetry("👁️ You peeked at the meaning, so this round is counted as a miss.<br>" + answerCompareLine(answer, correctAnswer, false, wrongMeaning));
+    enterWordRetry("👁️ You peeked at the meaning, so this round is counted as a miss.<br>" + answerCompareLine(answer, correctAnswer, false, wrongMeaning), answer);
     registerWordExplanation(currentItem, answer);
     return;
   }
@@ -4225,7 +4241,7 @@ async function handleCheck(){
     // Explanation-paneel krijgt via registerWordExplanation() wél nog steeds inhoudelijke uitleg over
     // het woord (dat kost apart wél een AI-call, maar levert nuttige content i.p.v. een kaal statusbericht).
     const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
-    enterWordRetry("❌ No answer entered, so this round is counted as a miss.<br>" + answerCompareLine("", correctAnswer, false));
+    enterWordRetry("❌ No answer entered, so this round is counted as a miss.<br>" + answerCompareLine("", correctAnswer, false), "");
     registerWordExplanation(currentItem, null);
     return;
   }
@@ -4244,7 +4260,7 @@ async function handleCheck(){
   const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (cachedTranslation(currentItem.en)||[]).join(", ");
 
   if(!hasKeyFor("word")){
-    enterWordRetry("❌<br>" + answerCompareLine(answer, correctAnswer, false) + "<br><span class='muted'>Set a " + keyNameFor("word") + " API key to have other translations judged too, or dispute this result.</span>");
+    enterWordRetry("❌<br>" + answerCompareLine(answer, correctAnswer, false) + "<br><span class='muted'>Set a " + keyNameFor("word") + " API key to have other translations judged too, or dispute this result.</span>", answer);
     return;
   }
 
@@ -4261,7 +4277,7 @@ async function handleCheck(){
       finalizeAnswer(true, "✅" + (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, true, verdict.betekenis_antwoord, regInfo, verdict.afwijking) : ""));
       el("btn-skip").disabled = true;
     } else {
-      enterWordRetry("❌" + (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, false, verdict.betekenis_antwoord, regInfo, verdict.afwijking) : ""));
+      enterWordRetry("❌" + (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, false, verdict.betekenis_antwoord, regInfo, verdict.afwijking) : ""), answer);
     }
     if(verdict.correct && currentItem.direction === "en-tr"){
       el("post-actions").querySelector("#btn-add-answer")?.remove();
@@ -4443,7 +4459,7 @@ function revealWordHint(){
   if(!currentItem || currentItem.type !== "word" || currentAnswered || retryPending) return;
   const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
   setExplanation("You revealed the translation, so this round is counted as a miss. Type the answer to continue.");
-  enterWordRetry("👁️<br>" + answerCompareLine("", correctAnswer, false));
+  enterWordRetry("👁️<br>" + answerCompareLine("", correctAnswer, false), "");
 }
 
 // "👁️ Reveal"-knop in de kennischeck/les-oefeningen-modal: functioneel identiek aan met een LEEG
@@ -4912,7 +4928,10 @@ function clearEditWord(){
 
 async function disputeAnswer(){
   if(!currentItem) return;
-  const answer = el("answer-input").value.trim();
+  // Voor losse woorden is het invoerveld inmiddels al geleegd (voor de geforceerde herkansing) --
+  // gebruik dan het daadwerkelijk ingediende antwoord i.p.v. het (lege) veld. Bij zinnen/vragen bestaat
+  // die herkansing-leging niet, dus daar blijft het veld zelf de juiste, actuele bron.
+  const answer = currentItem.type === "word" ? lastSubmittedAnswer : el("answer-input").value.trim();
   el("btn-dispute").disabled = true;
 
   if(currentItem.type === "sentence" || currentItem.type === "question"){

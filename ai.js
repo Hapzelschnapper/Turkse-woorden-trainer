@@ -1880,3 +1880,87 @@ export async function findWikipediaReadingText(targetLevel, maxAttempts){
   }
   return null;
 }
+
+/* ===================== KALE-WOORD-TRANSFORMATIE VOOR SPECIFIEKE LESGEBONDEN ONDERWERPEN =====================
+   Op verzoek: sommige grammatica-onderwerpen (ci_eki: iş -> işçi; ce_eki: hızlı -> hızlıca / ben -> bence)
+   zijn DERIVATIONELE achtervoegsels waarbij een korte zin er niets aan toevoegt -- de gebruiker wil hier
+   puur de kale woordvorming oefenen, net als de bestaande Special-tab-suffix-trainer
+   (generateNounSuffixDrill/generateVerbSuffixDrill), maar dan voor een DOOR DE LES GEKOZEN specifiek
+   onderwerp i.p.v. een willekeurig gekozen onderwerp+woord. Geeft dezelfde {direction, prompt, correct}
+   -vorm terug als generateGrammarDrillCandidate/generateFrameworkDrillCandidate, zodat de bestaande
+   grading (gradeGrammarDrillAnswer) en UI (nextSkillPracticeQuestion) ongewijzigd kunnen blijven. */
+const CE_EKI_GORUS_FORMS = [
+  {tr: "bence", en: "in my opinion"},
+  {tr: "sence", en: "in your opinion"},
+  {tr: "bizce", en: "in our opinion"},
+  {tr: "sizce", en: "in your (plural/formal) opinion"},
+];
+
+export async function generateBareSuffixDrillForTopic(topic){
+  const baseTopicKey = topic.key && topic.key.includes("::") ? topic.key.split("::")[0] : topic.key;
+  const variantId = topic.key && topic.key.includes("::") ? topic.key.split("::")[1] : null;
+
+  if(baseTopicKey === "ce_eki" && variantId === "gorus"){
+    // Vaste, kleine set (bence/sence/bizce/sizce) -- geen AI-call nodig, deterministisch en gratis.
+    const form = CE_EKI_GORUS_FORMS[Math.floor(Math.random()*CE_EKI_GORUS_FORMS.length)];
+    const direction = Math.random() < 0.5 ? "tr-en" : "en-tr";
+    return direction === "tr-en" ? {direction, prompt: form.tr, correct: form.en} : {direction, prompt: form.en, correct: form.tr};
+  }
+
+  if(baseTopicKey === "ce_eki"){
+    // "zarf"-variant: een bijvoeglijk naamwoord + -ce/-ca. Geen vaste woordpool nodig (net als het
+    // bestaande opinion_ce-framework al deed) -- de AI kiest zelf een echt, veelvoorkomend bijvoeglijk
+    // naamwoord, maar geeft nu een KAAL woordpaar terug i.p.v. een hele zin.
+    const sys = `Je maakt een "kaal woord"-oefening voor het Turkse achtervoegsel -ce/-ca (bijwoordelijk, "op een ... manier"). Kies zelf een echt, veelvoorkomend Turks bijvoeglijk naamwoord (bv. hızlı, sessiz, yavaş, kolay, zor) en vorm daarmee de -ce/-ca-vorm (bv. hızlı -> hızlıca = quickly, sessiz -> sessizce = silently). Geef ALLEEN het kale woordpaar terug, GEEN zin eromheen. "prompt" is een kort Engels cue-woordje (het bijwoord zelf, bv. "quickly"), "correct" is de kale Turkse -ce/-ca-vorm. Antwoord in JSON.`;
+    const schema = {
+      name: "ce_eki_kaal",
+      description: "Kaal woordpaar voor de -ce/-ca bijwoordelijke vorm.",
+      input_schema: {
+        type: "object",
+        properties: {
+          prompt: {type:"string", description:"Kort Engels cue-woord (het bijwoord), bv. \"quickly\"."},
+          correct: {type:"string", description:"De kale Turkse -ce/-ca-vorm, bv. \"hızlıca\"."},
+        },
+        required: ["prompt","correct"],
+      },
+    };
+    const raw = await callAI("sentence", sys, "Genereer één -ce/-ca-woordpaar.", 300, 0.6, schema);
+    const parsed = parseAIJson(raw);
+    if(!parsed.prompt || !parsed.correct) throw new Error("AI did not return a valid -ce/-ca drill.");
+    const direction = Math.random() < 0.5 ? "tr-en" : "en-tr";
+    return direction === "tr-en" ? {direction, prompt: parsed.correct, correct: parsed.prompt} : {direction, prompt: parsed.prompt, correct: parsed.correct};
+  }
+
+  if(baseTopicKey === "ci_eki"){
+    // Agent/beroep-achtervoegsel (iş -> işçi): hergebruikt dezelfde beheerste-naamwoorden-pool als de
+    // bestaande Special-tab-suffix-trainer, maar test hier specifiek DIT ene, door de les gekozen
+    // onderwerp i.p.v. een willekeurig gekozen combinatie.
+    const noun = pickSuffixDrillNoun();
+    if(!noun) throw new Error("No mastered noun available yet for the -ci/-çi drill.");
+    const nounTr = (await getOrFetchTranslation(noun.en))[0];
+    const nounBaseEn = baseEnOf(noun.en);
+    const sys = `Je maakt een "kaal woord"-oefening voor het Turkse achtervoegsel -ci/-çi (beroep/specialisatie: "iemand die met X werkt/omgaat"). Vorm de -ci/-çi-vorm van het zelfstandig naamwoord "${nounTr}" (Engels: "${nounBaseEn}") -- kies de juiste klinkerharmonie-vorm (-ci/-çi/-cı/-çı/-cu/-çu/-cü/-çü, met devoicing naar ç na een stemloze eindmedeklinker). Geef ALLEEN het kale woordpaar terug, GEEN zin eromheen. "prompt" is een kort Engels cue-woord (het beroep/de specialisatie zelf, bv. "worker"), "correct" is de kale Turkse -ci/-çi-vorm. Antwoord in JSON.`;
+    const schema = {
+      name: "ci_eki_kaal",
+      description: "Kaal woordpaar voor de -ci/-çi beroeps-/specialisatievorm.",
+      input_schema: {
+        type: "object",
+        properties: {
+          prompt: {type:"string", description:"Kort Engels cue-woord (het beroep/de specialisatie), bv. \"worker\"."},
+          correct: {type:"string", description:"De kale Turkse -ci/-çi-vorm, bv. \"işçi\"."},
+        },
+        required: ["prompt","correct"],
+      },
+    };
+    const raw = await callAI("sentence", sys, `Naamwoord: ${nounBaseEn} (${nounTr})`, 300, 0.5, schema);
+    const parsed = parseAIJson(raw);
+    if(!parsed.prompt || !parsed.correct) throw new Error("AI did not return a valid -ci/-çi drill.");
+    const direction = Math.random() < 0.5 ? "tr-en" : "en-tr";
+    return direction === "tr-en" ? {direction, prompt: parsed.correct, correct: parsed.prompt} : {direction, prompt: parsed.prompt, correct: parsed.correct};
+  }
+
+  throw new Error("generateBareSuffixDrillForTopic: no bare-word drill logic for topic \"" + baseTopicKey + "\".");
+}
+
+// Onderwerpen die via generateBareSuffixDrillForTopic lopen i.p.v. de zin-gerichte generateGrammarDrill.
+export const BARE_SUFFIX_DRILL_TOPICS = new Set(["ce_eki", "ci_eki"]);
