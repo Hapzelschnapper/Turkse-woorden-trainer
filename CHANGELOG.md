@@ -24,6 +24,24 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.82 — "Add anyway"/dispuut op een tr-en-kaart onthoudt voortaan écht iets
+- **Bug**: een geaccepteerd dispuut of "Add anyway" op een tr-en-oefening (Turks getoond, Engels getypt)
+  herstelde alleen de score van DIE ene beurt (`scheduleReview(p, GRADE_EASY)`), maar sloeg het
+  geaccepteerde Engelse antwoord zelf nergens op. `promptAddTranslation()` — de enige plek die zoiets
+  blijvend bewaart — werd alleen aangeroepen bij `direction === "en-tr"`, en slaat sowieso alleen Turkse
+  antwoorden op. Gevolg: exact dezelfde tr-en-kaart kwam de eerstvolgende keer gewoon weer fout uit,
+  ondanks een net geaccepteerd dispuut.
+- Nieuwe, eigen opslag `customEn` (`{ [trProgressKey]: {en:[...]} }`, key = de "trword:..."-progressKey
+  uit `TR_WORDS_DATA`, niet het Engelse trefwoord zelf — meerdere, los gecureerde tr-en-kaarten kunnen
+  hetzelfde Engelse trefwoord delen) + nieuwe `promptAddEnglishAnswer()`, aangeroepen op exact dezelfde
+  twee plekken als `promptAddTranslation()` (geaccepteerd AI-dispuut, en de "Add anyway"-knop), nu voor
+  BEIDE richtingen i.p.v. alleen en-tr.
+- `checkStaticMatch()`'s tr-en-tak raadpleegt `customEn` nu ook — inclusief bij een woord met een
+  disambiguatie-hint (`item.note`), want een dispuut is al eens expliciet tegen die ene betekenis
+  beoordeeld.
+- `customEn` volledig meegenomen in de gist-sync (push/pull), net als `custom`.
+- 2 nieuwe tests in `static-match.test.js` — totaal nu 115 tests over 13 bestanden.
+
 ## v3.81 — "Ask AI"-chat: minder betuttelend, altijd de vraag beantwoorden
 - Naar aanleiding van een gemeld voorbeeld waarbij de chat een terechte, gerelateerde vraag (over
   "kabı" tijdens het oefenen van "ayak") herhaaldelijk afwimpelde als "niet relevant" — om vervolgens

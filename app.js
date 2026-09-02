@@ -93,7 +93,8 @@ export let REVERSE_TR_INDEX; // gevuld door loadAllData(); zie commentaar daar v
 
 /* ===================== OPSLAG ===================== */
 const LS_PROGRESS = "turks_progress_v1";      // { [en]: {level, due, reps} } — nu op ENGELS trefwoord (Oxford lemma)
-const LS_CUSTOM    = "turks_custom_v1";        // { [en]: {tr:[...]} } — extra geaccepteerde Turkse antwoorden (via 'oneens')
+const LS_CUSTOM    = "turks_custom_v1";        // { [en]: {tr:[...]} } — extra geaccepteerde Turkse antwoorden (via 'oneens'), voor en-tr-oefeningen
+const LS_CUSTOM_EN = "turks_custom_en_v1";     // { [trProgressKey]: {en:[...]} } — extra geaccepteerde Engelse antwoorden (via 'oneens'/"Add anyway"), voor tr-en-oefeningen; los van LS_CUSTOM omdat tr-en een eigen progressKey (trword:...) gebruikt, niet het Engelse trefwoord
 const LS_OVERRIDES = "turks_overrides_v1";     // { [en]: {tr:[...]} } — HANDMATIGE correctie van een woordkaart, vervangt (i.p.v. vult aan) de vertaling en heeft ALTIJD voorrang, ook boven curatedTr
 const LS_TR_OVERRIDES = "turks_tr_overrides_v1"; // { [trwordKey]: {tr, en} } — zelfde soort handmatige correctie, maar dan voor tr-en-woorden (TR_WORDS_DATA, eigen "trword:"-sleutel)
 // Hoogste sub-niveau-index die daadwerkelijk in de woordenlijst voorkomt (C1 end) -- de "Language
@@ -143,11 +144,12 @@ function loadJSON(key, fallback){
 let syncPushTimer = null;
 export function saveJSON(key, val){
   localStorage.setItem(key, JSON.stringify(val));
-  if(key === LS_PROGRESS || key === LS_CUSTOM || key === LS_OVERRIDES || key === LS_NEWWORDS || key === LS_GRAMMAR || key === LS_TRCACHE || key === LS_EXPLANATION_CACHE || key === LS_LESSONS || key === LS_READING_TEXTS) syncMaybePush();
+  if(key === LS_PROGRESS || key === LS_CUSTOM || key === LS_CUSTOM_EN || key === LS_OVERRIDES || key === LS_NEWWORDS || key === LS_GRAMMAR || key === LS_TRCACHE || key === LS_EXPLANATION_CACHE || key === LS_LESSONS || key === LS_READING_TEXTS) syncMaybePush();
 }
 
 export let progress = loadJSON(LS_PROGRESS, {});
 export let custom   = loadJSON(LS_CUSTOM, {});
+export let customEn = loadJSON(LS_CUSTOM_EN, {});
 export let settings = loadJSON(LS_SETTINGS, {apiKey:"", sentencePercent:20, cefrLevel:4, questionPercent:0});
 // EÉN gedeelde override-opslag voor zowel en-tr- als tr-en-correcties (voorheen twee gescheiden
 // systemen: overrides + trOverrides, met elk hun eigen localStorage-sleutel, edit-modal-functie en
@@ -2508,7 +2510,7 @@ async function syncPushNow(){
     localStorage.setItem(LS_COST_PENDING, JSON.stringify(costPending));
     updateCostDisplay();
 
-    const payload = { progress, custom, overrides, newWords, grammar, cost: costUsage, updatedAt: Date.now() };
+    const payload = { progress, custom, customEn, overrides, newWords, grammar, cost: costUsage, updatedAt: Date.now() };
     const res = await fetch(`https://api.github.com/gists/${settings.syncBinId}`, {
       method: "PATCH",
       headers: {
@@ -2547,6 +2549,7 @@ async function syncPullNow(showAlertOnEmpty){
     if(remote && remote.updatedAt){
       progress = remote.progress || {};
       custom = remote.custom || {};
+      customEn = remote.customEn || {};
       overrides = remote.overrides || {};
       newWords = remote.newWords || {};
       grammar = remote.grammar || {};
@@ -2555,6 +2558,7 @@ async function syncPullNow(showAlertOnEmpty){
       // verse bron, en persoonlijke correcties lopen via de veel kleinere overrides-laag hieronder.
       localStorage.setItem(LS_PROGRESS, JSON.stringify(progress));
       localStorage.setItem(LS_CUSTOM, JSON.stringify(custom));
+      localStorage.setItem(LS_CUSTOM_EN, JSON.stringify(customEn));
       localStorage.setItem(LS_OVERRIDES, JSON.stringify(overrides));
       localStorage.setItem(LS_NEWWORDS, JSON.stringify(newWords));
       localStorage.setItem(LS_GRAMMAR, JSON.stringify(grammar));
@@ -2587,7 +2591,7 @@ async function syncCreateBin(){
       body: JSON.stringify({
         description: "Turkish vocab trainer progress (do not edit manually)",
         public: false,
-        files: { [GIST_FILENAME]: { content: JSON.stringify({ progress:{}, custom:{}, newWords:{}, grammar:{}, cost:{byModel:{}}, updatedAt: Date.now() }) } }
+        files: { [GIST_FILENAME]: { content: JSON.stringify({ progress:{}, custom:{}, customEn:{}, newWords:{}, grammar:{}, cost:{byModel:{}}, updatedAt: Date.now() }) } }
       })
     });
     if(!res.ok) throw await githubApiError(res);
@@ -4703,6 +4707,21 @@ function promptAddTranslation(item, answer){
   if(!custom[item.en].tr.includes(answer)) custom[item.en].tr.push(answer);
   saveJSON(LS_CUSTOM, custom);
 }
+// Tegenhanger van promptAddTranslation, voor tr-en-oefeningen (Turks getoond, Engels getypt): BUGFIX --
+// een geaccepteerd dispuut/"Add anyway" op een tr-en-item deed voorheen NIETS blijvends (alleen de score
+// van die ene beurt werd hersteld), omdat promptAddTranslation() alleen bij direction==="en-tr" werd
+// aangeroepen en toch alleen Turkse antwoorden opslaat -- er was geen enkele plek die een extra
+// geaccepteerd ENGELS antwoord onthield. Gevolg: exact dezelfde tr-en-kaart kwam de volgende keer weer
+// gewoon fout uit, ondanks een net geaccepteerd dispuut. Gebruikt item.progressKey (het "trword:..."-
+// sleutel uit TR_WORDS_DATA) i.p.v. item.en, want dat is de daadwerkelijk unieke identiteit van DEZE
+// tr-en-kaart (zie trWordsDataKeyFor) -- item.en is alleen het onderliggende Engelse trefwoord en kan
+// door meerdere, los van elkaar gecureerde tr-en-kaarten gedeeld worden.
+function promptAddEnglishAnswer(item, answer){
+  const key = item.progressKey || item.en;
+  if(!customEn[key]) customEn[key] = {en:[]};
+  if(!customEn[key].en.includes(answer)) customEn[key].en.push(answer);
+  saveJSON(LS_CUSTOM_EN, customEn);
+}
 
 /* ===================== "TYPE WHAT YOU HEAR" (luister-dictee, tweede modus van de Special-tab) =====================
    Speelt een Turks woord/zin af (TTS, geen tekst zichtbaar tot na het beoordelen) die de gebruiker naar
@@ -4989,6 +5008,7 @@ async function disputeAnswer(){
     const pgKey = currentItem.progressKey || currentItem.en;
     if(verdict.correct){
       if(currentItem.direction === "en-tr") promptAddTranslation(currentItem, answer);
+      else promptAddEnglishAnswer(currentItem, answer);
       const p = getProgress(pgKey);
       scheduleReview(p, GRADE_EASY); // dispuut geaccepteerd = sterkste positieve FSRS-update (analoog aan de oude ease²-bonus)
       saveJSON(LS_PROGRESS, progress);
@@ -5016,6 +5036,7 @@ async function disputeAnswer(){
       el("btn-force-add").onclick = ()=>{
         if(!confirm('Are you sure "' + answer + '" is a correct translation, despite the AI\'s judgement?')) return;
         if(currentItem.direction === "en-tr") promptAddTranslation(currentItem, answer);
+        else promptAddEnglishAnswer(currentItem, answer);
         const p = getProgress(pgKey);
         scheduleReview(p, GRADE_EASY); // dispuut geaccepteerd = sterkste positieve FSRS-update (analoog aan de oude ease²-bonus)
         saveJSON(LS_PROGRESS, progress);

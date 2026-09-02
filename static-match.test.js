@@ -11,6 +11,7 @@ function makeStubs(overrides) {
     cachedTranslation: () => null,
     EN_WORDS_DATA: [],
     REVERSE_TR_INDEX: {},
+    customEn: {},
     foldTurkishDiacritics: (s) => String(s || '')
       .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
       .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c'),
@@ -121,6 +122,32 @@ test('tr-en: de ambigue-woord-check raadpleegt uitsluitend REVERSE_TR_INDEX, noo
   });
   const item = { direction: 'tr-en', en: 'month', tr: 'ay' };
   assert.strictEqual(checkStaticMatch(item, 'moon'), false);
+});
+
+test('tr-en: een eerder via "Add anyway"/dispuut toegevoegd Engels antwoord (customEn) telt voortaan als correct', () => {
+  // Regressietest voor de bugfix: promptAddTranslation (en dus alleen de en-tr-richting) was voorheen de
+  // ENIGE plek die een geaccepteerd dispuut blijvend opsloeg -- een tr-en-dispuut deed niets blijvends,
+  // dezelfde kaart kwam de volgende keer gewoon weer fout uit. checkStaticMatch moet nu ook customEn
+  // raadplegen, op de tr-en-specifieke progressKey (niet op item.en).
+  const { checkStaticMatch } = load({
+    customEn: { 'trword:sanatçı::noun': { en: ['creative'] } },
+  });
+  const item = { direction: 'tr-en', en: 'artist', tr: 'sanatçı', progressKey: 'trword:sanatçı::noun' };
+  assert.strictEqual(checkStaticMatch(item, 'creative'), true);
+  // een ANDER tr-en-item (andere progressKey) mag dit toegevoegde antwoord niet erven
+  const otherItem = { direction: 'tr-en', en: 'artist', tr: 'sanatçı', progressKey: 'trword:ressam::noun' };
+  assert.strictEqual(checkStaticMatch(otherItem, 'creative'), false);
+});
+
+test('tr-en: een customEn-antwoord telt ook mee als het item een disambiguatie-hint (note) heeft', () => {
+  // Zonder deze regel zou een net geaccepteerd dispuut op een woord-met-hint bij de eerstvolgende
+  // herhaling alsnog fout gerekend worden -- exact het gemelde symptoom.
+  const { checkStaticMatch } = load({
+    customEn: { 'trword:sanatçı::noun': { en: ['creative'] } },
+  });
+  const item = { direction: 'tr-en', en: 'artist', tr: 'sanatçı', progressKey: 'trword:sanatçı::noun', note: 'a creative professional' };
+  assert.strictEqual(checkStaticMatch(item, 'creative'), true);
+  assert.strictEqual(checkStaticMatch(item, 'random'), false);
 });
 
 // ================= checkStaticMatch: en-tr richting =================

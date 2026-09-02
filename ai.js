@@ -26,7 +26,7 @@ import { EASE_START } from './srs.js';
 import { migrateLegacyProgress } from './fsrs.js';
 
 import {
-  settings, progress, overrides, explanationCache, trCache, curatedTr, newWords, custom,
+  settings, progress, overrides, explanationCache, trCache, curatedTr, newWords, custom, customEn,
   EN_WORDS_DATA, REVERSE_TR_INDEX, saveJSON, sleep,
   LS_TRCACHE, LS_EXPLANATION_CACHE, LS_NEWWORDS, ENGLISH_OUTPUT_GUARD, FORMATTING_GUARD,
   CEFR_LEVEL_GUIDANCE, CEFR_SUB_NOTE, DICTATION_LEVELS, GRAMMAR_TOPIC_FRAMEWORK,
@@ -808,7 +808,12 @@ export function checkStaticMatch(item, answer){
   if(item.direction === "tr-en"){
     // Turks getoond, Engels gevraagd: het bekende Engelse trefwoord is de primaire juiste vorm...
     if(normalize(baseEnOf(item.en)) === norm) return true;
-    if(item.note) return false; // dit woord heeft een altijd-zichtbare disambiguatie-hint gekregen -> alleen het exacte trefwoord telt nog voor DEZE betekenis
+    // ...of een eerder via een geaccepteerd dispuut/"Add anyway" toegevoegd Engels antwoord (zie
+    // promptAddEnglishAnswer) -- geldt ALTIJD, ook met een disambiguatie-hint (item.note): een dispuut
+    // werd immers al eens expliciet beoordeeld/goedgekeurd tegen precies DEZE betekenis.
+    const extraEn = customEn[item.progressKey || item.en];
+    if(extraEn && extraEn.en && extraEn.en.some(a => normalize(a) === norm)) return true;
+    if(item.note) return false; // dit woord heeft een altijd-zichtbare disambiguatie-hint gekregen -> alleen het exacte trefwoord (of een hierboven al toegevoegd dispuut-antwoord) telt nog voor DEZE betekenis
     // ...MAAR zonder bekeken hint zijn sommige Turkse woorden zelf ambigu (bv. "ay" = zowel "month" als "moon" —
     // geen vertaalfout, gewoon hetzelfde woord met 2 losstaande betekenissen, hier zonder context
     // getoond). Check daarom ook: is het antwoord van de gebruiker zelf een bekend Engels woord
