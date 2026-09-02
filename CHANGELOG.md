@@ -24,6 +24,28 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.83 — Sync overschreef niet meer een net verbeterd woord met een oudere stand vanaf een ander apparaat
+- **Bug**: gemeld als "ik had het net goed, en toch zakte het niveau" bij veelgebruikte woorden (bv.
+  "why"/"city"/"because"/"mother") — géén 2e gok, géén hint. FSRS's eigen groeiformule kan bij een echt
+  `correct`-oordeel wiskundig NOOIT een stability-daling geven (elke factor in `nextRecallStability` is
+  ≥ 0), dus de daling moest van buiten die ene beurt komen.
+- **Oorzaak gevonden**: `syncPullNow()` verving de VOLLEDIGE lokale `progress` (per-woord SRS) door wat
+  er op dat moment in de gist stond — puur "laatste sync wint", zonder per woord te kijken welke kant
+  daadwerkelijk verder gevorderd/recenter was. Bij twee apparaten (telefoon + laptop) die niet allebei
+  vóór elke beurt pullen, kon een net op het ene apparaat verbeterd woord (hogere stability, via een
+  goed antwoord) alsnog overschreven worden door een oudere stand vanaf het andere apparaat, zodra dát
+  apparaat pusht en dit apparaat vervolgens pullt. Veelgebruikte woorden zijn hier het gevoeligst voor,
+  simpelweg omdat die het vaakst op BEIDE apparaten geoefend worden.
+- Nieuwe `mergeProgress(local, remote)`: voegt per woord samen i.p.v. het geheel te vervangen — bij een
+  woord dat aan beide kanten bekend is, wint de kant met de meest recente `lastReviewAt`. Een entry
+  zonder `lastReviewAt` (een nog niet gemigreerd, pre-FSRS record) geldt daarbij als "oudste" en
+  verliest dus altijd van een kant die al wél FSRS-natief is.
+- Toegepast op zowel `syncPullNow()` als `syncPushNow()` (progress ÉN grammar) — bij het pushen wordt nu
+  ook eerst de al-opgehaalde remote-stand (die toch al voor de kosten-merge wordt opgehaald) gemerged,
+  zodat ook een apparaat dat toevallig als laatste pusht een verder gevorderd ander apparaat niet meer
+  ongedaan kan maken.
+- 7 nieuwe tests (`sync-merge.test.js`) — totaal nu 122 tests over 14 bestanden.
+
 ## v3.82 — "Add anyway"/dispuut op een tr-en-kaart onthoudt voortaan écht iets
 - **Bug**: een geaccepteerd dispuut of "Add anyway" op een tr-en-oefening (Turks getoond, Engels getypt)
   herstelde alleen de score van DIE ene beurt (`scheduleReview(p, GRADE_EASY)`), maar sloeg het

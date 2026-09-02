@@ -2422,6 +2422,33 @@ function recordGrammarResult(key, correct){
   saveJSON(LS_GRAMMAR, grammar);
 }
 /* ===================== CLOUD-SYNCHRONISATIE (GitHub Gist) ===================== */
+// BUGFIX (v3.83): syncPullNow() verving voorheen de VOLLEDIGE lokale `progress` (per-woord SRS) door
+// wat er in de gist stond -- puur "laatste sync wint", zonder per woord te kijken welke kant
+// daadwerkelijk verder gevorderd/recenter was. Bij twee apparaten (bv. telefoon + laptop) die niet
+// allebei voor elke beurt eerst pullen, kon dat een net op het ene apparaat verbeterd woord (hogere
+// stability/level, via een goed antwoord) laten overschrijven door een OUDERE, minder ver gevorderde
+// versie van datzelfde woord vanaf het andere apparaat, zodra dát apparaat op zijn beurt pusht en dit
+// apparaat daarna pullt -- precies het gemelde symptoom "ik had het net goed, en toch zakte het
+// niveau", zonder dat er ooit iets mis ging met de beoordeling van dat ene antwoord zelf. Vooral
+// merkbaar bij veelgebruikte woorden (bv. "why"/"city"/"because"/"mother"), simpelweg omdat die het
+// vaakst op BEIDE apparaten geoefend worden en dus het vaakst blootstaan aan deze race condition.
+// Nu: per woord SAMENVOEGEN i.p.v. het geheel te vervangen -- bij een woord dat aan beide kanten
+// bestaat wint de kant met de meest recente `lastReviewAt`. Een entry zonder `lastReviewAt` (een nog
+// niet gemigreerd, pre-FSRS record -- zie migrateLegacyProgress) geldt daarbij als "oudste", dus die
+// verliest altijd van een kant die al wél gemigreerd/FSRS-natief is -- consistent met hoe elders in dit
+// bestand nooit een verse FSRS-positie door een verouderd legacy-record vervangen mag worden.
+export function mergeProgress(local, remote){
+  const merged = {...local};
+  for(const key in remote){
+    const r = remote[key], l = local[key];
+    if(!l){ merged[key] = r; continue; } // alleen op afstand bekend -> gewoon overnemen
+    const rTs = typeof r.lastReviewAt === "number" ? r.lastReviewAt : -Infinity;
+    const lTs = typeof l.lastReviewAt === "number" ? l.lastReviewAt : -Infinity;
+    if(rTs > lTs) merged[key] = r; // remote is daadwerkelijk recenter beoordeeld -> overnemen
+    // anders (gelijk, of lokaal recenter): lokale (verder gevorderde of even actuele) versie laten staan
+  }
+  return merged;
+}
 // Slaat progress/custom/newWords op in een privé GitHub Gist zodat je voortgang niet vastzit
 // aan één apparaat/browser. Werkt alleen als syncGistId + syncApiKey (GitHub token) zijn ingesteld.
 // Gebruikt GitHub i.p.v. jsonbin.io: geen apart account nodig (je hebt al GitHub voor de app zelf),
@@ -2494,8 +2521,9 @@ async function syncPushNow(){
     // nemen t.o.v. het lokale totaal (veiligheidsnet tegen dataverlies, bv. als lokaal nog nooit
     // gesynct was), en daar pas het nog-niet-samengevoegde lokale verbruik bij optellen
     let mergedCost = costUsage;
+    let remoteNow = null;
     try{
-      const remoteNow = await fetchRemoteGistData();
+      remoteNow = await fetchRemoteGistData();
       const remoteCost = (remoteNow && remoteNow.cost) || {byModel:{}};
       const base = maxCostUsage(costUsage, remoteCost);
       mergedCost = mergeCostUsage(base, costPending);
@@ -2509,6 +2537,18 @@ async function syncPushNow(){
     localStorage.setItem(LS_COST, JSON.stringify(costUsage));
     localStorage.setItem(LS_COST_PENDING, JSON.stringify(costPending));
     updateCostDisplay();
+
+    // BUGFIX (v3.83, zie mergeProgress hierboven): ook bij het PUSHEN zelf per-woord samenvoegen met
+    // wat er op dat moment al in de gist staat, i.p.v. de lokale (mogelijk achterblijvende) `progress`/
+    // `grammar` blindweg overschrijven -- anders kan DIT apparaat, als het toevallig als laatste pusht,
+    // alsnog de verder gevorderde staat van een ANDER apparaat tenietdoen, ook al is de pull-kant nu
+    // al gefixt. remoteNow is hierboven al opgehaald voor de kosten-merge, dus dit kost geen extra call.
+    if(remoteNow){
+      progress = mergeProgress(progress, remoteNow.progress || {});
+      grammar = mergeProgress(grammar, remoteNow.grammar || {});
+      localStorage.setItem(LS_PROGRESS, JSON.stringify(progress));
+      localStorage.setItem(LS_GRAMMAR, JSON.stringify(grammar));
+    }
 
     const payload = { progress, custom, customEn, overrides, newWords, grammar, cost: costUsage, updatedAt: Date.now() };
     const res = await fetch(`https://api.github.com/gists/${settings.syncBinId}`, {
@@ -2547,12 +2587,12 @@ async function syncPullNow(showAlertOnEmpty){
     }
     const remote = JSON.parse(await fetchFullGistFileContent(file));
     if(remote && remote.updatedAt){
-      progress = remote.progress || {};
+      progress = mergeProgress(progress, remote.progress || {});
       custom = remote.custom || {};
       customEn = remote.customEn || {};
       overrides = remote.overrides || {};
       newWords = remote.newWords || {};
-      grammar = remote.grammar || {};
+      grammar = mergeProgress(grammar, remote.grammar || {});
       costUsage = remote.cost ? maxCostUsage(costUsage, remote.cost) : costUsage; // laat lokaal costPending ongemoeid, dat wordt bij de volgende push meegeteld
       // curatedTr wordt niet meer gesynct (zie syncPushNow): de ingebedde data is nu de volledige,
       // verse bron, en persoonlijke correcties lopen via de veel kleinere overrides-laag hieronder.
