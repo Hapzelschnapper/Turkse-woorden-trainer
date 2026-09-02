@@ -24,6 +24,34 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.81 — "Ask AI"-chat: minder betuttelend, altijd de vraag beantwoorden
+- Naar aanleiding van een gemeld voorbeeld waarbij de chat een terechte, gerelateerde vraag (over
+  "kabı" tijdens het oefenen van "ayak") herhaaldelijk afwimpelde als "niet relevant" — om vervolgens
+  alsnog de relatie te erkennen (ayak + kap = ayakkabı = shoe) nadat de gebruiker had aangedrongen.
+- **Bevinding**: de bestaande systeemprompt bevatte geen enkele instructie die dit gedrag zou moeten
+  veroorzaken — puur emergent modelgedrag, dus opgelost door het expliciet tegen te spreken.
+- `askDeepSeekFree`'s systeemprompt instrueert nu expliciet: altijd de vraag volledig en rechtstreeks
+  beantwoorden, nooit voortijdig "niet relevant" afwijzen, eerst grondig nadenken over een mogelijke
+  relatie met het geoefende woord (samengesteld woord, gedeelde stam, klankgelijkenis) vóórdat je
+  concludeert dat iets ongerelateerd is, en geen betuttelende toon of herhaalde aansporingen om terug
+  te keren naar de oefening.
+- 4 nieuwe tests (`ask-ai-chat.test.js`) die bevestigen dat deze instructies daadwerkelijk in de
+  systeemprompt terechtkomen. Totaal nu 109 tests over 13 bestanden.
+
+## v3.80 — Turkse tekens inwisselbaar met hun gewone equivalent (matchesTrList)
+- Alsnog doorgevoerd: eerder voorgesteld en impliciet blijven liggen na een zijspoor naar andere
+  onderwerpen. `matchesTrList` (de kernvergelijking binnen `checkStaticMatch`, gebruikt door zowel de
+  eerste poging als de herkansing) maakt Turkse diacritische tekens nu plat naar hun gewone Latijnse
+  equivalent vóór de vergelijking: "kus" matcht nu met "kuş", "sehir" met "şehir", "agac" met "ağaç",
+  etc. — in beide richtingen (antwoord én de bekende vertaling).
+- Bewust GEEN typo-tolerantie: een echt andere spelling (letterverwisseling, ontbrekende letters)
+  blijft gewoon fout — expliciet getest dat dit onderscheid standhoudt.
+- Geldt automatisch voor zowel de eerste poging als een herkansing, aangezien `checkStaticMatch` door
+  beide gebruikt wordt — geen aparte wijziging nodig voor de herkansing zelf.
+- 5 nieuwe tests, plus de bestaande `foldTurkishDiacritics`-stub in de testsuite vervangen door een
+  echte, functionele implementatie (was eerder ontbrekend, brak de bestaande tests bij het draaien).
+  Totaal nu 105 tests over 12 bestanden.
+
 ## v3.79 — Kale woordtransformatie voor ci_eki/ce_eki, i.p.v. zinnen
 - Naar aanleiding van een te complexe zin bij "Manner/Opinion Suffix -ce/-ca" (25+ woorden, terwijl het
   eigen framework al "Keep it SHORT (2-5 words)" eiste): op verzoek teruggebracht naar de kale

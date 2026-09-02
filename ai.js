@@ -792,8 +792,14 @@ export function closestTrMatch(item, answer){
 
 export function matchesTrList(norm, trList){
   if(!Array.isArray(trList) || !trList.length) return false;
-  if(trList.map(normalize).includes(norm)) return true;
-  return trList.map(t => normalize(stripTrClarifier(t))).includes(norm);
+  // Turkse tekens (ı/ş/ğ/ü/ö/ç) plat maken naar hun gewone Latijnse equivalent vóór de vergelijking --
+  // op verzoek: "kus" moet matchen met "kuş", "sehir" met "şehir", etc. Bewust GEEN typo-tolerantie
+  // (Levenshtein-afstand) en geen AI hier -- puur een letterlijke, platte vergelijking. Geldt voor beide
+  // kanten (het antwoord én elke bekende vertaling), en werkt daardoor automatisch voor zowel de eerste
+  // poging als een herkansing, aangezien checkStaticMatch (dat dit aanroept) door beide gebruikt wordt.
+  const target = foldTurkishDiacritics(norm);
+  if(trList.map(t => foldTurkishDiacritics(normalize(t))).includes(target)) return true;
+  return trList.map(t => foldTurkishDiacritics(normalize(stripTrClarifier(t)))).includes(target);
 }
 
 export function checkStaticMatch(item, answer){
@@ -901,8 +907,9 @@ export async function askDeepSeekFree(item, question, chatHistoryMsgs){
   const context = (item.type === "sentence" || item.type === "question")
     ? `Turkse oefen${item.type === "question" ? "vraag" : "zin"}: "${item.tr}" (doelwoorden: ${item.words.map(w=>`${w.tr} (${baseEnOf(w.en)})`).join(", ")}).`
     : `Woord: Turks "${item.tr || "?"}" = Engels "${baseEnOf(item.en)}" (richting van deze oefening: ${item.direction === "tr-en" ? "Turks -> Engels" : "Engels -> Turks"}).`;
-  const sys = `Je bent een behulpzame docent Turks. Je gebruiker oefent het volgende:
+  const sys = `Je bent een behulpzame, directe docent Turks. Je gebruiker oefent het volgende:
 ${context}
+BELANGRIJK: beantwoord de vraag van de gebruiker ALTIJD volledig en rechtstreeks, ongeacht of die vraag exact over het geoefende woord/de geoefende zin gaat of niet. Stuur NOOIT af op iets als "laten we ons op het geoefende woord richten" of "dat is niet wat we aan het oefenen zijn" -- wijs een vraag NOOIT voortijdig af als "niet relevant" of "onbestaand": denk eerst grondig na of er wél een relatie is met het geoefende woord (bv. een samengesteld woord, een gedeelde stam/wortel, een makkelijk te verwarren klankgelijkenis, een afgeleide vorm) vóórdat je concludeert dat iets ongerelateerd is -- en als die relatie er is, leg 'm dan meteen en volledig uit, in plaats van 'm pas te noemen nadat je de vraag eerst hebt afgewimpeld. Behandel de gebruiker als een volwassene die zelf weet wat die wil weten: geen betuttelende toon, geen herhaalde aansporingen om terug te keren naar de oefening, geen vragen terugkaatsen als afleidingsmanoeuvre.
 Beantwoord vragen kort, duidelijk, rechtstreeks tegen de gebruiker gericht (spreek diegene aan met "je") en in het Engels.`;
   const messages = [...chatHistoryMsgs, {role:"user", content: question}];
   const raw = await callAI("sentence", sys, messages, 3000, 0.3);

@@ -11,6 +11,9 @@ function makeStubs(overrides) {
     cachedTranslation: () => null,
     EN_WORDS_DATA: [],
     REVERSE_TR_INDEX: {},
+    foldTurkishDiacritics: (s) => String(s || '')
+      .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c'),
   }, overrides || {});
 }
 
@@ -148,6 +151,40 @@ test('en-tr: matcht ook met een komma/haakjes-verduidelijking gestript', () => {
   const { checkStaticMatch } = load({ cachedTranslation: () => ['araba (car, not "otomobil")'] });
   const item = { direction: 'en-tr', en: 'car' };
   assert.strictEqual(checkStaticMatch(item, 'araba'), true);
+});
+
+// ---------- matchesTrList: Turkse diacritische tekens zijn inwisselbaar met hun gewone equivalent ----------
+test('matchesTrList: "kus" (zonder ş) matcht met de bekende vorm "kuş"', () => {
+  const { matchesTrList } = load();
+  assert.strictEqual(matchesTrList('kus', ['kuş']), true);
+});
+
+test('matchesTrList: elk van de zes Turkse diacritische tekens is inwisselbaar met zijn gewone equivalent', () => {
+  const { matchesTrList } = load();
+  assert.strictEqual(matchesTrList('sehir', ['şehir']), true);   // ş -> s
+  assert.strictEqual(matchesTrList('agac', ['ağaç']), true);      // ğ, ç -> g, c
+  assert.strictEqual(matchesTrList('ogrenci', ['öğrenci']), true); // ö, ğ -> o, g
+  assert.strictEqual(matchesTrList('universite', ['üniversite']), true); // ü -> u
+  assert.strictEqual(matchesTrList('kadin', ['kadın']), true);    // ı -> i
+});
+
+test('matchesTrList: werkt ook de andere kant op (de LIJST bevat de gewone vorm, het antwoord de Turkse)', () => {
+  const { matchesTrList } = load();
+  // normalize()+foldTurkishDiacritics() worden aan BEIDE kanten toegepast, dus dit moet symmetrisch werken
+  assert.strictEqual(matchesTrList('kuş', ['kus']), true);
+});
+
+test('matchesTrList: dit is GEEN typo-tolerantie -- een echt andere spelling (geen diacritisch verschil) blijft fout', () => {
+  const { matchesTrList } = load();
+  assert.strictEqual(matchesTrList('kpus', ['kuş']), false); // letterverwisseling, geen diacritisch verschil
+  assert.strictEqual(matchesTrList('kitap', ['kuş']), false); // compleet ander woord
+});
+
+test('matchesTrList: geldt ook binnen checkStaticMatch (en-tr-richting), zowel eerste poging als herkansing gebruiken dezelfde functie', () => {
+  const { checkStaticMatch } = load({ cachedTranslation: () => ['kuş'] });
+  const item = { direction: 'en-tr', en: 'bird' };
+  assert.strictEqual(checkStaticMatch(item, 'kus'), true);
+  assert.strictEqual(checkStaticMatch(item, 'KUS'), true); // ook hoofdletterongevoelig, via de bestaande normalize()
 });
 
 console.log(`${passed} test(s) geslaagd\n`);
