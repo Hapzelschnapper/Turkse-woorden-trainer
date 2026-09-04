@@ -4262,9 +4262,20 @@ async function handleCheck(){
 
   const pgKey = currentItem.progressKey || currentItem.en;
   if(revealedWords.has(pgKey)){
-    // Dit woord is deze beurt al gepiept (zie peekCurrentWord) -- telt sowieso als fout voor de SRS.
-    // Maar als het GETYPTE antwoord toch al klopt (bv. met behulp van de hint-letters), hoeft er geen
-    // aparte herkansing geforceerd te worden -- dat antwoord is dan al 1x zelf getypt.
+    // Dit woord is deze beurt al gepiept (zie peekCurrentWord) -- telt sowieso als fout voor de SRS,
+    // ongeacht wat er hieronder als beoordeling uitkomt (zie recordResult(..., false, ...) verderop in
+    // finalizeCorrectDisplayButScoredWrong/enterWordRetry). Maar de beoordeling/feedback zelf hoort even
+    // eerlijk/mild te blijven als in de normale, niet-gepiepte flow eronder.
+    // BUGFIX: dit blok sprong voorheen bij een mislukte checkStaticMatch (een pure EXACTE/diacritische
+    // match, zonder tikfout-tolerantie) direct naar een harde "you peeked"-melding + lookupWrongAnswer-
+    // Meaning(), zonder ooit de AI-rechter (askDeepSeekJudge) te raadplegen -- terwijl DIE juist de enige
+    // plek in de app is die tikfouten herkent en tolereert (zie de "wasTypo"-check in de normale flow
+    // hieronder). Gevolg: een kleine tikfout als "alışveriş merkeze" i.p.v. "alışveriş merkezi" -- die
+    // buiten een peek om gewoon als "correct (tikfout getolereerd)" was doorgekomen -- werd hier hard
+    // afgekeurd, mét een misleidende "betekenis van dit (compleet andere) woord"-opzoeking. Nu: exact
+    // dezelfde beoordelingsweg (inclusief AI-tikfouttolerantie) als een niet-gepiept antwoord -- alleen
+    // het uiteindelijke SRS-resultaat wordt hieronder, ongeacht die beoordeling, alsnog op "fout"
+    // gehouden (peeken blijft dus wel degelijk altijd een gemiste beurt).
     const correctAnswer = currentItem.direction === "tr-en" ? correctEnglishDisplayFor(currentItem) : (currentItem.senseTr || cachedTranslation(currentItem.en) || []).join(", ");
     if(checkStaticMatch(currentItem, answer)){
       currentItem.matchedTr = findMatchedTr(currentItem, answer);
@@ -4272,10 +4283,30 @@ async function handleCheck(){
       registerWordExplanation(currentItem, null);
       return;
     }
-    showFeedback("pending", "🤖 Checking your answer…");
-    const wrongMeaning = await lookupWrongAnswerMeaning(currentItem, answer);
-    enterWordRetry("👁️ You peeked at the meaning, so this round is counted as a miss.<br>" + answerCompareLine(answer, correctAnswer, false, wrongMeaning), answer);
-    registerWordExplanation(currentItem, answer);
+    if(!hasKeyFor("word")){
+      showFeedback("pending", "🤖 Checking your answer…");
+      const wrongMeaning = await lookupWrongAnswerMeaning(currentItem, answer);
+      enterWordRetry("👁️ You peeked at the meaning, so this round is counted as a miss.<br>" + answerCompareLine(answer, correctAnswer, false, wrongMeaning), answer);
+      registerWordExplanation(currentItem, answer);
+      return;
+    }
+    showFeedback("pending", "🤖 AI is checking your answer…");
+    try{
+      const verdict = await askDeepSeekJudge(currentItem, answer);
+      setExplanation(verdict.uitleg);
+      if(verdict.correct){
+        const wasTypo = /typo|tikfout/i.test(verdict.afwijking || "");
+        currentItem.matchedTr = (currentItem.direction === "en-tr")
+          ? (wasTypo ? (closestTrMatch(currentItem, answer) || currentItem.tr) : (findMatchedTr(currentItem, answer) || answer))
+          : null;
+        finalizeCorrectDisplayButScoredWrong("✅" + (correctAnswer ? "<br>" + answerCompareLine(answer, correctAnswer, true, verdict.betekenis_antwoord, null, verdict.afwijking) : "") + "<br><span class='muted'>(still counted as a miss since you used a hint)</span>");
+      } else {
+        enterWordRetry("👁️ You peeked at the meaning, so this round is counted as a miss.<br>" + answerCompareLine(answer, correctAnswer, false, verdict.betekenis_antwoord, null, verdict.afwijking), answer);
+      }
+      registerWordExplanation(currentItem, answer);
+    }catch(e){
+      enterAIUnavailableRetry("⚠️ Could not reach the AI to check your answer after retrying. This attempt doesn't count against you — please try Check again.");
+    }
     return;
   }
 

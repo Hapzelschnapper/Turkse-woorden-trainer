@@ -24,6 +24,20 @@ Alle noemenswaardige wijzigingen aan de app, per build-versienummer (zie `build-
 
 ---
 
+## v3.84 — Na een peek werd zelfs een simpele tikfout hard afgekeurd, i.p.v. de gebruikelijke AI-tikfouttolerantie
+- **Bug**: gemeld met "alışveriş merkeze" i.p.v. "alışveriş merkezi" (één letter) ná een peek/hint — kreeg
+  direct "You peeked at the meaning, so this round is counted as a miss" met de betekenis van "merkeze"
+  als los, fout woord opgezocht, i.p.v. herkend te worden als een simpele tikfout.
+- **Oorzaak**: het peeked-woord-blok in `handleCheck()` riep bij een mislukte `checkStaticMatch()` (een
+  pure exacte/diacritische match, zonder enige tikfout-tolerantie) NOOIT de AI-rechter aan — het sprong
+  direct naar een harde "miss"-melding + `lookupWrongAnswerMeaning()`. De AI-rechter (`askDeepSeekJudge`)
+  is in de rest van de app juist de enige plek die tikfouten herkent en tolereert (zie de `wasTypo`-check
+  in de normale, niet-gepiepte flow) — die stap werd hier volledig overgeslagen.
+- **Fix**: het peeked-blok volgt nu exact dezelfde beoordelingsweg als een niet-gepiept antwoord
+  (inclusief de AI-tikfouttolerantie) — alleen het uiteindelijke SRS-resultaat wordt, ongeacht die
+  beoordeling, nog steeds op "fout" gehouden (peeken blijft dus terecht altijd een gemiste beurt; alleen
+  de FEEDBACK/beoordeling zelf is nu weer even mild als overal elders).
+
 ## v3.83 — Sync overschreef niet meer een net verbeterd woord met een oudere stand vanaf een ander apparaat
 - **Bug**: gemeld als "ik had het net goed, en toch zakte het niveau" bij veelgebruikte woorden (bv.
   "why"/"city"/"because"/"mother") — géén 2e gok, géén hint. FSRS's eigen groeiformule kan bij een echt
